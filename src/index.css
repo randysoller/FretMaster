@@ -1,0 +1,209 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand */
+    --color-primary: 38 75% 52%;
+    --color-brand: 30 62% 44%;
+    --color-emphasis: 43 83% 65%;
+
+    /* Text */
+    --text-default: 36 33% 93%;
+    --text-subtle: 33 14% 72%;
+    --text-muted: 30 7% 47%;
+
+    /* Backgrounds */
+    --bg-base: 30 25% 4%;
+    --bg-elevated: 28 20% 8%;
+    --bg-overlay: 28 17% 11%;
+    --bg-surface: 28 14% 15%;
+
+    /* Borders */
+    --border-default: 28 12% 21%;
+    --border-subtle: 28 10% 16%;
+
+    /* Semantic */
+    --semantic-success: 142 71% 45%;
+    --semantic-warning: 43 96% 56%;
+    --semantic-error: 0 84% 60%;
+    --semantic-info: 217 91% 60%;
+
+    /* shadcn mapping */
+    --background: var(--bg-base);
+    --foreground: var(--text-default);
+    --card: var(--bg-elevated);
+    --card-foreground: var(--text-default);
+    --popover: var(--bg-overlay);
+    --popover-foreground: var(--text-default);
+    --primary: var(--color-primary);
+    --primary-foreground: 30 25% 4%;
+    --secondary: var(--bg-surface);
+    --secondary-foreground: var(--text-default);
+    --muted: var(--bg-overlay);
+    --muted-foreground: var(--text-muted);
+    --accent: var(--bg-surface);
+    --accent-foreground: var(--text-default);
+    --destructive: var(--semantic-error);
+    --destructive-foreground: 0 0% 100%;
+    --border: var(--border-default);
+    --input: var(--border-default);
+    --ring: var(--color-primary);
+    --radius: 0.625rem;
+
+    --sidebar-background: var(--bg-elevated);
+    --sidebar-foreground: var(--text-default);
+    --sidebar-primary: var(--color-primary);
+    --sidebar-primary-foreground: 30 25% 4%;
+    --sidebar-accent: var(--bg-surface);
+    --sidebar-accent-foreground: var(--text-default);
+    --sidebar-border: var(--border-default);
+    --sidebar-ring: var(--color-primary);
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--color-emphasis)), hsl(var(--color-primary)), hsl(var(--color-brand)));
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--color-primary) / 0.25), 0 0 60px hsl(var(--color-primary) / 0.1);
+  }
+
+  .glow-emphasis {
+    box-shadow: 0 0 30px hsl(var(--color-emphasis) / 0.2), 0 0 80px hsl(var(--color-emphasis) / 0.08);
+  }
+
+  .stage-gradient {
+    background: radial-gradient(ellipse at 50% 0%, hsl(var(--color-primary) / 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 50%, hsl(var(--color-brand) / 0.05) 0%, transparent 50%),
+                hsl(var(--bg-base));
+  }
+
+  .chord-string {
+    stroke: hsl(var(--text-subtle));
+    stroke-width: 1;
+  }
+
+  .chord-fret {
+    stroke: hsl(var(--border-default));
+    stroke-width: 1;
+  }
+
+  .chord-nut {
+    stroke: hsl(var(--text-default));
+    stroke-width: 5;
+  }
+
+  .chord-dot {
+    fill: hsl(var(--color-primary));
+  }
+
+  .chord-dot-text {
+    fill: hsl(var(--bg-base));
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .chord-open {
+    stroke: hsl(var(--text-subtle));
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .chord-muted {
+    stroke: hsl(var(--text-muted));
+    stroke-width: 1.5;
+  }
+
+  .chord-barre {
+    fill: hsl(var(--color-primary));
+  }
+
+  .chord-root {
+    fill: hsl(200 80% 62%);
+  }
+
+  .chord-root-text {
+    fill: hsl(220 20% 10%);
+    font-weight: 700;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .countdown-track {
+    stroke: hsl(var(--border-default));
+    stroke-width: 4;
+    fill: none;
+  }
+
+  /* Volume slider custom styling */
+  .volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: hsl(var(--border-default));
+    outline: none;
+    cursor: pointer;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: hsl(var(--color-primary));
+    cursor: pointer;
+    box-shadow: 0 0 6px hsl(var(--color-primary) / 0.4);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 10px hsl(var(--color-primary) / 0.6);
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: hsl(var(--color-primary));
+    cursor: pointer;
+    box-shadow: 0 0 6px hsl(var(--color-primary) / 0.4);
+  }
+
+  .volume-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: hsl(var(--border-default));
+  }
+
+  .countdown-progress {
+    stroke: hsl(var(--color-primary));
+    stroke-width: 4;
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.1s linear;
+  }
+}
