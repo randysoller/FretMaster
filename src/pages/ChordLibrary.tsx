@@ -14,7 +14,7 @@ export default function ChordLibrary() {
   const [filterCategories, setFilterCategories] = useState<Set<ChordCategory>>(new Set());
   const [filterTypes, setFilterTypes] = useState<Set<ChordType>>(new Set());
   const [filterBarreRoots, setFilterBarreRoots] = useState<Set<BarreRoot>>(new Set());
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const { playChord } = useChordAudio();
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
