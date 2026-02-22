@@ -323,7 +323,7 @@ export default function ChordLibrary() {
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); playChord(chord); }}
-                    className="absolute top-2 right-2 size-9 sm:size-8 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] sm:text-[hsl(var(--text-muted))] sm:bg-transparent sm:opacity-0 sm:group-hover:opacity-100 hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.1)] active:scale-95 transition-all"
+                    className="absolute top-2 right-2 size-9 sm:size-8 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
                     title="Play chord"
                   >
                     <Volume2 className="size-4 sm:size-3.5" />
