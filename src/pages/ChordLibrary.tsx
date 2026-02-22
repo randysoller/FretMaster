@@ -85,7 +85,7 @@ export default function ChordLibrary() {
   // Counts per type (filtered by current category + root + search)
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const type of ['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', '9th', '11th', '13th'] as ChordType[]) {
+    for (const type of ['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'] as ChordType[]) {
       counts[type] = CHORDS.filter((c) => {
         if (c.type !== type) return false;
         if (filterCategories.size > 0 && !filterCategories.has(c.category)) return false;
@@ -231,7 +231,7 @@ export default function ChordLibrary() {
                   <span className="ml-1.5 normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(select multiple)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {(['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', '9th', '11th', '13th'] as ChordType[]).map((type) => (
+                  {(['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'] as ChordType[]).map((type) => (
                     <button
                       key={type}
                       onClick={() => toggleType(type)}

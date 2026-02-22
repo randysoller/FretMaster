@@ -12,6 +12,9 @@ export type ChordType =
   | 'major7'
   | 'dominant7'
   | 'minor7'
+  | 'aug7'
+  | 'halfDim7'
+  | 'dim7'
   | '9th'
   | '11th'
   | '13th';
@@ -51,6 +54,9 @@ export const CHORD_TYPE_LABELS: Record<ChordType | 'all', string> = {
   major7: 'Major 7th',
   dominant7: 'Dominant 7th',
   minor7: 'Minor 7th',
+  aug7: 'Augmented 7th',
+  halfDim7: 'Half Dim 7th',
+  dim7: 'Fully Dim 7th',
   '9th': '9th',
   '11th': '11th',
   '13th': '13th',

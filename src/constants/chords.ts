@@ -482,6 +482,140 @@ export const CHORDS: ChordData[] = [
   },
 
   // ========================
+  // OPEN AUGMENTED 7TH CHORDS
+  // ========================
+  {
+    id: 'open-c-aug7',
+    name: 'C Augmented 7th',
+    symbol: 'C+7',
+    category: 'open',
+    type: 'aug7',
+    frets: [-1, 3, 2, 1, 1, 2],
+    fingers: [0, 4, 3, 1, 1, 2],
+    baseFret: 1,
+    rootNoteString: 1,
+  },
+  {
+    id: 'open-e-aug7',
+    name: 'E Augmented 7th',
+    symbol: 'E+7',
+    category: 'open',
+    type: 'aug7',
+    frets: [0, 3, 0, 1, 1, 0],
+    fingers: [0, 4, 0, 2, 1, 0],
+    baseFret: 1,
+    rootNoteString: 0,
+  },
+  {
+    id: 'open-g-aug7',
+    name: 'G Augmented 7th',
+    symbol: 'G+7',
+    category: 'open',
+    type: 'aug7',
+    frets: [3, 2, 1, 0, 0, 1],
+    fingers: [3, 2, 1, 0, 0, 1],
+    baseFret: 1,
+    rootNoteString: 0,
+  },
+  {
+    id: 'open-a-aug7',
+    name: 'A Augmented 7th',
+    symbol: 'A+7',
+    category: 'open',
+    type: 'aug7',
+    frets: [-1, 0, 3, 0, 2, 1],
+    fingers: [0, 0, 4, 0, 2, 1],
+    baseFret: 1,
+    rootNoteString: 1,
+  },
+
+  // ========================
+  // OPEN HALF DIMINISHED 7TH CHORDS
+  // ========================
+  {
+    id: 'open-b-halfdim7',
+    name: 'B Half Diminished 7th',
+    symbol: 'Bm7b5',
+    category: 'open',
+    type: 'halfDim7',
+    frets: [-1, 2, 3, 2, 3, 2],
+    fingers: [0, 1, 2, 1, 3, 1],
+    baseFret: 1,
+    barres: [2],
+    rootNoteString: 1,
+  },
+  {
+    id: 'open-d-halfdim7',
+    name: 'D Half Diminished 7th',
+    symbol: 'Dm7b5',
+    category: 'open',
+    type: 'halfDim7',
+    frets: [-1, -1, 0, 1, 1, 1],
+    fingers: [0, 0, 0, 1, 2, 3],
+    baseFret: 1,
+    rootNoteString: 2,
+  },
+  {
+    id: 'open-e-halfdim7',
+    name: 'E Half Diminished 7th',
+    symbol: 'Em7b5',
+    category: 'open',
+    type: 'halfDim7',
+    frets: [0, 1, 2, 0, 3, 0],
+    fingers: [0, 1, 2, 0, 3, 0],
+    baseFret: 1,
+    rootNoteString: 0,
+  },
+  {
+    id: 'open-f-halfdim7',
+    name: 'F# Half Diminished 7th',
+    symbol: 'F#m7b5',
+    category: 'open',
+    type: 'halfDim7',
+    frets: [2, -1, 2, 2, 1, -1],
+    fingers: [2, 0, 3, 4, 1, 0],
+    baseFret: 1,
+    rootNoteString: 0,
+  },
+
+  // ========================
+  // OPEN FULLY DIMINISHED 7TH CHORDS
+  // ========================
+  {
+    id: 'open-b-dim7',
+    name: 'B Fully Diminished 7th',
+    symbol: 'Bdim7',
+    category: 'open',
+    type: 'dim7',
+    frets: [-1, 2, 3, 1, 3, 1],
+    fingers: [0, 2, 3, 1, 4, 1],
+    baseFret: 1,
+    rootNoteString: 1,
+  },
+  {
+    id: 'open-c-dim7',
+    name: 'C Fully Diminished 7th',
+    symbol: 'Cdim7',
+    category: 'open',
+    type: 'dim7',
+    frets: [-1, 3, 4, 2, 4, 2],
+    fingers: [0, 2, 3, 1, 4, 1],
+    baseFret: 1,
+    rootNoteString: 1,
+  },
+  {
+    id: 'open-e-dim7',
+    name: 'E Fully Diminished 7th',
+    symbol: 'Edim7',
+    category: 'open',
+    type: 'dim7',
+    frets: [0, 1, 2, 0, 2, 0],
+    fingers: [0, 1, 2, 0, 3, 0],
+    baseFret: 1,
+    rootNoteString: 0,
+  },
+
+  // ========================
   // BARRE MAJOR CHORDS
   // ========================
   {
@@ -869,6 +1003,118 @@ export const CHORDS: ChordData[] = [
   },
 
   // ========================
+  // BARRE AUGMENTED 7TH
+  // ========================
+  {
+    id: 'barre-f-aug7',
+    name: 'F Augmented 7th',
+    symbol: 'F+7',
+    category: 'barre',
+    type: 'aug7',
+    frets: [1, -1, 1, 2, 2, 1],
+    fingers: [1, 0, 1, 2, 3, 1],
+    baseFret: 1,
+    barres: [1],
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'barre-bb-aug7',
+    name: 'Bb Augmented 7th',
+    symbol: 'Bb+7',
+    category: 'barre',
+    type: 'aug7',
+    frets: [-1, 1, 4, 1, 3, 2],
+    fingers: [0, 1, 4, 1, 3, 2],
+    baseFret: 1,
+    barres: [1],
+    rootString: 5,
+    rootNoteString: 1,
+  },
+
+  // ========================
+  // BARRE HALF DIMINISHED 7TH
+  // ========================
+  {
+    id: 'barre-f-halfdim7',
+    name: 'F Half Diminished 7th',
+    symbol: 'Fm7b5',
+    category: 'barre',
+    type: 'halfDim7',
+    frets: [1, -1, 1, 1, 0, -1],
+    fingers: [1, 0, 2, 3, 0, 0],
+    baseFret: 1,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'barre-bb-halfdim7',
+    name: 'Bb Half Diminished 7th',
+    symbol: 'Bbm7b5',
+    category: 'barre',
+    type: 'halfDim7',
+    frets: [-1, 1, 2, 1, 2, -1],
+    fingers: [0, 1, 2, 1, 3, 0],
+    baseFret: 1,
+    barres: [1],
+    rootString: 5,
+    rootNoteString: 1,
+  },
+  {
+    id: 'barre-c-halfdim7',
+    name: 'C# Half Diminished 7th',
+    symbol: 'C#m7b5',
+    category: 'barre',
+    type: 'halfDim7',
+    frets: [-1, 4, 5, 4, 5, -1],
+    fingers: [0, 1, 2, 1, 3, 0],
+    baseFret: 4,
+    barres: [4],
+    rootString: 5,
+    rootNoteString: 1,
+  },
+
+  // ========================
+  // BARRE FULLY DIMINISHED 7TH
+  // ========================
+  {
+    id: 'barre-f-dim7',
+    name: 'F Fully Diminished 7th',
+    symbol: 'Fdim7',
+    category: 'barre',
+    type: 'dim7',
+    frets: [1, -1, 0, 1, 0, 1],
+    fingers: [1, 0, 0, 2, 0, 3],
+    baseFret: 1,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'barre-ab-dim7',
+    name: 'Ab Fully Diminished 7th',
+    symbol: 'Abdim7',
+    category: 'barre',
+    type: 'dim7',
+    frets: [4, -1, 3, 4, 3, 4],
+    fingers: [2, 0, 1, 3, 1, 4],
+    baseFret: 3,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'barre-bb-dim7',
+    name: 'Bb Fully Diminished 7th',
+    symbol: 'Bbdim7',
+    category: 'barre',
+    type: 'dim7',
+    frets: [-1, 1, 2, 0, 2, 0],
+    fingers: [0, 1, 2, 0, 3, 0],
+    baseFret: 1,
+    rootString: 5,
+    rootNoteString: 1,
+  },
+
+  // ========================
   // MOVABLE MAJOR CHORDS
   // ========================
   {
@@ -1234,6 +1480,114 @@ export const CHORDS: ChordData[] = [
     baseFret: 3,
     rootString: 6,
     rootNoteString: 0,
+  },
+
+  // ========================
+  // MOVABLE AUGMENTED 7TH
+  // ========================
+  {
+    id: 'mov-d-aug7',
+    name: 'D Augmented 7th',
+    symbol: 'D+7',
+    category: 'movable',
+    type: 'aug7',
+    frets: [-1, 5, 4, 5, 5, 6],
+    fingers: [0, 2, 1, 3, 3, 4],
+    baseFret: 4,
+    rootString: 5,
+    rootNoteString: 1,
+  },
+  {
+    id: 'mov-g-aug7',
+    name: 'G Augmented 7th (3rd pos)',
+    symbol: 'G+7',
+    category: 'movable',
+    type: 'aug7',
+    frets: [3, 2, 3, 0, 0, 3],
+    fingers: [2, 1, 3, 0, 0, 4],
+    baseFret: 1,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+
+  // ========================
+  // MOVABLE HALF DIMINISHED 7TH
+  // ========================
+  {
+    id: 'mov-a-halfdim7',
+    name: 'A Half Diminished 7th',
+    symbol: 'Am7b5',
+    category: 'movable',
+    type: 'halfDim7',
+    frets: [5, -1, 5, 5, 4, -1],
+    fingers: [2, 0, 3, 4, 1, 0],
+    baseFret: 4,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'mov-d-halfdim7',
+    name: 'D Half Diminished 7th (5th pos)',
+    symbol: 'Dm7b5',
+    category: 'movable',
+    type: 'halfDim7',
+    frets: [-1, 5, 6, 5, 6, -1],
+    fingers: [0, 1, 2, 1, 3, 0],
+    baseFret: 5,
+    rootString: 5,
+    rootNoteString: 1,
+  },
+  {
+    id: 'mov-g-halfdim7',
+    name: 'G Half Diminished 7th',
+    symbol: 'Gm7b5',
+    category: 'movable',
+    type: 'halfDim7',
+    frets: [3, -1, 3, 3, 2, -1],
+    fingers: [2, 0, 3, 4, 1, 0],
+    baseFret: 2,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+
+  // ========================
+  // MOVABLE FULLY DIMINISHED 7TH
+  // ========================
+  {
+    id: 'mov-c-dim7',
+    name: 'C Fully Diminished 7th',
+    symbol: 'Cdim7',
+    category: 'movable',
+    type: 'dim7',
+    frets: [-1, 3, 4, 2, 4, 2],
+    fingers: [0, 2, 3, 1, 4, 1],
+    baseFret: 2,
+    rootString: 5,
+    rootNoteString: 1,
+  },
+  {
+    id: 'mov-a-dim7',
+    name: 'A Fully Diminished 7th',
+    symbol: 'Adim7',
+    category: 'movable',
+    type: 'dim7',
+    frets: [5, -1, 4, 5, 4, 5],
+    fingers: [2, 0, 1, 3, 1, 4],
+    baseFret: 4,
+    rootString: 6,
+    rootNoteString: 0,
+  },
+  {
+    id: 'mov-d-dim7',
+    name: 'D Fully Diminished 7th',
+    symbol: 'Ddim7',
+    category: 'movable',
+    type: 'dim7',
+    frets: [-1, 5, 6, 4, 6, 4],
+    fingers: [0, 2, 3, 1, 4, 1],
+    baseFret: 4,
+    rootString: 5,
+    rootNoteString: 1,
   },
 
   // ========================
