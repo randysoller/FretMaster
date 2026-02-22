@@ -52,7 +52,7 @@ interface PracticeState {
 export const usePracticeStore = create<PracticeState>((set, get) => ({
   categories: new Set<ChordCategory>(),
   chordTypes: new Set<ChordType>(),
-  timerDuration: 5,
+  timerDuration: 0,
   barreRoots: new Set<BarreRoot>(),
   currentIndex: 0,
   isRevealed: false,
