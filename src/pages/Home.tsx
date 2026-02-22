@@ -126,7 +126,7 @@ export default function Home() {
                   onClick={handleStart}
                   disabled={availableCount === 0}
                   className={`
-                    w-full flex items-center justify-center gap-2.5 rounded-lg py-4 font-display text-base font-bold transition-all duration-200
+                    w-full flex items-center justify-center gap-3 rounded-lg py-5 font-display text-5xl font-bold transition-all duration-200
                     ${availableCount > 0
                       ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98]'
                       : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] cursor-not-allowed'
