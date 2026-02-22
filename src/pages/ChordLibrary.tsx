@@ -183,6 +183,26 @@ export default function ChordLibrary() {
                   <span className="ml-1.5 normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(select multiple)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      const allCats = filterCategories.size === 3;
+                      const allRoots = filterBarreRoots.size === 3;
+                      if (allCats && allRoots) {
+                        setFilterCategories(new Set());
+                        setFilterBarreRoots(new Set());
+                      } else {
+                        setFilterCategories(new Set<ChordCategory>(['open', 'barre', 'movable']));
+                        setFilterBarreRoots(new Set<BarreRoot>([6, 5, 4]));
+                      }
+                    }}
+                    className={`rounded-md px-3 py-1.5 text-xs font-body font-semibold uppercase tracking-wider transition-all ${
+                      filterCategories.size === 3 && filterBarreRoots.size === 3
+                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md'
+                        : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                    }`}
+                  >
+                    All Chords
+                  </button>
                   {(['open', 'barre', 'movable'] as ChordCategory[]).map((cat) => (
                     <button
                       key={cat}
