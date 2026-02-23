@@ -250,17 +250,34 @@ export default function ChordEditor() {
                     Finger Number
                   </label>
                   <div className="flex gap-1.5">
-                    {[0, 1, 2, 3, 4].map((f) => (
+                    {[
+                      { val: 1, display: '1' },
+                      { val: 2, display: '2' },
+                      { val: 3, display: '3' },
+                      { val: 4, display: '4' },
+                      { val: 5, display: 'T' },
+                      { val: 0, display: '–' },
+                    ].map((f) => (
                       <button
-                        key={f}
-                        onClick={() => setSelectedFinger(f)}
+                        key={f.val}
+                        onClick={() => {
+                          if (f.display === 'T') {
+                            setSelectedFinger(0);
+                            setCustomLabel('T');
+                          } else {
+                            setSelectedFinger(f.val);
+                            if (customLabel === 'T') setCustomLabel('');
+                          }
+                        }}
                         className={`size-8 rounded-md text-xs font-body font-bold transition-all ${
-                          selectedFinger === f
+                          (f.display === 'T' && customLabel === 'T')
+                            || (f.display !== 'T' && selectedFinger === f.val && customLabel !== 'T')
                             ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
                             : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
                         }`}
+                        title={f.display === 'T' ? 'Thumb' : f.display === '–' ? 'No label' : `Finger ${f.val}`}
                       >
-                        {f === 0 ? '–' : f}
+                        {f.display}
                       </button>
                     ))}
                   </div>

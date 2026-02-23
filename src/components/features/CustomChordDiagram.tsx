@@ -69,7 +69,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           y1={getFretY(i)}
           x2={getStringX(numStrings - 1)}
           y2={getFretY(i)}
-          stroke="hsl(28 12% 21%)"
+          stroke="hsl(28 14% 42%)"
           strokeWidth={i === 0 && !showNut ? 1.5 : 1}
         />
       ))}

@@ -85,6 +85,7 @@ interface CustomChordStore {
   toggleMutedString: (stringIdx: number) => void;
   toggleOpenString: (stringIdx: number) => void;
   addMarker: (fret: number, string: number) => void;
+  addMarkerDirect: (fret: number, string: number, finger: number, label: string) => void;
   removeMarker: (fret: number, string: number) => void;
   toggleMarker: (fret: number, string: number) => void;
   addBarre: (fret: number, fromString: number, toString: number) => void;
@@ -151,6 +152,19 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     set((s) => {
       const markers = [...s.currentChord.markers.filter((m) => !(m.fret === fret && m.string === string))];
       markers.push({ fret, string, finger: selectedFinger, color: selectedColor, shape: selectedShape, label: customLabel });
+      const open = new Set(s.currentChord.openStrings);
+      const muted = new Set(s.currentChord.mutedStrings);
+      open.delete(string);
+      muted.delete(string);
+      return { currentChord: { ...s.currentChord, markers, openStrings: open, mutedStrings: muted } };
+    });
+  },
+
+  addMarkerDirect: (fret, string, finger, label) => {
+    const { selectedColor, selectedShape } = get();
+    set((s) => {
+      const markers = [...s.currentChord.markers.filter((m) => !(m.fret === fret && m.string === string))];
+      markers.push({ fret, string, finger, color: selectedColor, shape: selectedShape, label });
       const open = new Set(s.currentChord.openStrings);
       const muted = new Set(s.currentChord.mutedStrings);
       open.delete(string);
