@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Guitar, BookOpen } from 'lucide-react';
+import { Guitar, BookOpen, PenTool } from 'lucide-react';
 import VolumeControl from '@/components/features/VolumeControl';
 
 export default function Header() {
@@ -7,7 +7,8 @@ export default function Header() {
 
   const navLinks = [
     { to: '/', label: 'Practice', icon: <Guitar className="size-4" /> },
-    { to: '/library', label: 'Chord Library', icon: <BookOpen className="size-4" /> },
+    { to: '/library', label: 'Library', icon: <BookOpen className="size-4" /> },
+    { to: '/editor', label: 'Editor', icon: <PenTool className="size-4" /> },
   ];
 
   return (
