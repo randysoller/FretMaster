@@ -139,13 +139,42 @@ export default function TypeSelector() {
             <div className="h-px bg-[hsl(var(--border-subtle))]" />
 
             {/* Grouped types */}
-            {TYPE_GROUPS.map((group) => (
+            {TYPE_GROUPS.map((group) => {
+              const allInGroupSelected = group.types.every((t) => chordTypes.has(t));
+              const someInGroupSelected = group.types.some((t) => chordTypes.has(t)) && !allInGroupSelected;
+
+              const handleToggleGroup = () => {
+                if (allInGroupSelected) {
+                  for (const t of group.types) {
+                    if (chordTypes.has(t)) toggleChordType(t);
+                  }
+                } else {
+                  for (const t of group.types) {
+                    if (!chordTypes.has(t)) toggleChordType(t);
+                  }
+                }
+              };
+
+              return (
               <div key={group.label}>
-                <div className="px-4 pt-2.5 pb-1">
+                <button
+                  onClick={handleToggleGroup}
+                  className={`w-full flex items-center gap-3 px-4 pt-3 pb-1.5 text-left transition-colors hover:bg-[hsl(var(--bg-overlay))] ${allInGroupSelected ? 'bg-[hsl(var(--color-primary)/0.05)]' : ''}`}
+                >
+                  <div className={`size-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                    allInGroupSelected
+                      ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))]'
+                      : someInGroupSelected
+                        ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.3)]'
+                        : 'border-[hsl(var(--border-default))]'
+                  }`}>
+                    {allInGroupSelected && <Check className="size-2.5 text-[hsl(var(--bg-base))]" />}
+                    {someInGroupSelected && <div className="size-1.5 rounded-sm bg-[hsl(var(--color-primary))]" />}
+                  </div>
                   <span className="font-display text-[10px] font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
                     {group.label}
                   </span>
-                </div>
+                </button>
                 {group.types.map((type) => {
                   const isActive = chordTypes.has(type);
                   return (
@@ -173,7 +202,8 @@ export default function TypeSelector() {
                   );
                 })}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
