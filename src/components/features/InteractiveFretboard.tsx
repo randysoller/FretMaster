@@ -31,6 +31,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
   const { toggleMutedString, toggleOpenString, addMarkerDirect, removeMarker } = useCustomChordStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [popup, setPopup] = useState<PopupState | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ fret: number; string: number } | null>(null);
 
   const numStrings = 6;
   const numFrets = chord.numFrets;
@@ -72,10 +73,18 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
   const handleFretClick = useCallback((fret: number, string: number, event: React.MouseEvent) => {
     const existing = chord.markers.find((m) => m.fret === fret && m.string === string);
     if (existing) {
-      removeMarker(fret, string);
-      setPopup(null);
+      // Require two consecutive taps to delete
+      if (pendingDelete && pendingDelete.fret === fret && pendingDelete.string === string) {
+        removeMarker(fret, string);
+        setPendingDelete(null);
+        setPopup(null);
+      } else {
+        setPendingDelete({ fret, string });
+        setPopup(null);
+      }
       return;
     }
+    setPendingDelete(null);
 
     // Get click position relative to container
     const rect = containerRef.current?.getBoundingClientRect();
@@ -87,7 +96,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         y: event.clientY - rect.top,
       });
     }
-  }, [chord.markers, removeMarker]);
+  }, [chord.markers, removeMarker, pendingDelete]);
 
   const handleFingerSelect = useCallback((finger: number, label: string) => {
     if (!popup) return;
@@ -97,6 +106,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
 
   const handleStringHeaderClick = (stringIdx: number) => {
     setPopup(null);
+    setPendingDelete(null);
     const isMuted = chord.mutedStrings.has(stringIdx);
     const isOpen = chord.openStrings.has(stringIdx);
     const hasMarkers = chord.markers.some((m) => m.string === stringIdx);
@@ -285,9 +295,16 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
                 <polygon
                   points={`${x},${y - dotRadius * 1.15} ${x + dotRadius * 1.15},${y} ${x},${y + dotRadius * 1.15} ${x - dotRadius * 1.15},${y}`}
                   fill={marker.color}
+                  stroke={pendingDelete?.fret === marker.fret && pendingDelete?.string === marker.string ? '#ef4444' : 'none'}
+                  strokeWidth={2.5}
                 />
               ) : (
-                <circle cx={x} cy={y} r={dotRadius} fill={marker.color} />
+                <circle
+                  cx={x} cy={y} r={dotRadius}
+                  fill={marker.color}
+                  stroke={pendingDelete?.fret === marker.fret && pendingDelete?.string === marker.string ? '#ef4444' : 'none'}
+                  strokeWidth={2.5}
+                />
               )}
               {displayLabel && (
                 <text
