@@ -7,6 +7,7 @@ import {
   Plus, Save, Trash2, Edit3, RotateCcw, ChevronDown, ChevronUp,
   Minus, FileText, Pencil,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ChordEditor() {
   const {
@@ -23,6 +24,14 @@ export default function ChordEditor() {
   const [barreFret, setBarreFret] = useState(1);
 
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
+
+  const handleSave = () => {
+    saveChord();
+    toast.success(
+      isEditing ? 'Chord updated in your library!' : 'Chord saved to your library!',
+      { description: `"${currentChord.symbol}" is now available in the Chord Library.` }
+    );
+  };
 
   const handleAddBarre = () => {
     const { addBarre } = useCustomChordStore.getState();
@@ -302,7 +311,7 @@ export default function ChordEditor() {
 
               {/* Save Button */}
               <button
-                onClick={saveChord}
+                onClick={handleSave}
                 disabled={!canSave}
                 className={`
                   w-full flex items-center justify-center gap-2 rounded-lg py-3 font-display text-base font-bold transition-all duration-200

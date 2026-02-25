@@ -1,4 +1,4 @@
-export type ChordCategory = 'open' | 'barre' | 'movable';
+export type ChordCategory = 'open' | 'barre' | 'movable' | 'custom';
 
 export type BarreRoot = 6 | 5 | 4;
 
@@ -67,6 +67,7 @@ export const CATEGORY_LABELS: Record<ChordCategory | 'all', string> = {
   open: 'Open Chords',
   barre: 'Barre Chords',
   movable: 'Movable Chords',
+  custom: 'My Chords',
 };
 
 export const BARRE_ROOT_LABELS: Record<BarreRoot | 'all', string> = {
@@ -78,6 +79,9 @@ export const BARRE_ROOT_LABELS: Record<BarreRoot | 'all', string> = {
 
 /** Returns a display-friendly category label, e.g. "Root 6 Movable" for movable chords with a rootString */
 export function getChordCategoryLabel(chord: ChordData): string {
+  if (chord.category === 'custom') {
+    return 'Custom';
+  }
   if (chord.category === 'movable' && chord.rootString) {
     return `Root ${chord.rootString} Movable`;
   }

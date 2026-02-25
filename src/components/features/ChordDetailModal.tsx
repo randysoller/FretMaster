@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import type { ChordData } from '@/types/chord';
-import { CATEGORY_LABELS, CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
+import { CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { X, Volume2, Guitar } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 
 interface ChordDetailModalProps {
-  chord: ChordData | null;
+  chord: (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; numFrets?: number }) | null;
   onClose: () => void;
 }
 
@@ -88,7 +89,26 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
         {/* Diagram + Play */}
         <div className="flex flex-col items-center gap-4 px-6 pt-5 pb-4">
           <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-5">
-            <ChordDiagram chord={chord} size="lg" />
+            {chord.isCustom ? (
+              <CustomChordDiagram
+                chord={{
+                  id: chord.id,
+                  name: chord.name,
+                  symbol: chord.symbol,
+                  baseFret: chord.baseFret,
+                  numFrets: chord.numFrets ?? 5,
+                  mutedStrings: new Set(chord.customMutedStrings ?? []),
+                  openStrings: new Set(chord.customOpenStrings ?? []),
+                  markers: chord.customMarkers ?? [],
+                  barres: chord.customBarres ?? [],
+                  createdAt: 0,
+                  updatedAt: 0,
+                }}
+                size="lg"
+              />
+            ) : (
+              <ChordDiagram chord={chord} size="lg" />
+            )}
           </div>
           <button
             onClick={() => playChord(chord)}

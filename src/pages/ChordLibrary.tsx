@@ -4,10 +4,13 @@ import { CHORDS } from '@/constants/chords';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS, getChordCategoryLabel } from '@/types/chord';
 import type { ChordCategory, ChordType, BarreRoot } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { Search, Filter, X, Volume2 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import type { ChordData } from '@/types/chord';
+import { useCustomChordStore } from '@/stores/customChordStore';
+import { customToLibraryChord } from '@/types/customChord';
 
 export default function ChordLibrary() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,6 +22,15 @@ export default function ChordLibrary() {
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
 
+
+
+  const { customChords } = useCustomChordStore();
+
+  // Merge built-in + custom chords
+  const ALL_CHORDS = useMemo(() => {
+    const converted = customChords.map(customToLibraryChord);
+    return [...CHORDS, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; numFrets?: number })[];
+  }, [customChords]);
 
 
   const toggleCategory = (cat: ChordCategory) => {
@@ -52,6 +64,7 @@ export default function ChordLibrary() {
   };
 
   const showRootFilter = filterCategories.has('barre') || filterCategories.has('movable');
+  const allCatOptions: ChordCategory[] = ['open', 'barre', 'movable', 'custom'];
 
   const matchesSearch = useCallback((chord: ChordData) => {
     return searchQuery === '' ||
@@ -60,19 +73,19 @@ export default function ChordLibrary() {
   }, [searchQuery]);
 
   const filteredChords = useMemo(() => {
-    return CHORDS.filter((chord) => {
+    return ALL_CHORDS.filter((chord) => {
       const matchCategory = filterCategories.size === 0 || filterCategories.has(chord.category);
       const matchType = filterTypes.size === 0 || filterTypes.has(chord.type);
       const matchRoot = filterBarreRoots.size === 0 || !chord.rootString || filterBarreRoots.has(chord.rootString);
       return matchCategory && matchType && matchRoot && matchesSearch(chord);
     });
-  }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch]);
+  }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
   // Counts per category (filtered by current type + root + search)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const cat of ['open', 'barre', 'movable'] as ChordCategory[]) {
-      counts[cat] = CHORDS.filter((c) => {
+    for (const cat of allCatOptions) {
+      counts[cat] = ALL_CHORDS.filter((c) => {
         if (c.category !== cat) return false;
         if (filterTypes.size > 0 && !filterTypes.has(c.type)) return false;
         if (filterBarreRoots.size > 0 && c.rootString && !filterBarreRoots.has(c.rootString)) return false;
@@ -80,13 +93,13 @@ export default function ChordLibrary() {
       }).length;
     }
     return counts;
-  }, [filterTypes, filterBarreRoots, matchesSearch]);
+  }, [filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
   // Counts per type (filtered by current category + root + search)
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const type of ['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'] as ChordType[]) {
-      counts[type] = CHORDS.filter((c) => {
+      counts[type] = ALL_CHORDS.filter((c) => {
         if (c.type !== type) return false;
         if (filterCategories.size > 0 && !filterCategories.has(c.category)) return false;
         if (filterBarreRoots.size > 0 && c.rootString && !filterBarreRoots.has(c.rootString)) return false;
@@ -94,13 +107,13 @@ export default function ChordLibrary() {
       }).length;
     }
     return counts;
-  }, [filterCategories, filterBarreRoots, matchesSearch]);
+  }, [filterCategories, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
   // Counts per root string (filtered by current category + type + search)
   const rootCounts = useMemo(() => {
     const counts: Record<number, number> = {};
     for (const root of [6, 5, 4] as BarreRoot[]) {
-      counts[root] = CHORDS.filter((c) => {
+      counts[root] = ALL_CHORDS.filter((c) => {
         if (c.rootString !== root) return false;
         if (filterCategories.size > 0 && !filterCategories.has(c.category)) return false;
         if (filterTypes.size > 0 && !filterTypes.has(c.type)) return false;
@@ -108,7 +121,7 @@ export default function ChordLibrary() {
       }).length;
     }
     return counts;
-  }, [filterCategories, filterTypes, matchesSearch]);
+  }, [filterCategories, filterTypes, matchesSearch, ALL_CHORDS]);
 
   const clearFilters = () => {
     setFilterCategories(new Set());
@@ -130,7 +143,7 @@ export default function ChordLibrary() {
                 Chord Library
               </h1>
               <p className="mt-1 font-body text-sm text-[hsl(var(--text-muted))]">
-                Browse all {CHORDS.length} chord diagrams in the collection
+                Browse all {ALL_CHORDS.length} chord diagrams in the collection
               </p>
             </div>
 
@@ -185,25 +198,25 @@ export default function ChordLibrary() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => {
-                      const allCats = filterCategories.size === 3;
+                      const allCats = filterCategories.size === allCatOptions.length;
                       const allRoots = filterBarreRoots.size === 3;
                       if (allCats && allRoots) {
                         setFilterCategories(new Set());
                         setFilterBarreRoots(new Set());
                       } else {
-                        setFilterCategories(new Set<ChordCategory>(['open', 'barre', 'movable']));
+                        setFilterCategories(new Set<ChordCategory>(allCatOptions));
                         setFilterBarreRoots(new Set<BarreRoot>([6, 5, 4]));
                       }
                     }}
                     className={`rounded-md px-3 py-1.5 text-xs font-body font-semibold uppercase tracking-wider transition-all ${
-                      filterCategories.size === 3 && filterBarreRoots.size === 3
+                      filterCategories.size === allCatOptions.length && filterBarreRoots.size === 3
                         ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md'
                         : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
                     }`}
                   >
                     All Chords
                   </button>
-                  {(['open', 'barre', 'movable'] as ChordCategory[]).map((cat) => (
+                  {allCatOptions.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => toggleCategory(cat)}
@@ -328,6 +341,11 @@ export default function ChordLibrary() {
                   >
                     <Volume2 className="size-4 sm:size-3.5" />
                   </button>
+                  {(chord as any).isCustom && (
+                    <span className="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]">
+                      Custom
+                    </span>
+                  )}
                   <div className="text-center">
                     <h3 className="font-display text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors">
                       {chord.symbol}
@@ -336,7 +354,26 @@ export default function ChordLibrary() {
                       {getChordCategoryLabel(chord)}
                     </p>
                   </div>
-                  <ChordDiagram chord={chord} size="sm" />
+                  {(chord as any).isCustom ? (
+                    <CustomChordDiagram
+                      chord={{
+                        id: chord.id,
+                        name: chord.name,
+                        symbol: chord.symbol,
+                        baseFret: chord.baseFret,
+                        numFrets: (chord as any).numFrets ?? 5,
+                        mutedStrings: new Set((chord as any).customMutedStrings ?? []),
+                        openStrings: new Set((chord as any).customOpenStrings ?? []),
+                        markers: (chord as any).customMarkers ?? [],
+                        barres: (chord as any).customBarres ?? [],
+                        createdAt: 0,
+                        updatedAt: 0,
+                      }}
+                      size="sm"
+                    />
+                  ) : (
+                    <ChordDiagram chord={chord} size="sm" />
+                  )}
                 </motion.div>
               ))}
             </motion.div>
