@@ -40,7 +40,7 @@ interface DragState {
 }
 
 export default function InteractiveFretboard({ chord, width = 320, height = 420 }: InteractiveFretboardProps) {
-  const { toggleMutedString, toggleOpenString, addMarkerDirect, removeMarker, moveMarker, updateMarkerFinger } = useCustomChordStore();
+  const { toggleMutedString, toggleOpenString, toggleOpenDiamond, addMarkerDirect, removeMarker, moveMarker, updateMarkerFinger } = useCustomChordStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [popup, setPopup] = useState<PopupState | null>(null);
@@ -226,16 +226,23 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     setPendingDelete(null);
     const isMuted = chord.mutedStrings.has(stringIdx);
     const isOpen = chord.openStrings.has(stringIdx);
+    const isDiamond = chord.openDiamonds?.has(stringIdx) ?? false;
     const hasMarkers = chord.markers.some((m) => m.string === stringIdx);
 
     if (hasMarkers) {
       toggleMutedString(stringIdx);
     } else if (!isMuted && !isOpen) {
+      // nothing → open circle
       toggleOpenString(stringIdx);
-    } else if (isOpen) {
+    } else if (isOpen && !isDiamond) {
+      // open circle → open diamond (blue outlined)
+      toggleOpenDiamond(stringIdx);
+    } else if (isOpen && isDiamond) {
+      // open diamond → muted
       toggleOpenString(stringIdx);
       toggleMutedString(stringIdx);
-    } else {
+    } else if (isMuted) {
+      // muted → nothing
       toggleMutedString(stringIdx);
     }
   };
@@ -286,13 +293,21 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
               >
                 {STRING_LABELS[i]}
               </text>
-              {isOpen && (
+              {isOpen && !((chord.openDiamonds?.has(i)) ?? false) && (
                 <circle
                   cx={x}
                   cy={36}
                   r={7}
                   stroke="hsl(33 14% 72%)"
                   strokeWidth={1.5}
+                  fill="none"
+                />
+              )}
+              {isOpen && (chord.openDiamonds?.has(i) ?? false) && (
+                <polygon
+                  points={`${x},${36 - 8.5} ${x + 8.5},${36} ${x},${36 + 8.5} ${x - 8.5},${36}`}
+                  stroke="hsl(200 80% 62%)"
+                  strokeWidth={1.8}
                   fill="none"
                 />
               )}
@@ -313,6 +328,19 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
                   className="opacity-40"
                 >
                   tap
+                </text>
+              )}
+              {isOpen && (chord.openDiamonds?.has(i) ?? false) && (
+                <text
+                  x={x}
+                  y={50}
+                  textAnchor="middle"
+                  fontSize={7}
+                  fontFamily="DM Sans, sans-serif"
+                  fill="hsl(200 80% 62%)"
+                  className="opacity-70"
+                >
+                  root
                 </text>
               )}
             </g>

@@ -17,6 +17,7 @@ export interface CustomChordData {
   numFrets: number; // how many frets to show (default 5)
   mutedStrings: Set<number>; // string indices that are muted (X)
   openStrings: Set<number>; // string indices that are open (O)
+  openDiamonds: Set<number>; // open strings shown as blue-outlined diamonds (root indicator)
   markers: FretMarker[];
   barres: { fret: number; fromString: number; toString: number; color: string }[];
   chordType?: import('@/types/chord').ChordType;
@@ -42,6 +43,7 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
   customBarres: CustomChordData['barres'];
   customMutedStrings: number[];
   customOpenStrings: number[];
+  customOpenDiamonds: number[];
   numFrets: number;
 } {
   // Build standard frets/fingers arrays from markers
@@ -81,6 +83,7 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
     customBarres: custom.barres,
     customMutedStrings: [...custom.mutedStrings],
     customOpenStrings: [...custom.openStrings],
+    customOpenDiamonds: [...(custom.openDiamonds ?? [])],
     numFrets: custom.numFrets,
   };
 }

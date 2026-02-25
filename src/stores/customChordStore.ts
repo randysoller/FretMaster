@@ -11,6 +11,7 @@ interface SerializedCustomChord {
   numFrets: number;
   mutedStrings: number[];
   openStrings: number[];
+  openDiamonds: number[];
   markers: FretMarker[];
   barres: { fret: number; fromString: number; toString: number; color: string }[];
   chordType?: ChordType;
@@ -25,6 +26,7 @@ function serialize(chord: CustomChordData): SerializedCustomChord {
     ...chord,
     mutedStrings: [...chord.mutedStrings],
     openStrings: [...chord.openStrings],
+    openDiamonds: [...(chord.openDiamonds ?? [])],
     chordType: chord.chordType,
     chordCategory: chord.chordCategory,
     sourceChordId: chord.sourceChordId,
@@ -36,6 +38,7 @@ function deserialize(data: SerializedCustomChord): CustomChordData {
     ...data,
     mutedStrings: new Set(data.mutedStrings),
     openStrings: new Set(data.openStrings),
+    openDiamonds: new Set(data.openDiamonds ?? []),
     chordType: data.chordType,
     chordCategory: data.chordCategory,
     sourceChordId: data.sourceChordId,
@@ -66,6 +69,7 @@ export function createBlankChord(): CustomChordData {
     numFrets: 5,
     mutedStrings: new Set<number>(),
     openStrings: new Set<number>(),
+    openDiamonds: new Set<number>(),
     markers: [],
     barres: [],
     createdAt: Date.now(),
@@ -94,6 +98,7 @@ interface CustomChordStore {
   setNumFrets: (num: number) => void;
   toggleMutedString: (stringIdx: number) => void;
   toggleOpenString: (stringIdx: number) => void;
+  toggleOpenDiamond: (stringIdx: number) => void;
   addMarker: (fret: number, string: number) => void;
   addMarkerDirect: (fret: number, string: number, finger: number, label: string) => void;
   removeMarker: (fret: number, string: number) => void;
@@ -136,30 +141,42 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     const next = { ...s.currentChord };
     const muted = new Set(next.mutedStrings);
     const open = new Set(next.openStrings);
+    const diamonds = new Set(next.openDiamonds ?? new Set());
     if (muted.has(stringIdx)) {
       muted.delete(stringIdx);
     } else {
       muted.add(stringIdx);
       open.delete(stringIdx);
-      // Remove any markers on this string
+      diamonds.delete(stringIdx);
       next.markers = next.markers.filter((m) => m.string !== stringIdx);
     }
-    return { currentChord: { ...next, mutedStrings: muted, openStrings: open } };
+    return { currentChord: { ...next, mutedStrings: muted, openStrings: open, openDiamonds: diamonds } };
   }),
 
   toggleOpenString: (stringIdx) => set((s) => {
     const next = { ...s.currentChord };
     const open = new Set(next.openStrings);
     const muted = new Set(next.mutedStrings);
+    const diamonds = new Set(next.openDiamonds ?? new Set());
     if (open.has(stringIdx)) {
       open.delete(stringIdx);
+      diamonds.delete(stringIdx);
     } else {
       open.add(stringIdx);
       muted.delete(stringIdx);
-      // Remove any markers on this string
       next.markers = next.markers.filter((m) => m.string !== stringIdx);
     }
-    return { currentChord: { ...next, openStrings: open, mutedStrings: muted } };
+    return { currentChord: { ...next, openStrings: open, mutedStrings: muted, openDiamonds: diamonds } };
+  }),
+
+  toggleOpenDiamond: (stringIdx) => set((s) => {
+    const diamonds = new Set(s.currentChord.openDiamonds ?? new Set());
+    if (diamonds.has(stringIdx)) {
+      diamonds.delete(stringIdx);
+    } else {
+      diamonds.add(stringIdx);
+    }
+    return { currentChord: { ...s.currentChord, openDiamonds: diamonds } };
   }),
 
   addMarker: (fret, string) => {
@@ -284,6 +301,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
           ...chord,
           mutedStrings: new Set(chord.mutedStrings),
           openStrings: new Set(chord.openStrings),
+          openDiamonds: new Set(chord.openDiamonds ?? []),
         },
         isEditing: true,
       });
@@ -295,6 +313,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     const markers: FretMarker[] = [];
     const mutedStrings = new Set<number>();
     const openStrings = new Set<number>();
+    const openDiamonds = new Set<number>();
 
     // Determine baseFret from frets array
     const frettedValues = chord.frets.filter((f) => f > 0);
@@ -309,6 +328,9 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
         mutedStrings.add(i);
       } else if (fret === 0) {
         openStrings.add(i);
+        if (i === chord.rootNoteString) {
+          openDiamonds.add(i);
+        }
       } else {
         const relativeFret = fret - baseFret + 1;
         const isRoot = i === chord.rootNoteString;
@@ -352,6 +374,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
       numFrets: Math.min(numFrets, 7),
       mutedStrings,
       openStrings,
+      openDiamonds,
       markers,
       barres,
       chordType: chord.type,
@@ -373,6 +396,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
       barres: [],
       mutedStrings: new Set<number>(),
       openStrings: new Set<number>(),
+      openDiamonds: new Set<number>(),
     },
   })),
 }));

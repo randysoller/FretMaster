@@ -40,7 +40,7 @@ export default function ChordLibrary() {
   // Merge built-in + custom chords
   const ALL_CHORDS = useMemo(() => {
     const converted = customChords.map(customToLibraryChord);
-    return [...CHORDS, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; numFrets?: number })[];
+    return [...CHORDS, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number })[];
   }, [customChords]);
 
 
@@ -384,6 +384,7 @@ export default function ChordLibrary() {
                         numFrets: (chord as any).numFrets ?? 5,
                         mutedStrings: new Set((chord as any).customMutedStrings ?? []),
                         openStrings: new Set((chord as any).customOpenStrings ?? []),
+                        openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
                         markers: (chord as any).customMarkers ?? [],
                         barres: (chord as any).customBarres ?? [],
                         createdAt: 0,

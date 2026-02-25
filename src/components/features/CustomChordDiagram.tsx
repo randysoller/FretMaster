@@ -107,6 +107,14 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
         const r = config.dotRadius * 0.65;
 
         if (chord.openStrings.has(i)) {
+          const isDiamond = chord.openDiamonds?.has(i);
+          if (isDiamond) {
+            const d = r * 1.3;
+            const points = `${x},${y - d} ${x + d},${y} ${x},${y + d} ${x - d},${y}`;
+            return (
+              <polygon key={`open-${i}`} points={points} stroke="hsl(200 80% 62%)" strokeWidth={1.5} fill="none" />
+            );
+          }
           return (
             <circle key={`open-${i}`} cx={x} cy={y} r={r} stroke="hsl(33 14% 72%)" strokeWidth={1.5} fill="none" />
           );

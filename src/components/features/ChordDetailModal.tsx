@@ -9,7 +9,7 @@ import { useChordAudio } from '@/hooks/useChordAudio';
 import { useCustomChordStore } from '@/stores/customChordStore';
 
 interface ChordDetailModalProps {
-  chord: (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; numFrets?: number }) | null;
+  chord: (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number }) | null;
   onClose: () => void;
 }
 
@@ -114,6 +114,7 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
                   numFrets: chord.numFrets ?? 5,
                   mutedStrings: new Set(chord.customMutedStrings ?? []),
                   openStrings: new Set(chord.customOpenStrings ?? []),
+                  openDiamonds: new Set(chord.customOpenDiamonds ?? []),
                   markers: chord.customMarkers ?? [],
                   barres: chord.customBarres ?? [],
                   createdAt: 0,
