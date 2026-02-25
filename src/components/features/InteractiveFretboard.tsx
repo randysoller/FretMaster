@@ -574,10 +574,20 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
   );
 }
 
-function isLightColor(hex: string): boolean {
-  const c = hex.replace('#', '');
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return (r * 299 + g * 587 + b * 114) / 1000 > 160;
+function isLightColor(color: string): boolean {
+  // Handle HSL strings like "hsl(38 75% 52%)"
+  const hslMatch = color.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/);
+  if (hslMatch) {
+    const l = parseFloat(hslMatch[3]);
+    return l > 55;
+  }
+  // Handle hex
+  const c = color.replace('#', '');
+  if (c.length >= 6) {
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return (r * 299 + g * 587 + b * 114) / 1000 > 160;
+  }
+  return false;
 }

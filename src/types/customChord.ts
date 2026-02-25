@@ -27,9 +27,9 @@ export interface CustomChordData {
   updatedAt: number;
 }
 
-export const DEFAULT_DOT_COLOR = '#d97706'; // amber-600 (matches primary)
-export const DEFAULT_ROOT_COLOR = '#38bdf8'; // sky-400 (matches existing root)
-export const DEFAULT_BARRE_COLOR = '#d97706';
+export const DEFAULT_DOT_COLOR = 'hsl(38 75% 52%)'; // matches chord-dot CSS (--color-primary)
+export const DEFAULT_ROOT_COLOR = 'hsl(200 80% 62%)'; // matches chord-root CSS
+export const DEFAULT_BARRE_COLOR = 'hsl(38 75% 52%)'; // matches chord-barre CSS
 
 /**
  * Convert a CustomChordData to a ChordData-compatible object for the library.
@@ -86,8 +86,8 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
 }
 
 export const PRESET_COLORS = [
-  '#d97706', // amber (primary)
-  '#38bdf8', // sky blue (root)
+  'hsl(38 75% 52%)', // amber (primary — matches library)
+  'hsl(200 80% 62%)', // sky blue (root — matches library)
   '#ef4444', // red
   '#22c55e', // green
   '#a855f7', // purple

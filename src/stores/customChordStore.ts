@@ -316,7 +316,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
           fret: relativeFret,
           string: i,
           finger: chord.fingers[i],
-          color: isRoot ? '#38bdf8' : '#d97706',
+          color: isRoot ? 'hsl(200 80% 62%)' : 'hsl(38 75% 52%)',
           shape: isRoot ? 'diamond' : 'circle',
           label: '',
         });
@@ -338,7 +338,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
             fret: relativeFret,
             fromString: Math.min(...barreStrings),
             toString: Math.max(...barreStrings),
-            color: '#d97706',
+            color: 'hsl(38 75% 52%)',
           });
         }
       }
