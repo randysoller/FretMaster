@@ -19,6 +19,10 @@ export interface CustomChordData {
   openStrings: Set<number>; // string indices that are open (O)
   markers: FretMarker[];
   barres: { fret: number; fromString: number; toString: number; color: string }[];
+  chordType?: import('@/types/chord').ChordType;
+  chordCategory?: import('@/types/chord').ChordCategory;
+  /** If this chord was cloned from a standard library chord, store the original ID */
+  sourceChordId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -66,8 +70,8 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
     id: custom.id,
     name: custom.name,
     symbol: custom.symbol,
-    category: 'custom' as const,
-    type: 'major' as const, // default type for custom chords
+    category: custom.chordCategory ?? 'custom' as const,
+    type: custom.chordType ?? 'major' as const,
     frets,
     fingers,
     baseFret: custom.baseFret,

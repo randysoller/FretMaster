@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ChordData } from '@/types/chord';
 import { CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { X, Volume2, Guitar } from 'lucide-react';
+import { X, Volume2, Guitar, Edit3 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
+import { useCustomChordStore } from '@/stores/customChordStore';
 
 interface ChordDetailModalProps {
   chord: (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; numFrets?: number }) | null;
@@ -27,7 +29,20 @@ function getFingerLabel(finger: number): string {
 
 export default function ChordDetailModal({ chord, onClose }: ChordDetailModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { playChord } = useChordAudio();
+  const { editChord: editCustomChord, editStandardChord } = useCustomChordStore();
+
+  const handleEdit = () => {
+    if (!chord) return;
+    if (chord.isCustom) {
+      editCustomChord(chord.id);
+    } else {
+      editStandardChord(chord);
+    }
+    onClose();
+    navigate('/editor');
+  };
 
   useEffect(() => {
     if (!chord) return;
@@ -110,13 +125,22 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
               <ChordDiagram chord={chord} size="lg" />
             )}
           </div>
-          <button
-            onClick={() => playChord(chord)}
-            className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-5 py-2.5 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] active:scale-[0.97] transition-all duration-150"
-          >
-            <Volume2 className="size-4" />
-            Play Chord
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => playChord(chord)}
+              className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-5 py-2.5 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] active:scale-[0.97] transition-all duration-150"
+            >
+              <Volume2 className="size-4" />
+              Play
+            </button>
+            <button
+              onClick={handleEdit}
+              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-5 py-2.5 text-sm font-display font-bold text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--color-primary)/0.4)] active:scale-[0.97] transition-all duration-150"
+            >
+              <Edit3 className="size-4" />
+              Edit
+            </button>
+          </div>
           <div className="flex items-center gap-4 text-xs font-body text-[hsl(var(--text-muted))]">
             <span className="flex items-center gap-1.5">
               <span className="inline-block size-2.5 rounded-sm bg-[hsl(var(--color-primary))]" />

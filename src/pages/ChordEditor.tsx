@@ -3,11 +3,21 @@ import { useCustomChordStore } from '@/stores/customChordStore';
 import InteractiveFretboard from '@/components/features/InteractiveFretboard';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import ColorShapePicker from '@/components/features/ColorShapePicker';
+import { CHORD_TYPE_LABELS, CATEGORY_LABELS } from '@/types/chord';
+import type { ChordType, ChordCategory } from '@/types/chord';
 import {
   Plus, Save, Trash2, Edit3, RotateCcw, ChevronDown, ChevronUp,
-  Minus, FileText, Pencil,
+  Minus, FileText, Pencil, Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const EDITABLE_TYPES: ChordType[] = [
+  'major', 'minor', 'augmented', 'slash', 'diminished', 'suspended',
+  'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7',
+  '9th', '11th', '13th',
+];
+
+const EDITABLE_CATEGORIES: ChordCategory[] = ['open', 'barre', 'movable', 'custom'];
 
 export default function ChordEditor() {
   const {
@@ -15,6 +25,7 @@ export default function ChordEditor() {
     selectedFinger, customLabel, isEditing,
     setSelectedColor, setSelectedShape, setSelectedFinger,
     setCustomLabel, setName, setSymbol, setBaseFret, setNumFrets,
+    setChordType, setChordCategory,
     saveChord, deleteChord, editChord, newChord, clearFretboard,
   } = useCustomChordStore();
 
@@ -53,7 +64,9 @@ export default function ChordEditor() {
               Chord Editor
             </h1>
             <p className="mt-1 font-body text-sm text-[hsl(var(--text-muted))]">
-              Create and customize your own chord diagrams
+              {currentChord.sourceChordId
+                ? `Editing: ${currentChord.symbol} — drag dots to reposition, tap to change fingers`
+                : 'Create and customize your own chord diagrams'}
             </p>
           </div>
 
@@ -75,7 +88,7 @@ export default function ChordEditor() {
                 </div>
 
                 <p className="text-xs font-body text-[hsl(var(--text-muted))] mb-3">
-                  Tap fret positions to place dots. Tap string headers to cycle: open → muted → none.
+                  Tap fret to place dot. Tap dot to change finger or delete. Drag dots to move.
                 </p>
 
                 <div className="flex justify-center overflow-x-auto">
@@ -234,6 +247,40 @@ export default function ChordEditor() {
                     className="w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-3 py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted)/0.5)] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
                   />
                 </div>
+
+                {/* Category & Type */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-body text-xs text-[hsl(var(--text-muted))] flex items-center gap-1 mb-1.5">
+                      <Tag className="size-3" />
+                      Category
+                    </label>
+                    <select
+                      value={currentChord.chordCategory ?? 'custom'}
+                      onChange={(e) => setChordCategory(e.target.value as ChordCategory)}
+                      className="w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-3 py-2.5 text-sm font-body text-[hsl(var(--text-default))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
+                    >
+                      {EDITABLE_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-body text-xs text-[hsl(var(--text-muted))] flex items-center gap-1 mb-1.5">
+                      <Tag className="size-3" />
+                      Type
+                    </label>
+                    <select
+                      value={currentChord.chordType ?? 'major'}
+                      onChange={(e) => setChordType(e.target.value as ChordType)}
+                      className="w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-3 py-2.5 text-sm font-body text-[hsl(var(--text-default))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
+                    >
+                      {EDITABLE_TYPES.map((type) => (
+                        <option key={type} value={type}>{CHORD_TYPE_LABELS[type]}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Dot Appearance */}
@@ -322,10 +369,10 @@ export default function ChordEditor() {
                 `}
               >
                 <Save className="size-4" />
-                {isEditing ? 'Update Chord' : 'Save Chord'}
+                {isEditing ? 'Update Chord' : 'Save to Library'}
               </button>
 
-              {isEditing && (
+              {(isEditing || currentChord.sourceChordId) && (
                 <button
                   onClick={newChord}
                   className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-body font-medium text-[hsl(var(--text-subtle))] border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
@@ -355,6 +402,20 @@ export default function ChordEditor() {
                     </span>
                   )}
                   <CustomChordDiagram chord={currentChord} size="lg" />
+                  {(currentChord.chordCategory || currentChord.chordType) && (
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {currentChord.chordCategory && (
+                        <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2 py-0.5 text-[9px] font-body font-medium text-[hsl(var(--text-muted))] uppercase tracking-wider">
+                          {CATEGORY_LABELS[currentChord.chordCategory]}
+                        </span>
+                      )}
+                      {currentChord.chordType && (
+                        <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2 py-0.5 text-[9px] font-body font-medium text-[hsl(var(--text-muted))] uppercase tracking-wider">
+                          {CHORD_TYPE_LABELS[currentChord.chordType]}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

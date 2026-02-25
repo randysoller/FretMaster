@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { CustomChordData, FretMarker, DotShape } from '@/types/customChord';
 import { DEFAULT_DOT_COLOR } from '@/types/customChord';
+import type { ChordData, ChordType, ChordCategory } from '@/types/chord';
 
 interface SerializedCustomChord {
   id: string;
@@ -12,6 +13,9 @@ interface SerializedCustomChord {
   openStrings: number[];
   markers: FretMarker[];
   barres: { fret: number; fromString: number; toString: number; color: string }[];
+  chordType?: ChordType;
+  chordCategory?: ChordCategory;
+  sourceChordId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -21,6 +25,9 @@ function serialize(chord: CustomChordData): SerializedCustomChord {
     ...chord,
     mutedStrings: [...chord.mutedStrings],
     openStrings: [...chord.openStrings],
+    chordType: chord.chordType,
+    chordCategory: chord.chordCategory,
+    sourceChordId: chord.sourceChordId,
   };
 }
 
@@ -29,6 +36,9 @@ function deserialize(data: SerializedCustomChord): CustomChordData {
     ...data,
     mutedStrings: new Set(data.mutedStrings),
     openStrings: new Set(data.openStrings),
+    chordType: data.chordType,
+    chordCategory: data.chordCategory,
+    sourceChordId: data.sourceChordId,
   };
 }
 
@@ -90,9 +100,14 @@ interface CustomChordStore {
   toggleMarker: (fret: number, string: number) => void;
   addBarre: (fret: number, fromString: number, toString: number) => void;
   removeBarre: (fret: number) => void;
+  moveMarker: (fromFret: number, fromString: number, toFret: number, toString: number) => void;
+  updateMarkerFinger: (fret: number, string: number, finger: number, label: string) => void;
+  setChordType: (type: ChordType) => void;
+  setChordCategory: (category: ChordCategory) => void;
   saveChord: () => void;
   deleteChord: (id: string) => void;
   editChord: (id: string) => void;
+  editStandardChord: (chord: ChordData) => void;
   newChord: () => void;
   clearFretboard: () => void;
 }
@@ -189,6 +204,39 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     }
   },
 
+  moveMarker: (fromFret, fromString, toFret, toString) => set((s) => {
+    const marker = s.currentChord.markers.find((m) => m.fret === fromFret && m.string === fromString);
+    if (!marker) return s;
+    // Don't move if target already has a marker
+    const targetExists = s.currentChord.markers.some((m) => m.fret === toFret && m.string === toString);
+    if (targetExists) return s;
+    const markers = s.currentChord.markers.map((m) => {
+      if (m.fret === fromFret && m.string === fromString) {
+        return { ...m, fret: toFret, string: toString };
+      }
+      return m;
+    });
+    // Clear open/muted on new string
+    const open = new Set(s.currentChord.openStrings);
+    const muted = new Set(s.currentChord.mutedStrings);
+    open.delete(toString);
+    muted.delete(toString);
+    return { currentChord: { ...s.currentChord, markers, openStrings: open, mutedStrings: muted } };
+  }),
+
+  updateMarkerFinger: (fret, string, finger, label) => set((s) => {
+    const markers = s.currentChord.markers.map((m) => {
+      if (m.fret === fret && m.string === string) {
+        return { ...m, finger, label };
+      }
+      return m;
+    });
+    return { currentChord: { ...s.currentChord, markers } };
+  }),
+
+  setChordType: (chordType) => set((s) => ({ currentChord: { ...s.currentChord, chordType } })),
+  setChordCategory: (chordCategory) => set((s) => ({ currentChord: { ...s.currentChord, chordCategory } })),
+
   addBarre: (fret, fromString, toString) => set((s) => {
     const barres = [...s.currentChord.barres.filter((b) => b.fret !== fret)];
     barres.push({ fret, fromString, toString, color: get().selectedColor });
@@ -240,6 +288,80 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
         isEditing: true,
       });
     }
+  },
+
+  editStandardChord: (chord: ChordData) => {
+    // Convert a standard ChordData into a CustomChordData for editing
+    const markers: FretMarker[] = [];
+    const mutedStrings = new Set<number>();
+    const openStrings = new Set<number>();
+
+    // Determine baseFret from frets array
+    const frettedValues = chord.frets.filter((f) => f > 0);
+    const minFret = frettedValues.length > 0 ? Math.min(...frettedValues) : 1;
+    const maxFret = frettedValues.length > 0 ? Math.max(...frettedValues) : 1;
+    const baseFret = chord.baseFret > 1 ? chord.baseFret : (minFret > 3 ? minFret : 1);
+    const numFrets = Math.max(5, maxFret - baseFret + 2);
+
+    for (let i = 0; i < 6; i++) {
+      const fret = chord.frets[i];
+      if (fret === -1) {
+        mutedStrings.add(i);
+      } else if (fret === 0) {
+        openStrings.add(i);
+      } else {
+        const relativeFret = fret - baseFret + 1;
+        const isRoot = i === chord.rootNoteString;
+        markers.push({
+          fret: relativeFret,
+          string: i,
+          finger: chord.fingers[i],
+          color: isRoot ? '#38bdf8' : '#d97706',
+          shape: isRoot ? 'diamond' : 'circle',
+          label: '',
+        });
+      }
+    }
+
+    // Handle barres from the standard chord
+    const barres: CustomChordData['barres'] = [];
+    if (chord.barres && chord.barres.length > 0) {
+      for (const barreFret of chord.barres) {
+        const relativeFret = barreFret - baseFret + 1;
+        // Find the string range for this barre
+        const barreStrings = chord.frets
+          .map((f, idx) => ({ f, idx }))
+          .filter((x) => x.f === barreFret)
+          .map((x) => x.idx);
+        if (barreStrings.length >= 2) {
+          barres.push({
+            fret: relativeFret,
+            fromString: Math.min(...barreStrings),
+            toString: Math.max(...barreStrings),
+            color: '#d97706',
+          });
+        }
+      }
+    }
+
+    const customChord: CustomChordData = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: chord.name,
+      symbol: chord.symbol,
+      baseFret,
+      numFrets: Math.min(numFrets, 7),
+      mutedStrings,
+      openStrings,
+      markers,
+      barres,
+      chordType: chord.type,
+      chordCategory: chord.category === 'custom' ? 'open' : chord.category,
+      sourceChordId: chord.id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    set({ currentChord: customChord, isEditing: false });
   },
 
   newChord: () => set({ currentChord: createBlankChord(), isEditing: false }),

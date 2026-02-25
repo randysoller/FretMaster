@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CHORDS } from '@/constants/chords';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS, getChordCategoryLabel } from '@/types/chord';
 import type { ChordCategory, ChordType, BarreRoot } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { Search, Filter, X, Volume2 } from 'lucide-react';
+import { Search, Filter, X, Volume2, Edit3 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import type { ChordData } from '@/types/chord';
@@ -18,13 +19,23 @@ export default function ChordLibrary() {
   const [filterTypes, setFilterTypes] = useState<Set<ChordType>>(new Set());
   const [filterBarreRoots, setFilterBarreRoots] = useState<Set<BarreRoot>>(new Set());
   const [showFilters, setShowFilters] = useState(true);
+  const navigate = useNavigate();
   const { playChord } = useChordAudio();
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
 
 
 
-  const { customChords } = useCustomChordStore();
+  const { customChords, editChord: editCustomChord, editStandardChord } = useCustomChordStore();
+
+  const handleEditChord = useCallback((chord: ChordData & { isCustom?: boolean }) => {
+    if (chord.isCustom) {
+      editCustomChord(chord.id);
+    } else {
+      editStandardChord(chord);
+    }
+    navigate('/editor');
+  }, [editCustomChord, editStandardChord, navigate]);
 
   // Merge built-in + custom chords
   const ALL_CHORDS = useMemo(() => {
@@ -334,13 +345,22 @@ export default function ChordLibrary() {
                   }}
                   className="group relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-4 flex flex-col items-center gap-3 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.03] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); playChord(chord); }}
-                    className="absolute top-2 right-2 size-9 sm:size-8 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
-                    title="Play chord"
-                  >
-                    <Volume2 className="size-4 sm:size-3.5" />
-                  </button>
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
+                      className="size-8 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      title="Edit chord"
+                    >
+                      <Edit3 className="size-3.5 sm:size-3" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); playChord(chord); }}
+                      className="size-8 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      title="Play chord"
+                    >
+                      <Volume2 className="size-4 sm:size-3.5" />
+                    </button>
+                  </div>
                   {(chord as any).isCustom && (
                     <span className="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]">
                       Custom
