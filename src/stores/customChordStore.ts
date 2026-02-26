@@ -345,7 +345,21 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     let newList: CustomChordData[];
 
     if (isEditing) {
-      newList = customChords.map((c) => (c.id === updated.id ? updated : c));
+      const existsInList = customChords.some((c) => c.id === updated.id);
+      if (existsInList) {
+        // Update existing custom chord in place
+        newList = customChords.map((c) => (c.id === updated.id ? updated : c));
+      } else if (updated.sourceChordId) {
+        // First-time save of an edited standard chord — check for stale replacements
+        const staleIdx = customChords.findIndex((c) => c.sourceChordId === updated.sourceChordId);
+        if (staleIdx >= 0) {
+          newList = customChords.map((c, i) => (i === staleIdx ? updated : c));
+        } else {
+          newList = [...customChords, updated];
+        }
+      } else {
+        newList = [...customChords, updated];
+      }
     } else {
       newList = [...customChords, updated];
     }
@@ -379,6 +393,22 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
   },
 
   editStandardChord: (chord: ChordData) => {
+    // Check if there's already a custom replacement for this standard chord
+    const existingReplacement = get().customChords.find((c) => c.sourceChordId === chord.id);
+    if (existingReplacement) {
+      // Edit the existing custom replacement instead of creating a new one
+      set({
+        currentChord: {
+          ...existingReplacement,
+          mutedStrings: new Set(existingReplacement.mutedStrings),
+          openStrings: new Set(existingReplacement.openStrings),
+          openDiamonds: new Set(existingReplacement.openDiamonds ?? []),
+        },
+        isEditing: true,
+      });
+      return;
+    }
+
     // Convert a standard ChordData into a CustomChordData for editing
     const markers: FretMarker[] = [];
     const mutedStrings = new Set<number>();
@@ -454,7 +484,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
       updatedAt: Date.now(),
     };
 
-    set({ currentChord: customChord, isEditing: false });
+    set({ currentChord: customChord, isEditing: true });
   },
 
   newChord: () => set({ currentChord: createBlankChord(), isEditing: false }),
