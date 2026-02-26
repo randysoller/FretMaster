@@ -6,7 +6,7 @@ import ColorShapePicker from '@/components/features/ColorShapePicker';
 import { CHORD_TYPE_LABELS, CATEGORY_LABELS } from '@/types/chord';
 import type { ChordType, ChordCategory } from '@/types/chord';
 import {
-  Plus, Save, Trash2, Edit3, RotateCcw, ChevronDown, ChevronUp,
+  Plus, Save, Trash2, RotateCcw,
   Minus, FileText, Pencil, Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,17 +22,16 @@ const EDITABLE_CATEGORIES: ChordCategory[] = ['open', 'barre', 'movable', 'custo
 
 export default function ChordEditor() {
   const {
-    customChords, currentChord, selectedColor, selectedShape,
+    currentChord, selectedColor, selectedShape,
     selectedFinger, customLabel, isEditing,
     setSelectedColor, setSelectedShape, setSelectedFinger,
     setCustomLabel, setName, setSymbol, setBaseFret, setNumFrets,
     setChordType, setChordCategory,
-    saveChord, deleteChord, editChord, newChord, clearFretboard,
+    saveChord, newChord, clearFretboard,
     deleteFromLibrary,
   } = useCustomChordStore();
   const navigate = useNavigate();
 
-  const [showSaved, setShowSaved] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
@@ -402,61 +401,7 @@ export default function ChordEditor() {
                 </div>
               </div>
 
-              {/* Saved Chords */}
-              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-                <button
-                  onClick={() => setShowSaved(!showSaved)}
-                  className="w-full flex items-center justify-between"
-                >
-                  <h2 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
-                    My Chords ({customChords.length})
-                  </h2>
-                  {showSaved ? <ChevronUp className="size-4 text-[hsl(var(--text-muted))]" /> : <ChevronDown className="size-4 text-[hsl(var(--text-muted))]" />}
-                </button>
 
-                {showSaved && (
-                  <div className="mt-4 space-y-3">
-                    {customChords.length === 0 ? (
-                      <p className="text-xs font-body text-[hsl(var(--text-muted))] text-center py-4">
-                        No custom chords yet. Create one above!
-                      </p>
-                    ) : (
-                      customChords.map((chord) => (
-                        <div
-                          key={chord.id}
-                          className="rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.4)] p-3 flex items-center gap-3"
-                        >
-                          <CustomChordDiagram chord={chord} size="sm" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-display text-sm font-bold text-[hsl(var(--text-default))] truncate">
-                              {chord.symbol}
-                            </p>
-                            <p className="font-body text-[10px] text-[hsl(var(--text-muted))] truncate">
-                              {chord.name}
-                            </p>
-                          </div>
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => editChord(chord.id)}
-                              className="size-7 rounded-md flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                              title="Edit"
-                            >
-                              <Edit3 className="size-3.5" />
-                            </button>
-                            <button
-                              onClick={() => deleteChord(chord.id)}
-                              className="size-7 rounded-md flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:bg-[hsl(var(--semantic-error)/0.08)] transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
