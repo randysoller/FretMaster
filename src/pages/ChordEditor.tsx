@@ -5,6 +5,8 @@ import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import ColorShapePicker from '@/components/features/ColorShapePicker';
 import { CHORD_TYPE_LABELS, CATEGORY_LABELS } from '@/types/chord';
 import type { ChordType, ChordCategory } from '@/types/chord';
+import type { DotShape } from '@/types/customChord';
+import { DEFAULT_DOT_COLOR, DEFAULT_ROOT_COLOR } from '@/types/customChord';
 import {
   Plus, Save, Trash2, RotateCcw,
   Minus, FileText, Pencil, Tag,
@@ -33,6 +35,15 @@ export default function ChordEditor() {
   const navigate = useNavigate();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const handleShapeChange = (shape: DotShape) => {
+    setSelectedShape(shape);
+    if (shape === 'diamond') {
+      setSelectedColor(DEFAULT_ROOT_COLOR);
+    } else if (selectedColor === DEFAULT_ROOT_COLOR) {
+      setSelectedColor(DEFAULT_DOT_COLOR);
+    }
+  };
 
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
   const canDelete = isEditing || !!currentChord.sourceChordId;
@@ -241,7 +252,7 @@ export default function ChordEditor() {
                   selectedColor={selectedColor}
                   selectedShape={selectedShape}
                   onColorChange={setSelectedColor}
-                  onShapeChange={setSelectedShape}
+                  onShapeChange={handleShapeChange}
                 />
 
                 {/* Finger Number */}
