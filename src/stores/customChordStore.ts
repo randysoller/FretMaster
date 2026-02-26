@@ -45,20 +45,6 @@ function deserialize(data: SerializedCustomChord): CustomChordData {
   };
 }
 
-function loadHiddenFromStorage(): Set<string> {
-  try {
-    const raw = localStorage.getItem('fretmaster-hidden-chords');
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveHiddenToStorage(ids: Set<string>) {
-  localStorage.setItem('fretmaster-hidden-chords', JSON.stringify([...ids]));
-}
-
 function loadFromStorage(): CustomChordData[] {
   try {
     const raw = localStorage.getItem('fretmaster-custom-chords');
@@ -93,7 +79,6 @@ export function createBlankChord(): CustomChordData {
 
 interface CustomChordStore {
   customChords: CustomChordData[];
-  hiddenStandardChords: Set<string>;
   currentChord: CustomChordData;
   selectedColor: string;
   selectedShape: DotShape;
@@ -126,8 +111,6 @@ interface CustomChordStore {
   setChordCategory: (category: ChordCategory) => void;
   saveChord: () => void;
   deleteChord: (id: string) => void;
-  hideStandardChord: (id: string) => void;
-  unhideStandardChord: (id: string) => void;
   editChord: (id: string) => void;
   editStandardChord: (chord: ChordData) => void;
   newChord: () => void;
@@ -136,7 +119,6 @@ interface CustomChordStore {
 
 export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
   customChords: loadFromStorage(),
-  hiddenStandardChords: loadHiddenFromStorage(),
   currentChord: createBlankChord(),
   selectedColor: DEFAULT_DOT_COLOR,
   selectedShape: 'circle' as DotShape,
@@ -309,20 +291,6 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     if (get().currentChord.id === id) {
       set({ currentChord: createBlankChord(), isEditing: false });
     }
-  },
-
-  hideStandardChord: (id) => {
-    const next = new Set(get().hiddenStandardChords);
-    next.add(id);
-    saveHiddenToStorage(next);
-    set({ hiddenStandardChords: next, currentChord: createBlankChord(), isEditing: false });
-  },
-
-  unhideStandardChord: (id) => {
-    const next = new Set(get().hiddenStandardChords);
-    next.delete(id);
-    saveHiddenToStorage(next);
-    set({ hiddenStandardChords: next });
   },
 
   editChord: (id) => {
