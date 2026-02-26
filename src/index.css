@@ -105,8 +105,8 @@
   }
 
   .chord-fret {
-    stroke: hsl(var(--border-default));
-    stroke-width: 1;
+    stroke: #ffffff;
+    stroke-width: 2;
   }
 
   .chord-nut {

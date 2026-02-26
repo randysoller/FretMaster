@@ -95,7 +95,7 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           x2={getStringX(numStrings - 1)}
           y2={getFretY(i)}
           className="chord-fret"
-          strokeWidth={i === 0 && !showNut ? 1.5 : 1}
+          strokeWidth={i === 0 && !showNut ? 2.5 : 2}
         />
       ))}
 
