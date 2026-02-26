@@ -403,8 +403,25 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
 
     saveToStorage(newList);
     set({ customChords: newList, currentChord: createBlankChord(), isEditing: false });
-    console.log('[FretMaster] Chord saved. Total custom chords:', newList.length,
+    console.log('[FretMaster] Chord saved. ID:', updated.id, 'sourceChordId:', updated.sourceChordId,
+      'markers:', updated.markers.length, 'barres:', updated.barres.length,
+      'Total custom chords:', newList.length,
       'Replaced standard chords:', newList.filter(c => c.sourceChordId).map(c => c.sourceChordId));
+    // Verify persistence immediately
+    try {
+      const verification = localStorage.getItem('fretmaster-custom-chords');
+      if (verification) {
+        const parsed = JSON.parse(verification);
+        const saved = parsed.find((c: any) => c.id === updated.id);
+        if (saved) {
+          console.log('[FretMaster] Verified in localStorage: markers:', saved.markers?.length, 'barres:', saved.barres?.length);
+        } else {
+          console.error('[FretMaster] VERIFICATION FAILED: chord not found in localStorage after save!');
+        }
+      }
+    } catch (e) {
+      console.error('[FretMaster] Verification check failed:', e);
+    }
   },
 
   deleteChord: (id) => {
@@ -419,15 +436,20 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
   editChord: (id) => {
     const chord = get().customChords.find((c) => c.id === id);
     if (chord) {
+      console.log('[FretMaster] editChord: loading custom chord', chord.id, 'sourceChordId:', chord.sourceChordId, 'markers:', chord.markers.length);
       set({
         currentChord: {
           ...chord,
           mutedStrings: new Set(chord.mutedStrings),
           openStrings: new Set(chord.openStrings),
           openDiamonds: new Set(chord.openDiamonds ?? []),
+          markers: chord.markers.map((m) => ({ ...m })),
+          barres: chord.barres.map((b) => ({ ...b })),
         },
         isEditing: true,
       });
+    } else {
+      console.warn('[FretMaster] editChord: chord not found in customChords with id:', id);
     }
   },
 
@@ -436,12 +458,15 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     const existingReplacement = get().customChords.find((c) => c.sourceChordId === chord.id);
     if (existingReplacement) {
       // Edit the existing custom replacement instead of creating a new one
+      console.log('[FretMaster] editStandardChord: found existing replacement', existingReplacement.id, 'for', chord.id);
       set({
         currentChord: {
           ...existingReplacement,
           mutedStrings: new Set(existingReplacement.mutedStrings),
           openStrings: new Set(existingReplacement.openStrings),
           openDiamonds: new Set(existingReplacement.openDiamonds ?? []),
+          markers: existingReplacement.markers.map((m) => ({ ...m })),
+          barres: existingReplacement.barres.map((b) => ({ ...b })),
         },
         isEditing: true,
       });
