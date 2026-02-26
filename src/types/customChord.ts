@@ -45,6 +45,7 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
   customOpenStrings: number[];
   customOpenDiamonds: number[];
   numFrets: number;
+  sourceChordId?: string;
 } {
   // Build standard frets/fingers arrays from markers
   const frets: number[] = Array(6).fill(-1);
@@ -85,6 +86,7 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
     customOpenStrings: [...custom.openStrings],
     customOpenDiamonds: [...(custom.openDiamonds ?? [])],
     numFrets: custom.numFrets,
+    sourceChordId: custom.sourceChordId,
   };
 }
 
