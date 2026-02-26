@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { ChordCategory, ChordData, ChordType, TimerDuration, BarreRoot } from '@/types/chord';
 import { CHORDS } from '@/constants/chords';
+import { useCustomChordStore } from '@/stores/customChordStore';
+import { customToLibraryChord } from '@/types/customChord';
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -11,10 +13,18 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled;
 }
 
+function getEffectiveChords(): ChordData[] {
+  const { customChords, hiddenStandardChords } = useCustomChordStore.getState();
+  const replacedIds = new Set(customChords.filter((c) => c.sourceChordId).map((c) => c.sourceChordId!));
+  const standardChords = CHORDS.filter((c) => !replacedIds.has(c.id) && !hiddenStandardChords.has(c.id));
+  const converted = customChords.map(customToLibraryChord);
+  return [...standardChords, ...converted];
+}
+
 function filterChords(categories: Set<ChordCategory>, types: Set<ChordType>, barreRoots: Set<BarreRoot>): ChordData[] {
   const allCats = categories.size === 0 || categories.size === 3;
   const allRoots = barreRoots.size === 0 || barreRoots.size === 3;
-  return CHORDS.filter((chord) => {
+  return getEffectiveChords().filter((chord) => {
     const matchCategory = allCats || categories.has(chord.category);
     const matchType = types.size === 0 || types.has(chord.type);
     const hasRootFilter = categories.has('barre') || categories.has('movable') || allCats;

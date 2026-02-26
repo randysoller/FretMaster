@@ -26,7 +26,7 @@ export default function ChordLibrary() {
 
 
 
-  const { customChords, editChord: editCustomChord, editStandardChord } = useCustomChordStore();
+  const { customChords, editChord: editCustomChord, editStandardChord, hiddenStandardChords } = useCustomChordStore();
 
   const handleEditChord = useCallback((chord: ChordData & { isCustom?: boolean }) => {
     if (chord.isCustom) {
@@ -37,11 +37,13 @@ export default function ChordLibrary() {
     navigate('/editor');
   }, [editCustomChord, editStandardChord, navigate]);
 
-  // Merge built-in + custom chords, filtering out hidden standard chords
+  // Merge built-in + custom chords, filtering out replaced/hidden standard chords
   const ALL_CHORDS = useMemo(() => {
     const converted = customChords.map(customToLibraryChord);
-    return [...CHORDS, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number })[];
-  }, [customChords]);
+    const replacedIds = new Set(customChords.filter((c) => c.sourceChordId).map((c) => c.sourceChordId!));
+    const standardChords = CHORDS.filter((c) => !replacedIds.has(c.id) && !hiddenStandardChords.has(c.id));
+    return [...standardChords, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number })[];
+  }, [customChords, hiddenStandardChords]);
 
 
   const toggleCategory = (cat: ChordCategory) => {

@@ -60,6 +60,20 @@ function saveToStorage(chords: CustomChordData[]) {
   localStorage.setItem('fretmaster-custom-chords', JSON.stringify(chords.map(serialize)));
 }
 
+function loadHiddenChords(): Set<string> {
+  try {
+    const raw = localStorage.getItem('fretmaster-hidden-chords');
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenChords(ids: Set<string>) {
+  localStorage.setItem('fretmaster-hidden-chords', JSON.stringify([...ids]));
+}
+
 export function createBlankChord(): CustomChordData {
   return {
     id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -109,6 +123,9 @@ interface CustomChordStore {
   updateMarkerFinger: (fret: number, string: number, finger: number, label: string) => void;
   setChordType: (type: ChordType) => void;
   setChordCategory: (category: ChordCategory) => void;
+  hiddenStandardChords: Set<string>;
+  hideStandardChord: (id: string) => void;
+  deleteFromLibrary: () => void;
   saveChord: () => void;
   deleteChord: (id: string) => void;
   editChord: (id: string) => void;
@@ -125,6 +142,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
   selectedFinger: 0,
   customLabel: '',
   isEditing: false,
+  hiddenStandardChords: loadHiddenChords(),
 
   setCurrentChord: (chord) => set({ currentChord: chord }),
   setSelectedColor: (color) => set({ selectedColor: color }),
@@ -253,6 +271,37 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
 
   setChordType: (chordType) => set((s) => ({ currentChord: { ...s.currentChord, chordType } })),
   setChordCategory: (chordCategory) => set((s) => ({ currentChord: { ...s.currentChord, chordCategory } })),
+
+  hideStandardChord: (id) => {
+    const hidden = new Set(get().hiddenStandardChords);
+    hidden.add(id);
+    saveHiddenChords(hidden);
+    set({ hiddenStandardChords: hidden });
+  },
+
+  deleteFromLibrary: () => {
+    const { currentChord, isEditing, customChords } = get();
+    if (isEditing) {
+      // Delete the custom chord
+      const newList = customChords.filter((c) => c.id !== currentChord.id);
+      saveToStorage(newList);
+      // If it replaced a standard chord, also hide the standard
+      if (currentChord.sourceChordId) {
+        const hidden = new Set(get().hiddenStandardChords);
+        hidden.add(currentChord.sourceChordId);
+        saveHiddenChords(hidden);
+        set({ customChords: newList, hiddenStandardChords: hidden, currentChord: createBlankChord(), isEditing: false });
+      } else {
+        set({ customChords: newList, currentChord: createBlankChord(), isEditing: false });
+      }
+    } else if (currentChord.sourceChordId) {
+      // Editing a standard chord not yet saved — hide the standard chord
+      const hidden = new Set(get().hiddenStandardChords);
+      hidden.add(currentChord.sourceChordId);
+      saveHiddenChords(hidden);
+      set({ hiddenStandardChords: hidden, currentChord: createBlankChord(), isEditing: false });
+    }
+  },
 
   addBarre: (fret, fromString, toString) => set((s) => {
     const barres = [...s.currentChord.barres.filter((b) => b.fret !== fret)];

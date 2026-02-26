@@ -10,6 +10,7 @@ import {
   Minus, FileText, Pencil, Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 const EDITABLE_TYPES: ChordType[] = [
   'major', 'minor', 'augmented', 'slash', 'diminished', 'suspended',
@@ -27,14 +28,18 @@ export default function ChordEditor() {
     setCustomLabel, setName, setSymbol, setBaseFret, setNumFrets,
     setChordType, setChordCategory,
     saveChord, deleteChord, editChord, newChord, clearFretboard,
+    deleteFromLibrary,
   } = useCustomChordStore();
+  const navigate = useNavigate();
 
   const [showSaved, setShowSaved] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [barreFromStr, setBarreFromStr] = useState(0);
   const [barreToStr, setBarreToStr] = useState(5);
   const [barreFret, setBarreFret] = useState(1);
 
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
+  const canDelete = isEditing || !!currentChord.sourceChordId;
 
   const handleSave = () => {
     saveChord();
@@ -382,7 +387,41 @@ export default function ChordEditor() {
                     Cancel — Start New
                   </button>
 
+                  {canDelete && !showDeleteConfirm && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-body font-medium text-[hsl(var(--semantic-error)/0.8)] border border-[hsl(var(--semantic-error)/0.25)] hover:bg-[hsl(var(--semantic-error)/0.08)] hover:text-[hsl(var(--semantic-error))] transition-colors"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete from Library
+                    </button>
+                  )}
 
+                  {showDeleteConfirm && (
+                    <div className="rounded-lg border border-[hsl(var(--semantic-error)/0.3)] bg-[hsl(var(--semantic-error)/0.06)] p-3 space-y-2.5">
+                      <p className="text-xs font-body text-[hsl(var(--semantic-error))] text-center">
+                        Remove <strong>{currentChord.symbol || 'this chord'}</strong> from the library?
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 rounded-md py-2 text-xs font-body font-medium text-[hsl(var(--text-subtle))] border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            deleteFromLibrary();
+                            setShowDeleteConfirm(false);
+                            toast.success('Chord removed from library');
+                          }}
+                          className="flex-1 rounded-md py-2 text-xs font-body font-bold bg-[hsl(var(--semantic-error))] text-white hover:bg-[hsl(0_84%_50%)] transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
