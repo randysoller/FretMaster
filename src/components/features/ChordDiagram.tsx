@@ -99,6 +99,28 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
         />
       ))}
 
+      {/* Fret dot inlays */}
+      {Array.from({ length: numFrets }, (_, i) => {
+        const absoluteFret = chord.baseFret + i;
+        const inlayR = config.dotRadius / 2;
+        const y = getFretY(i) + fretSpacing / 2;
+        const centerX = (getStringX(0) + getStringX(numStrings - 1)) / 2;
+        const isSingle = [3, 5, 7, 9, 15, 17, 19, 21].includes(absoluteFret);
+        const isDouble = [12, 24].includes(absoluteFret);
+        if (!isSingle && !isDouble) return null;
+        if (isDouble) {
+          const leftX = (getStringX(1) + getStringX(2)) / 2;
+          const rightX = (getStringX(3) + getStringX(4)) / 2;
+          return (
+            <g key={`inlay-${i}`}>
+              <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
+              <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
+            </g>
+          );
+        }
+        return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />;
+      })}
+
       {/* String lines — thicker on left (low E) like real strings */}
       {Array.from({ length: numStrings }, (_, i) => (
         <line
