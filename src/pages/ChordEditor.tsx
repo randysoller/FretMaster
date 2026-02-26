@@ -26,7 +26,7 @@ export default function ChordEditor() {
     setSelectedColor, setSelectedShape, setSelectedFinger,
     setCustomLabel, setName, setSymbol, setBaseFret, setNumFrets,
     setChordType, setChordCategory,
-    saveChord, deleteChord, editChord, newChord, clearFretboard,
+    saveChord, deleteChord, hideStandardChord, editChord, newChord, clearFretboard,
   } = useCustomChordStore();
 
   const [showSaved, setShowSaved] = useState(true);
@@ -34,7 +34,9 @@ export default function ChordEditor() {
   const [barreToStr, setBarreToStr] = useState(5);
   const [barreFret, setBarreFret] = useState(1);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
+  const canDelete = isEditing || !!currentChord.sourceChordId;
 
   const handleSave = () => {
     saveChord();
@@ -42,6 +44,19 @@ export default function ChordEditor() {
       isEditing ? 'Chord updated in your library!' : 'Chord saved to your library!',
       { description: `"${currentChord.symbol}" is now available in the Chord Library.` }
     );
+  };
+
+  const handleDelete = () => {
+    if (isEditing) {
+      // It's a custom chord being edited — fully delete it
+      deleteChord(currentChord.id);
+      toast.success('Chord deleted from your library', { description: `"${currentChord.symbol}" has been removed.` });
+    } else if (currentChord.sourceChordId) {
+      // It's a standard chord opened for editing — hide it from library
+      hideStandardChord(currentChord.sourceChordId);
+      toast.success('Chord removed from library', { description: `"${currentChord.symbol}" is now hidden. You can restore it from the library filters.` });
+    }
+    setShowDeleteConfirm(false);
   };
 
   const handleAddBarre = () => {
@@ -373,13 +388,50 @@ export default function ChordEditor() {
               </button>
 
               {(isEditing || currentChord.sourceChordId) && (
-                <button
-                  onClick={newChord}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-body font-medium text-[hsl(var(--text-subtle))] border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-                >
-                  <Plus className="size-3.5" />
-                  Cancel — Start New
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={newChord}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-body font-medium text-[hsl(var(--text-subtle))] border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                  >
+                    <Plus className="size-3.5" />
+                    Cancel — Start New
+                  </button>
+
+                  {canDelete && !showDeleteConfirm && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-body font-medium text-[hsl(var(--semantic-error)/0.8)] border border-[hsl(var(--semantic-error)/0.2)] hover:bg-[hsl(var(--semantic-error)/0.08)] hover:text-[hsl(var(--semantic-error))] transition-colors"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete from Library
+                    </button>
+                  )}
+
+                  {showDeleteConfirm && (
+                    <div className="rounded-lg border border-[hsl(var(--semantic-error)/0.3)] bg-[hsl(var(--semantic-error)/0.06)] p-3 space-y-2.5">
+                      <p className="text-xs font-body text-[hsl(var(--semantic-error))] text-center">
+                        {isEditing
+                          ? `Delete "${currentChord.symbol}" permanently?`
+                          : `Remove "${currentChord.symbol}" from the library?`
+                        }
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 rounded-md py-2 text-xs font-body font-medium text-[hsl(var(--text-subtle))] bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          className="flex-1 rounded-md py-2 text-xs font-body font-bold bg-[hsl(var(--semantic-error))] text-white hover:bg-[hsl(var(--semantic-error)/0.85)] active:scale-[0.97] transition-all"
+                        >
+                          Confirm Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
