@@ -588,7 +588,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         {/* Barre indicators */}
         {chord.barres.map((barre, idx) => {
           const y = getFretY(barre.fret - 1) + fretSpacing / 2;
-          const barHeight = 1.5; // half of 3pt
+          const barHeight = 4; // half of 8pt (3pt + 5pt larger)
           return (
             <rect
               key={`barre-${idx}-${barre.fret}-${barre.fromString}-${barre.toString}`}
@@ -609,7 +609,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         {barreMode && barreMode.selectedStrings.length >= 2 && (() => {
           const sorted = [...barreMode.selectedStrings].sort((a, b) => a - b);
           const y = getFretY(barreMode.anchorFret - 1) + fretSpacing / 2;
-          const barHeight = 1.5;
+          const barHeight = 4;
           return (
             <rect
               x={getStringX(sorted[0])}

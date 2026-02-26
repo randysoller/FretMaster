@@ -155,7 +155,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
       {/* Barres */}
       {chord.barres.map((barre, idx) => {
         const y = getFretY(barre.fret - 1) + fretSpacing / 2;
-        const barHeight = 1.5; // 3pt total height
+        const barHeight = 4; // 8pt total height (3pt + 5pt larger)
         return (
           <rect
             key={`barre-${idx}-${barre.fret}-${barre.fromString}-${barre.toString}`}
