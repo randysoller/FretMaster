@@ -153,19 +153,19 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
       })}
 
       {/* Barres */}
-      {chord.barres.map((barre) => {
+      {chord.barres.map((barre, idx) => {
         const y = getFretY(barre.fret - 1) + fretSpacing / 2;
-        const barHeight = config.dotRadius * 0.38;
+        const barHeight = 1.5; // 3pt total height
         return (
           <rect
-            key={`barre-${barre.fret}`}
+            key={`barre-${idx}-${barre.fret}-${barre.fromString}-${barre.toString}`}
             x={getStringX(barre.fromString)}
             y={y - barHeight}
             width={getStringX(barre.toString) - getStringX(barre.fromString)}
             height={barHeight * 2}
             rx={barHeight}
             fill={barre.color}
-            opacity={0.85}
+            opacity={0.9}
           />
         );
       })}

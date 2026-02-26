@@ -25,7 +25,7 @@ interface PopupState {
   string: number;
   x: number;
   y: number;
-  mode: 'place' | 'edit'; // 'place' = new marker, 'edit' = change finger on existing
+  mode: 'place' | 'edit';
 }
 
 interface DragState {
@@ -39,14 +39,36 @@ interface DragState {
   hasMoved: boolean;
 }
 
+/** Barre creation mode state */
+interface BarreMode {
+  anchorFret: number;
+  anchorString: number;
+  selectedStrings: number[]; // strings selected so far (includes anchor)
+}
+
+/** Barre delete confirmation state */
+interface BarreDeleteConfirm {
+  fret: number;
+  fromString: number;
+  toString: number;
+  x: number;
+  y: number;
+}
+
 export default function InteractiveFretboard({ chord, width = 320, height = 420 }: InteractiveFretboardProps) {
-  const { toggleMutedString, toggleOpenString, toggleOpenDiamond, addMarkerDirect, removeMarker, moveMarker, updateMarkerFinger } = useCustomChordStore();
+  const { toggleMutedString, toggleOpenString, toggleOpenDiamond, addMarkerDirect, removeMarker, moveMarker, updateMarkerFinger, addBarreFromStrings, removeBarreByKey } = useCustomChordStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ fret: number; string: number } | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
+
+  // Barre creation state
+  const [barreMode, setBarreMode] = useState<BarreMode | null>(null);
+  // Barre delete confirmation
+  const [barreDeleteConfirm, setBarreDeleteConfirm] = useState<BarreDeleteConfirm | null>(null);
+  const barreDoubleClickRef = useRef<{ fret: number; fromString: number; toString: number; time: number } | null>(null);
 
   const numStrings = 6;
   const numFrets = chord.numFrets;
@@ -68,7 +90,6 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
 
   const DRAG_THRESHOLD = 6;
 
-  // Convert client coords to SVG coords
   const clientToSvg = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -81,7 +102,6 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     };
   }, [width, height]);
 
-  // Find nearest fret/string from SVG coords
   const svgToGrid = useCallback((svgX: number, svgY: number) => {
     const string = Math.round((svgX - padLeft) / stringSpacing);
     const clampedString = Math.max(0, Math.min(numStrings - 1, string));
@@ -93,14 +113,19 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
 
   // Close popup on outside click
   useEffect(() => {
-    if (!popup) return;
+    if (!popup && !barreDeleteConfirm) return;
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('[data-finger-popup]')) return;
+      if (target.closest('[data-finger-popup]') || target.closest('[data-barre-confirm]') || target.closest('[data-barre-connect]')) return;
       setPopup(null);
+      setBarreDeleteConfirm(null);
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPopup(null);
+      if (e.key === 'Escape') {
+        setPopup(null);
+        setBarreMode(null);
+        setBarreDeleteConfirm(null);
+      }
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleEscape);
@@ -108,14 +133,18 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [popup]);
+  }, [popup, barreDeleteConfirm]);
 
   // Drag handlers
   const handlePointerDown = useCallback((marker: FretMarker, event: React.PointerEvent) => {
+    // If in barre mode, handle barre selection instead of drag
+    if (barreMode) return;
+
     event.preventDefault();
     event.stopPropagation();
     setPopup(null);
     setPendingDelete(null);
+    setBarreDeleteConfirm(null);
 
     const svgCoords = clientToSvg(event.clientX, event.clientY);
     const newDrag: DragState = {
@@ -132,7 +161,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     dragRef.current = newDrag;
 
     (event.target as Element).setPointerCapture?.(event.pointerId);
-  }, [clientToSvg]);
+  }, [clientToSvg, barreMode]);
 
   const handlePointerMove = useCallback((event: React.PointerEvent) => {
     if (!dragRef.current) return;
@@ -157,7 +186,6 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     dragRef.current = null;
 
     if (currentDrag.hasMoved) {
-      // Complete the drop — find target fret/string
       const svgCoords = clientToSvg(event.clientX, event.clientY);
       const target = svgToGrid(svgCoords.x, svgCoords.y);
 
@@ -166,7 +194,6 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
       }
       setDrag(null);
     } else {
-      // It was a tap/click on marker — show finger picker
       setDrag(null);
       const rect = containerRef.current?.getBoundingClientRect();
       if (rect) {
@@ -181,16 +208,47 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     }
   }, [clientToSvg, svgToGrid, moveMarker]);
 
+  // Handle clicking a marker while in barre mode
+  const handleBarreMarkerClick = useCallback((marker: FretMarker, event: React.MouseEvent) => {
+    if (!barreMode) return;
+    event.stopPropagation();
+
+    // Must be on the same fret as anchor
+    if (marker.fret !== barreMode.anchorFret) return;
+
+    const alreadySelected = barreMode.selectedStrings.includes(marker.string);
+    if (alreadySelected) {
+      // Deselect (but don't deselect anchor)
+      if (marker.string === barreMode.anchorString) return;
+      setBarreMode({
+        ...barreMode,
+        selectedStrings: barreMode.selectedStrings.filter((s) => s !== marker.string),
+      });
+    } else {
+      setBarreMode({
+        ...barreMode,
+        selectedStrings: [...barreMode.selectedStrings, marker.string],
+      });
+    }
+  }, [barreMode]);
+
   const handleFretClick = useCallback((fret: number, string: number, event: React.MouseEvent) => {
     if (drag) return;
-    const existing = chord.markers.find((m) => m.fret === fret && m.string === string);
-    if (existing) {
-      // Existing marker clicked without drag — this is handled by pointer events on marker
+
+    // If in barre mode, check if clicking a marker on same fret
+    if (barreMode) {
+      const markerOnClick = chord.markers.find((m) => m.fret === fret && m.string === string);
+      if (markerOnClick && fret === barreMode.anchorFret) {
+        handleBarreMarkerClick(markerOnClick, event);
+      }
       return;
     }
-    setPendingDelete(null);
 
-    // Get click position relative to container — show new marker popup
+    const existing = chord.markers.find((m) => m.fret === fret && m.string === string);
+    if (existing) return;
+    setPendingDelete(null);
+    setBarreDeleteConfirm(null);
+
     const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
       setPopup({
@@ -201,15 +259,13 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         mode: 'place',
       });
     }
-  }, [chord.markers, drag]);
+  }, [chord.markers, drag, barreMode, handleBarreMarkerClick]);
 
   const handleFingerSelect = useCallback((finger: number, label: string) => {
     if (!popup) return;
     if (popup.mode === 'edit') {
-      // Update existing marker's finger
       updateMarkerFinger(popup.fret, popup.string, finger, label);
     } else {
-      // Place new marker
       addMarkerDirect(popup.fret, popup.string, finger, label);
     }
     setPopup(null);
@@ -221,9 +277,65 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     setPopup(null);
   }, [popup, removeMarker]);
 
+  // Enter barre mode: called from finger popup "Barre" button
+  const handleStartBarreMode = useCallback(() => {
+    if (!popup) return;
+    const marker = chord.markers.find((m) => m.fret === popup.fret && m.string === popup.string);
+    if (!marker) return;
+    setBarreMode({
+      anchorFret: popup.fret,
+      anchorString: popup.string,
+      selectedStrings: [popup.string],
+    });
+    setPopup(null);
+  }, [popup, chord.markers]);
+
+  // Finalize barre connection
+  const handleConnectBarre = useCallback(() => {
+    if (!barreMode || barreMode.selectedStrings.length < 2) return;
+    addBarreFromStrings(barreMode.anchorFret, barreMode.selectedStrings);
+    setBarreMode(null);
+  }, [barreMode, addBarreFromStrings]);
+
+  const handleCancelBarreMode = useCallback(() => {
+    setBarreMode(null);
+  }, []);
+
+  // Handle barre double-click for deletion
+  const handleBarreClick = useCallback((barre: { fret: number; fromString: number; toString: number }, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const now = Date.now();
+    const prev = barreDoubleClickRef.current;
+
+    if (prev && prev.fret === barre.fret && prev.fromString === barre.fromString && prev.toString === barre.toString && (now - prev.time) < 400) {
+      // Double click detected — show confirm
+      barreDoubleClickRef.current = null;
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        setBarreDeleteConfirm({
+          fret: barre.fret,
+          fromString: barre.fromString,
+          toString: barre.toString,
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        });
+      }
+    } else {
+      barreDoubleClickRef.current = { fret: barre.fret, fromString: barre.fromString, toString: barre.toString, time: now };
+    }
+  }, []);
+
+  const handleConfirmBarreDelete = useCallback(() => {
+    if (!barreDeleteConfirm) return;
+    removeBarreByKey(barreDeleteConfirm.fret, barreDeleteConfirm.fromString, barreDeleteConfirm.toString);
+    setBarreDeleteConfirm(null);
+  }, [barreDeleteConfirm, removeBarreByKey]);
+
   const handleStringHeaderClick = (stringIdx: number) => {
+    if (barreMode) return;
     setPopup(null);
     setPendingDelete(null);
+    setBarreDeleteConfirm(null);
     const isMuted = chord.mutedStrings.has(stringIdx);
     const isOpen = chord.openStrings.has(stringIdx);
     const isDiamond = chord.openDiamonds?.has(stringIdx) ?? false;
@@ -232,22 +344,17 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     if (hasMarkers) {
       toggleMutedString(stringIdx);
     } else if (!isMuted && !isOpen) {
-      // nothing → open circle
       toggleOpenString(stringIdx);
     } else if (isOpen && !isDiamond) {
-      // open circle → open diamond (blue outlined)
       toggleOpenDiamond(stringIdx);
     } else if (isOpen && isDiamond) {
-      // open diamond → muted
       toggleOpenString(stringIdx);
       toggleMutedString(stringIdx);
     } else if (isMuted) {
-      // muted → nothing
       toggleMutedString(stringIdx);
     }
   };
 
-  // Compute drag ghost position
   const dragGhost = drag?.hasMoved ? {
     x: drag.currentX,
     y: drag.currentY,
@@ -256,18 +363,59 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
     targetString: svgToGrid(drag.currentX, drag.currentY).string,
   } : null;
 
+  // Markers on the same fret as barre anchor (for highlighting eligible markers)
+  const barreEligibleMarkers = barreMode
+    ? chord.markers.filter((m) => m.fret === barreMode.anchorFret)
+    : [];
+
+  // Compute "Connect Now" button position (centered above the selected markers)
+  const connectButtonPos = barreMode && barreMode.selectedStrings.length >= 2 ? (() => {
+    const sorted = [...barreMode.selectedStrings].sort((a, b) => a - b);
+    const centerStringX = (getStringX(sorted[0]) + getStringX(sorted[sorted.length - 1])) / 2;
+    const fretY = getFretY(barreMode.anchorFret - 1) + fretSpacing / 2;
+    // Position above the markers
+    const svg = svgRef.current;
+    const container = containerRef.current;
+    if (svg && container) {
+      const svgRect = svg.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const scaleX = svgRect.width / width;
+      const scaleY = svgRect.height / height;
+      return {
+        x: svgRect.left - containerRect.left + centerStringX * scaleX,
+        y: svgRect.top - containerRect.top + (fretY - dotRadius - 20) * scaleY,
+      };
+    }
+    return null;
+  })() : null;
+
   return (
     <div ref={containerRef} className="relative inline-block touch-none">
+      {/* Barre mode banner */}
+      {barreMode && (
+        <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-center gap-2 rounded-t-lg bg-[hsl(38_75%_52%/0.15)] border-b border-[hsl(38_75%_52%/0.3)] px-3 py-1.5">
+          <span className="text-[11px] font-body font-semibold text-[hsl(38_75%_52%)]">
+            Barre Mode — Tap markers on fret {barreMode.anchorFret} to select
+          </span>
+          <button
+            onClick={handleCancelBarreMode}
+            className="text-[10px] font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] underline ml-1"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       <svg
         ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         width={width}
         height={height}
-        className="select-none cursor-crosshair"
+        className={`select-none ${barreMode ? 'cursor-pointer' : 'cursor-crosshair'}`}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        {/* String labels at top — clickable to toggle open/muted */}
+        {/* String labels at top */}
         {Array.from({ length: numStrings }, (_, i) => {
           const x = getStringX(i);
           const isMuted = chord.mutedStrings.has(i);
@@ -294,14 +442,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
                 {STRING_LABELS[i]}
               </text>
               {isOpen && !((chord.openDiamonds?.has(i)) ?? false) && (
-                <circle
-                  cx={x}
-                  cy={36}
-                  r={7}
-                  stroke="hsl(33 14% 72%)"
-                  strokeWidth={1.5}
-                  fill="none"
-                />
+                <circle cx={x} cy={36} r={7} stroke="hsl(33 14% 72%)" strokeWidth={1.5} fill="none" />
               )}
               {isOpen && (chord.openDiamonds?.has(i) ?? false) && (
                 <polygon
@@ -437,7 +578,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
                 width={stringSpacing}
                 height={fretSpacing}
                 fill="transparent"
-                className="cursor-pointer hover:fill-[hsl(38_75%_52%/0.08)]"
+                className={`cursor-pointer ${barreMode ? 'hover:fill-[hsl(38_75%_52%/0.15)]' : 'hover:fill-[hsl(38_75%_52%/0.08)]'}`}
                 onClick={(e) => handleFretClick(fretNum, stringIdx, e)}
               />
             );
@@ -445,22 +586,45 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         )}
 
         {/* Barre indicators */}
-        {chord.barres.map((barre) => {
+        {chord.barres.map((barre, idx) => {
           const y = getFretY(barre.fret - 1) + fretSpacing / 2;
-          const barHeight = dotRadius * 0.4;
+          const barHeight = 1.5; // half of 3pt
           return (
             <rect
-              key={`barre-${barre.fret}`}
+              key={`barre-${idx}-${barre.fret}-${barre.fromString}-${barre.toString}`}
               x={getStringX(barre.fromString)}
               y={y - barHeight}
               width={getStringX(barre.toString) - getStringX(barre.fromString)}
               height={barHeight * 2}
               rx={barHeight}
               fill={barre.color}
-              opacity={0.85}
+              opacity={0.9}
+              className="cursor-pointer"
+              onClick={(e) => handleBarreClick(barre, e)}
             />
           );
         })}
+
+        {/* Barre mode: preview line connecting selected markers */}
+        {barreMode && barreMode.selectedStrings.length >= 2 && (() => {
+          const sorted = [...barreMode.selectedStrings].sort((a, b) => a - b);
+          const y = getFretY(barreMode.anchorFret - 1) + fretSpacing / 2;
+          const barHeight = 1.5;
+          return (
+            <rect
+              x={getStringX(sorted[0])}
+              y={y - barHeight}
+              width={getStringX(sorted[sorted.length - 1]) - getStringX(sorted[0])}
+              height={barHeight * 2}
+              rx={barHeight}
+              fill="hsl(38 75% 52%)"
+              opacity={0.45}
+              strokeDasharray="4 3"
+              stroke="hsl(38 75% 52%)"
+              strokeWidth={1}
+            />
+          );
+        })()}
 
         {/* Drop target indicator */}
         {dragGhost && (
@@ -479,19 +643,48 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
 
         {/* Placed markers */}
         {chord.markers.map((marker) => {
-          // If this marker is being dragged, dim it in place
           const isDragged = drag?.hasMoved && drag.originFret === marker.fret && drag.originString === marker.string;
           const x = getStringX(marker.string);
           const y = getFretY(marker.fret - 1) + fretSpacing / 2;
           const displayLabel = marker.label || (marker.finger > 0 ? String(marker.finger) : '');
 
+          // Highlight state for barre mode
+          const isBarreEligible = barreMode && marker.fret === barreMode.anchorFret;
+          const isBarreSelected = barreMode && barreMode.selectedStrings.includes(marker.string) && marker.fret === barreMode.anchorFret;
+          const isBarreAnchor = barreMode && marker.fret === barreMode.anchorFret && marker.string === barreMode.anchorString;
+
           return (
             <g
               key={`marker-${marker.fret}-${marker.string}`}
-              opacity={isDragged ? 0.25 : 1}
-              onPointerDown={(e) => handlePointerDown(marker, e)}
-              className="cursor-grab active:cursor-grabbing"
+              opacity={isDragged ? 0.25 : barreMode && !isBarreEligible ? 0.35 : 1}
+              onPointerDown={barreMode ? undefined : (e) => handlePointerDown(marker, e)}
+              onClick={barreMode ? (e) => handleBarreMarkerClick(marker, e) : undefined}
+              className={barreMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
             >
+              {/* Selection ring for barre mode */}
+              {isBarreSelected && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={dotRadius + 4}
+                  fill="none"
+                  stroke="hsl(38 75% 52%)"
+                  strokeWidth={2}
+                  opacity={0.8}
+                />
+              )}
+              {isBarreAnchor && (
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={dotRadius + 6}
+                  fill="none"
+                  stroke="hsl(38 75% 52%)"
+                  strokeWidth={1.5}
+                  strokeDasharray="3 2"
+                  opacity={0.5}
+                />
+              )}
               {marker.shape === 'diamond' ? (
                 <polygon
                   points={`${x},${y - dotRadius * 1.15} ${x + dotRadius * 1.15},${y} ${x},${y + dotRadius * 1.15} ${x - dotRadius * 1.15},${y}`}
@@ -521,12 +714,8 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
                   {displayLabel}
                 </text>
               )}
-              {/* Invisible larger hit area for easier grabbing */}
-              <circle
-                cx={x} cy={y}
-                r={dotRadius + 8}
-                fill="transparent"
-              />
+              {/* Invisible larger hit area */}
+              <circle cx={x} cy={y} r={dotRadius + 8} fill="transparent" />
             </g>
           );
         })}
@@ -582,13 +771,13 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
         ))}
       </svg>
 
-      {/* Finger picker popup */}
-      {popup && (
+      {/* Finger picker popup — includes Barre button */}
+      {popup && !barreMode && (
         <div
           data-finger-popup
           className="absolute z-50 flex items-center gap-1 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-lg shadow-black/40 px-1.5 py-1.5 animate-in fade-in zoom-in-95 duration-150"
           style={{
-            left: Math.min(Math.max(popup.x - 100, 4), width - 210),
+            left: Math.min(Math.max(popup.x - 120, 4), width - 250),
             top: popup.y < 60 ? popup.y + 12 : popup.y - 44,
           }}
         >
@@ -605,7 +794,20 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
               {opt.label}
             </button>
           ))}
-          {/* Delete button — only show when editing existing marker */}
+          {/* Barre button — only for editing existing markers */}
+          {popup.mode === 'edit' && (
+            <button
+              onClick={handleStartBarreMode}
+              className="h-8 px-2 rounded-md text-[10px] font-bold font-body transition-all
+                bg-[hsl(38_75%_52%/0.15)] text-[hsl(38_75%_52%)]
+                hover:bg-[hsl(38_75%_52%/0.3)]
+                active:scale-90 whitespace-nowrap"
+              title="Create barre line from this marker"
+            >
+              Barre
+            </button>
+          )}
+          {/* Delete button */}
           {popup.mode === 'edit' && (
             <button
               onClick={handleDeleteFromPopup}
@@ -620,18 +822,77 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
           )}
         </div>
       )}
+
+      {/* Connect Now button (barre mode) */}
+      {barreMode && barreMode.selectedStrings.length >= 2 && connectButtonPos && (
+        <div
+          data-barre-connect
+          className="absolute z-50 flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            left: connectButtonPos.x - 55,
+            top: Math.max(4, connectButtonPos.y - 16),
+          }}
+        >
+          <button
+            onClick={handleConnectBarre}
+            className="rounded-lg px-3 py-1.5 text-[11px] font-body font-bold transition-all
+              bg-[hsl(38_75%_52%)] text-[hsl(var(--bg-base))]
+              hover:bg-[hsl(38_85%_48%)] shadow-md shadow-black/30
+              active:scale-95 whitespace-nowrap"
+          >
+            Connect Now
+          </button>
+          <button
+            onClick={handleCancelBarreMode}
+            className="rounded-lg px-2 py-1.5 text-[11px] font-body font-medium transition-all
+              bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]
+              hover:text-[hsl(var(--semantic-error))] hover:bg-[hsl(var(--semantic-error)/0.08)]
+              active:scale-95"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Barre delete confirmation popup */}
+      {barreDeleteConfirm && (
+        <div
+          data-barre-confirm
+          className="absolute z-50 rounded-lg border border-[hsl(var(--semantic-error)/0.3)] bg-[hsl(var(--bg-elevated))] shadow-lg shadow-black/40 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            left: Math.min(Math.max(barreDeleteConfirm.x - 75, 4), width - 160),
+            top: barreDeleteConfirm.y < 80 ? barreDeleteConfirm.y + 12 : barreDeleteConfirm.y - 80,
+          }}
+        >
+          <p className="text-[11px] font-body text-[hsl(var(--text-default))] text-center whitespace-nowrap">
+            Remove this barre?
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={handleConfirmBarreDelete}
+              className="flex-1 rounded-md py-1.5 text-[11px] font-body font-bold bg-[hsl(var(--semantic-error))] text-white hover:bg-[hsl(0_84%_50%)] active:scale-95 transition-all"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => setBarreDeleteConfirm(null)}
+              className="flex-1 rounded-md py-1.5 text-[11px] font-body font-medium bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function isLightColor(color: string): boolean {
-  // Handle HSL strings like "hsl(38 75% 52%)"
   const hslMatch = color.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/);
   if (hslMatch) {
     const l = parseFloat(hslMatch[3]);
     return l > 55;
   }
-  // Handle hex
   const c = color.replace('#', '');
   if (c.length >= 6) {
     const r = parseInt(c.substring(0, 2), 16);

@@ -34,9 +34,6 @@ export default function ChordEditor() {
 
   const [showSaved, setShowSaved] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [barreFromStr, setBarreFromStr] = useState(0);
-  const [barreToStr, setBarreToStr] = useState(5);
-  const [barreFret, setBarreFret] = useState(1);
 
   const canSave = currentChord.name.trim() !== '' && currentChord.symbol.trim() !== '' && currentChord.markers.length > 0;
   const canDelete = isEditing || !!currentChord.sourceChordId;
@@ -47,16 +44,6 @@ export default function ChordEditor() {
       isEditing ? 'Chord updated in your library!' : 'Chord saved to your library!',
       { description: `"${currentChord.symbol}" is now available in the Chord Library.` }
     );
-  };
-
-  const handleAddBarre = () => {
-    const { addBarre } = useCustomChordStore.getState();
-    addBarre(barreFret, barreFromStr, barreToStr);
-  };
-
-  const handleRemoveBarre = (fret: number) => {
-    const { removeBarre } = useCustomChordStore.getState();
-    removeBarre(fret);
   };
 
   return (
@@ -93,7 +80,7 @@ export default function ChordEditor() {
                 </div>
 
                 <p className="text-xs font-body text-[hsl(var(--text-muted))] mb-3">
-                  Tap fret to place dot. Tap dot to change finger or delete. Drag dots to move.
+                  Tap fret to place dot. Tap dot to change finger, delete, or start barre. Drag dots to move. Double-click barre to remove.
                 </p>
 
                 <div className="flex justify-center overflow-x-auto">
@@ -155,70 +142,23 @@ export default function ChordEditor() {
                   </div>
                 </div>
 
-                {/* Barre tool */}
-                <div>
-                  <label className="font-body text-xs text-[hsl(var(--text-muted))] block mb-1.5">Add Barre</label>
-                  <div className="flex flex-wrap items-end gap-2">
-                    <div>
-                      <span className="text-[10px] text-[hsl(var(--text-muted))]">Fret</span>
-                      <select
-                        value={barreFret}
-                        onChange={(e) => setBarreFret(Number(e.target.value))}
-                        className="block w-16 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] text-xs px-2 py-1.5 focus:outline-none focus:border-[hsl(var(--color-primary))]"
-                      >
-                        {Array.from({ length: currentChord.numFrets }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>{i + 1}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[hsl(var(--text-muted))]">From</span>
-                      <select
-                        value={barreFromStr}
-                        onChange={(e) => setBarreFromStr(Number(e.target.value))}
-                        className="block w-16 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] text-xs px-2 py-1.5 focus:outline-none focus:border-[hsl(var(--color-primary))]"
-                      >
-                        {['E', 'A', 'D', 'G', 'B', 'e'].map((s, i) => (
-                          <option key={i} value={i}>{s} ({i + 1})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-[hsl(var(--text-muted))]">To</span>
-                      <select
-                        value={barreToStr}
-                        onChange={(e) => setBarreToStr(Number(e.target.value))}
-                        className="block w-16 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] text-xs px-2 py-1.5 focus:outline-none focus:border-[hsl(var(--color-primary))]"
-                      >
-                        {['E', 'A', 'D', 'G', 'B', 'e'].map((s, i) => (
-                          <option key={i} value={i}>{s} ({i + 1})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <button
-                      onClick={handleAddBarre}
-                      disabled={barreFromStr >= barreToStr}
-                      className="rounded-md px-3 py-1.5 text-xs font-body font-medium bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.25)] disabled:opacity-30 transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {currentChord.barres.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {currentChord.barres.map((b) => (
+                {/* Barre display — existing barres from interactive fretboard */}
+                {currentChord.barres.length > 0 && (
+                  <div>
+                    <label className="font-body text-xs text-[hsl(var(--text-muted))] block mb-1.5">Active Barres</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentChord.barres.map((b, idx) => (
                         <span
-                          key={b.fret}
+                          key={`${b.fret}-${b.fromString}-${b.toString}-${idx}`}
                           className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-body bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))]"
                         >
                           Fret {b.fret}: {['E','A','D','G','B','e'][b.fromString]}→{['E','A','D','G','B','e'][b.toString]}
-                          <button onClick={() => handleRemoveBarre(b.fret)} className="text-[hsl(var(--semantic-error))] hover:text-red-400">
-                            <Trash2 className="size-3" />
-                          </button>
                         </span>
                       ))}
                     </div>
-                  )}
-                </div>
+                    <p className="text-[10px] font-body text-[hsl(var(--text-muted))] mt-1">Double-click a barre on the fretboard to remove it.</p>
+                  </div>
+                )}
               </div>
             </div>
 

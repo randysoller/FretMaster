@@ -118,7 +118,9 @@ interface CustomChordStore {
   removeMarker: (fret: number, string: number) => void;
   toggleMarker: (fret: number, string: number) => void;
   addBarre: (fret: number, fromString: number, toString: number) => void;
+  addBarreFromStrings: (fret: number, strings: number[]) => void;
   removeBarre: (fret: number) => void;
+  removeBarreByKey: (fret: number, fromString: number, toString: number) => void;
   moveMarker: (fromFret: number, fromString: number, toFret: number, toString: number) => void;
   updateMarkerFinger: (fret: number, string: number, finger: number, label: string) => void;
   setChordType: (type: ChordType) => void;
@@ -309,10 +311,29 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     return { currentChord: { ...s.currentChord, barres } };
   }),
 
+  addBarreFromStrings: (fret, strings) => set((s) => {
+    if (strings.length < 2) return s;
+    const sorted = [...strings].sort((a, b) => a - b);
+    const fromString = sorted[0];
+    const toString = sorted[sorted.length - 1];
+    // Don't add duplicate barres for same fret+range
+    const exists = s.currentChord.barres.some((b) => b.fret === fret && b.fromString === fromString && b.toString === toString);
+    if (exists) return s;
+    const barres = [...s.currentChord.barres, { fret, fromString, toString, color: 'hsl(38 75% 52%)' }];
+    return { currentChord: { ...s.currentChord, barres } };
+  }),
+
   removeBarre: (fret) => set((s) => ({
     currentChord: {
       ...s.currentChord,
       barres: s.currentChord.barres.filter((b) => b.fret !== fret),
+    },
+  })),
+
+  removeBarreByKey: (fret, fromString, toString) => set((s) => ({
+    currentChord: {
+      ...s.currentChord,
+      barres: s.currentChord.barres.filter((b) => !(b.fret === fret && b.fromString === fromString && b.toString === toString)),
     },
   })),
 
