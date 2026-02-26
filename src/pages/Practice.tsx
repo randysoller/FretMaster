@@ -4,6 +4,7 @@ import { usePracticeStore } from '@/stores/practiceStore';
 import { useCountdown } from '@/hooks/useCountdown';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import CountdownRing from '@/components/features/CountdownRing';
 import { ArrowLeft, SkipForward, Eye, RotateCcw, Volume2 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
@@ -182,7 +183,27 @@ export default function Practice() {
                     className="flex flex-col items-center gap-6"
                   >
                     <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
-                      <ChordDiagram chord={chord} size="lg" />
+                      {(chord as any).isCustom ? (
+                        <CustomChordDiagram
+                          chord={{
+                            id: chord.id,
+                            name: chord.name,
+                            symbol: chord.symbol,
+                            baseFret: chord.baseFret,
+                            numFrets: (chord as any).numFrets ?? 5,
+                            mutedStrings: new Set((chord as any).customMutedStrings ?? []),
+                            openStrings: new Set((chord as any).customOpenStrings ?? []),
+                            openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
+                            markers: (chord as any).customMarkers ?? [],
+                            barres: (chord as any).customBarres ?? [],
+                            createdAt: 0,
+                            updatedAt: 0,
+                          }}
+                          size="lg"
+                        />
+                      ) : (
+                        <ChordDiagram chord={chord} size="lg" />
+                      )}
                     </div>
                     <button
                       onClick={() => playChord(chord)}

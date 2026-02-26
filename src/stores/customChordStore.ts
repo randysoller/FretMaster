@@ -23,41 +23,70 @@ interface SerializedCustomChord {
 
 function serialize(chord: CustomChordData): SerializedCustomChord {
   return {
-    ...chord,
+    id: chord.id,
+    name: chord.name,
+    symbol: chord.symbol,
+    baseFret: chord.baseFret,
+    numFrets: chord.numFrets,
     mutedStrings: [...chord.mutedStrings],
     openStrings: [...chord.openStrings],
     openDiamonds: [...(chord.openDiamonds ?? [])],
+    markers: chord.markers.map((m) => ({ ...m })),
+    barres: chord.barres.map((b) => ({ ...b })),
     chordType: chord.chordType,
     chordCategory: chord.chordCategory,
     sourceChordId: chord.sourceChordId,
+    createdAt: chord.createdAt,
+    updatedAt: chord.updatedAt,
   };
 }
 
 function deserialize(data: SerializedCustomChord): CustomChordData {
   return {
-    ...data,
-    mutedStrings: new Set(data.mutedStrings),
-    openStrings: new Set(data.openStrings),
+    id: data.id,
+    name: data.name,
+    symbol: data.symbol,
+    baseFret: data.baseFret,
+    numFrets: data.numFrets,
+    mutedStrings: new Set(data.mutedStrings ?? []),
+    openStrings: new Set(data.openStrings ?? []),
     openDiamonds: new Set(data.openDiamonds ?? []),
+    markers: (data.markers ?? []).map((m) => ({ ...m })),
+    barres: (data.barres ?? []).map((b) => ({ ...b })),
     chordType: data.chordType,
     chordCategory: data.chordCategory,
     sourceChordId: data.sourceChordId,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
   };
 }
 
 function loadFromStorage(): CustomChordData[] {
   try {
     const raw = localStorage.getItem('fretmaster-custom-chords');
-    if (!raw) return [];
+    if (!raw) {
+      console.log('[FretMaster] No custom chords in localStorage');
+      return [];
+    }
     const parsed: SerializedCustomChord[] = JSON.parse(raw);
-    return parsed.map(deserialize);
-  } catch {
+    const result = parsed.map(deserialize);
+    console.log('[FretMaster] Loaded', result.length, 'custom chords from localStorage',
+      result.filter(c => c.sourceChordId).length, 'are edits of standard chords');
+    return result;
+  } catch (e) {
+    console.error('[FretMaster] Failed to load chords from localStorage:', e);
     return [];
   }
 }
 
 function saveToStorage(chords: CustomChordData[]) {
-  localStorage.setItem('fretmaster-custom-chords', JSON.stringify(chords.map(serialize)));
+  try {
+    const serialized = JSON.stringify(chords.map(serialize));
+    localStorage.setItem('fretmaster-custom-chords', serialized);
+    console.log('[FretMaster] Saved', chords.length, 'custom chords to localStorage');
+  } catch (e) {
+    console.error('[FretMaster] Failed to save chords to localStorage:', e);
+  }
 }
 
 function loadHiddenChords(): Set<string> {
@@ -341,7 +370,15 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     const { currentChord, customChords, isEditing } = get();
     if (!currentChord.name.trim() || !currentChord.symbol.trim()) return;
 
-    const updated = { ...currentChord, updatedAt: Date.now() };
+    const updated: CustomChordData = {
+      ...currentChord,
+      mutedStrings: new Set(currentChord.mutedStrings),
+      openStrings: new Set(currentChord.openStrings),
+      openDiamonds: new Set(currentChord.openDiamonds ?? []),
+      markers: currentChord.markers.map((m) => ({ ...m })),
+      barres: currentChord.barres.map((b) => ({ ...b })),
+      updatedAt: Date.now(),
+    };
     let newList: CustomChordData[];
 
     if (isEditing) {
@@ -366,6 +403,8 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
 
     saveToStorage(newList);
     set({ customChords: newList, currentChord: createBlankChord(), isEditing: false });
+    console.log('[FretMaster] Chord saved. Total custom chords:', newList.length,
+      'Replaced standard chords:', newList.filter(c => c.sourceChordId).map(c => c.sourceChordId));
   },
 
   deleteChord: (id) => {

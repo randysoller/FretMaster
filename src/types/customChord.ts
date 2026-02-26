@@ -51,6 +51,11 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
   const frets: number[] = Array(6).fill(-1);
   const fingers: number[] = Array(6).fill(0);
 
+  // Mark muted strings
+  for (const s of custom.mutedStrings) {
+    frets[s] = -1;
+  }
+
   // Mark open strings
   for (const s of custom.openStrings) {
     frets[s] = 0;
@@ -65,9 +70,13 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
     }
   }
 
-  // Determine root note string from diamond markers
+  // Build standard barres array (absolute fret numbers)
+  const standardBarres: number[] = custom.barres.map((b) => custom.baseFret + b.fret - 1);
+
+  // Determine root note string from diamond markers or open diamonds
   const rootMarker = custom.markers.find((m) => m.shape === 'diamond');
-  const rootNoteString = rootMarker ? rootMarker.string : 0;
+  const openDiamondString = custom.openDiamonds ? [...custom.openDiamonds][0] : undefined;
+  const rootNoteString = rootMarker ? rootMarker.string : (openDiamondString ?? 0);
 
   return {
     id: custom.id,
@@ -78,6 +87,7 @@ export function customToLibraryChord(custom: CustomChordData): import('@/types/c
     frets,
     fingers,
     baseFret: custom.baseFret,
+    barres: standardBarres.length > 0 ? standardBarres : undefined,
     rootNoteString,
     isCustom: true as const,
     customMarkers: custom.markers,
