@@ -356,7 +356,7 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
             fontSize={11}
             fontFamily="DM Sans, sans-serif"
             fontWeight={600}
-            fill="hsl(30 7% 47%)"
+            fill="hsl(33 14% 72%)"
           >
             {chord.baseFret}fr
           </text>
@@ -389,12 +389,12 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
             const rightX = (getStringX(3) + getStringX(4)) / 2;
             return (
               <g key={`inlay-${i}`}>
-                <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
-                <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
+                <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
+                <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
               </g>
             );
           }
-          return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />;
+          return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />;
         })}
 
         {/* String lines */}
@@ -574,8 +574,8 @@ export default function InteractiveFretboard({ chord, width = 320, height = 420 
             textAnchor="start"
             fontSize={9}
             fontFamily="DM Sans, sans-serif"
-            fill="hsl(30 7% 47%)"
-            className="opacity-50"
+            fill="hsl(33 14% 72%)"
+            className="opacity-70"
           >
             {chord.baseFret + i}
           </text>

@@ -77,7 +77,7 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           x={padLeft - 6}
           y={getFretY(0.5) + config.fretLabelSize / 3}
           textAnchor="end"
-          className="fill-[hsl(var(--text-muted))]"
+          className="fill-[hsl(var(--text-subtle))]"
           fontSize={config.fretLabelSize}
           fontFamily="DM Sans, sans-serif"
           fontWeight={600}
@@ -113,12 +113,12 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           const rightX = (getStringX(3) + getStringX(4)) / 2;
           return (
             <g key={`inlay-${i}`}>
-              <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
-              <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
+              <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
+              <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
             </g>
           );
         }
-        return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />;
+        return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />;
       })}
 
       {/* String lines — thicker on left (low E) like real strings */}

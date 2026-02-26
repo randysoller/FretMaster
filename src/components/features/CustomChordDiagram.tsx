@@ -52,7 +52,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           x={padLeft - 6}
           y={getFretY(0.5) + config.fretLabelSize / 3}
           textAnchor="end"
-          fill="hsl(30 7% 47%)"
+          fill="hsl(33 14% 72%)"
           fontSize={config.fretLabelSize}
           fontFamily="DM Sans, sans-serif"
           fontWeight={600}
@@ -88,12 +88,12 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           const rightX = (getStringX(3) + getStringX(4)) / 2;
           return (
             <g key={`inlay-${i}`}>
-              <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
-              <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />
+              <circle cx={leftX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
+              <circle cx={rightX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />
             </g>
           );
         }
-        return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 10% 30%)" opacity={0.35} />;
+        return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />;
       })}
 
       {/* Strings */}
