@@ -147,29 +147,30 @@ export default function ChordLibrary() {
 
   return (
     <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
-      <div className="px-6 py-8">
+      <div className="px-3 sm:px-6 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="font-display text-3xl font-extrabold text-[hsl(var(--text-default))]">
-                Chord Library
-              </h1>
-              <p className="mt-1 font-body text-sm text-[hsl(var(--text-muted))]">
-                Browse all {ALL_CHORDS.length} chord diagrams in the collection
-              </p>
-            </div>
+          <div className="mb-4 sm:mb-6">
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
+              Chord Library
+            </h1>
+            <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
+              Browse all {ALL_CHORDS.length} chord diagrams in the collection
+            </p>
+          </div>
 
-            <div className="flex items-center gap-3">
+          {/* Sticky Search/Filter Bar */}
+          <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[hsl(var(--text-muted))]" />
                 <input
                   type="text"
                   placeholder="Search chords..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 sm:w-64 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] pl-10 pr-4 py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
+                  className="w-full sm:w-64 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] pl-10 pr-4 py-2 sm:py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
                 />
               </div>
 
@@ -177,7 +178,7 @@ export default function ChordLibrary() {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={`
-                  flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-body font-medium transition-colors
+                  flex items-center gap-1.5 sm:gap-2 rounded-lg border px-3 sm:px-4 py-2 sm:py-2.5 text-sm font-body font-medium transition-colors shrink-0
                   ${showFilters
                     ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.08)] text-[hsl(var(--color-primary))]'
                     : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
@@ -185,16 +186,16 @@ export default function ChordLibrary() {
                 `}
               >
                 <Filter className="size-4" />
-                Filters
+                <span className="hidden sm:inline">Filters</span>
               </button>
 
               {hasActiveFilters && (
                 <button
                   onClick={clearFilters}
-                  className="flex items-center gap-1 rounded-lg px-3 py-2.5 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors"
+                  className="flex items-center gap-1 rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors shrink-0"
                 >
                   <X className="size-3.5" />
-                  Clear
+                  <span className="hidden sm:inline">Clear</span>
                 </button>
               )}
             </div>
@@ -202,7 +203,7 @@ export default function ChordLibrary() {
 
           {/* Filter Panel */}
           {showFilters && (
-            <div className="mb-8 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 space-y-5">
+            <div className="mb-4 sm:mb-8 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-3 sm:p-6 space-y-4 sm:space-y-5">
               <div className="space-y-2.5">
                 <label className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
                   Category
@@ -297,7 +298,7 @@ export default function ChordLibrary() {
           )}
 
           {/* Results Count */}
-          <div className="mb-3 flex items-center gap-3">
+          <div className="mb-2 sm:mb-3 flex items-center gap-3">
             <span className="text-sm font-body text-[hsl(var(--text-muted))]">
               Showing <span className="text-[hsl(var(--color-primary))] font-display font-bold">{filteredChords.length}</span> chord{filteredChords.length !== 1 ? 's' : ''}
             </span>
@@ -309,8 +310,8 @@ export default function ChordLibrary() {
           </div>
 
           {/* Legend */}
-          <div className="mb-5 flex justify-center">
-            <div className="flex items-center gap-6 text-base font-body text-[hsl(var(--text-muted))]">
+          <div className="mb-3 sm:mb-5 flex justify-center">
+            <div className="flex items-center gap-4 sm:gap-6 text-xs sm:text-base font-body text-[hsl(var(--text-muted))]">
               <span className="flex items-center gap-2">
                 <span className="inline-block size-3.5 rounded-sm bg-[hsl(var(--color-primary))]" />
                 Finger Position
@@ -325,7 +326,7 @@ export default function ChordLibrary() {
           {/* Chord Grid */}
           {filteredChords.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4"
               initial="hidden"
               animate="visible"
               key={`${[...filterCategories].join(',')}-${[...filterTypes].join(',')}-${[...filterBarreRoots].join(',')}-${searchQuery}`}
@@ -345,34 +346,34 @@ export default function ChordLibrary() {
                     hidden: { opacity: 0, y: 20 },
                     visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
                   }}
-                  className="group relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-4 flex flex-col items-center gap-3 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.03] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="group relative rounded-lg sm:rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-2 sm:p-4 flex flex-col items-center gap-1.5 sm:gap-3 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.03] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
                 >
-                  <div className="absolute top-2 right-2 flex gap-1">
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
-                      className="size-8 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      className="size-6 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
                       title="Edit chord"
                     >
-                      <Edit3 className="size-3.5 sm:size-3" />
+                      <Edit3 className="size-2.5 sm:size-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); playChord(chord); }}
-                      className="size-8 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      className="size-6 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
                       title="Play chord"
                     >
-                      <Volume2 className="size-4 sm:size-3.5" />
+                      <Volume2 className="size-3 sm:size-3.5" />
                     </button>
                   </div>
                   {(chord as any).isCustom && !(chord as any).sourceChordId && (
-                    <span className="absolute top-2 left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]">
+                    <span className="absolute top-1 left-1 sm:top-2 sm:left-2 rounded px-1 sm:px-1.5 py-0.5 text-[6px] sm:text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]">
                       Custom
                     </span>
                   )}
-                  <div className="text-center">
-                    <h3 className="font-display text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors">
+                  <div className="text-center mt-1 sm:mt-0">
+                    <h3 className="font-display text-sm sm:text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors leading-tight">
                       {chord.symbol}
                     </h3>
-                    <p className="text-[10px] font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
+                    <p className="text-[8px] sm:text-[10px] font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
                       {getChordCategoryLabel(chord)}
                     </p>
                   </div>
