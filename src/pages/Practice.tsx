@@ -358,32 +358,13 @@ export default function Practice() {
                     className="flex flex-col items-center gap-6"
                   >
                     {timerDuration > 0 ? (
-                      <>
                         <CountdownRing
                           progress={progress}
                           timeLeft={timeLeft}
                           size={180}
                         />
-                        <div className="mt-10">
-                          <button
-                            onClick={handleSkipReveal}
-                            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                          >
-                            <Eye className="size-4" />
-                            Reveal Now
-                          </button>
-                        </div>
-                      </>
                     ) : (
-                      <div className="mt-16">
-                        <button
-                          onClick={handleReveal}
-                          className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-                        >
-                          <Eye className="size-5" />
-                          Reveal Chord
-                        </button>
-                      </div>
+                      <div className="min-h-[180px]" />
                     )}
                   </motion.div>
                 ) : (
@@ -431,6 +412,29 @@ export default function Practice() {
             </div>
           </motion.div>
         </AnimatePresence>
+
+        {/* Reveal button — above controls */}
+        {!isRevealed && (
+          <div className="mb-[3em]">
+            {timerDuration > 0 ? (
+              <button
+                onClick={handleSkipReveal}
+                className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
+              >
+                <Eye className="size-4" />
+                Reveal Now
+              </button>
+            ) : (
+              <button
+                onClick={handleReveal}
+                className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
+              >
+                <Eye className="size-5" />
+                Reveal Chord
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Controls */}
         <div className="mt-8 flex items-center gap-4">
