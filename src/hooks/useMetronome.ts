@@ -482,7 +482,7 @@ function scheduleVoice(
   const g1 = ctx.createGain();
   osc1.connect(g1);
   g1.connect(ctx.destination);
-  osc1.frequency.value = isAccent ? 440 : 380;
+  osc1.frequency.value = isAccent ? 340 : 290;
   osc1.type = 'sine';
   g1.gain.setValueAtTime(isAccent ? 0.08 : 0.04, time);
   g1.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
@@ -494,8 +494,8 @@ function scheduleVoice(
   if (sample) {
     const source = ctx.createBufferSource();
     source.buffer = sample;
-    // Pitch up slightly to sound snappier and more rhythmic
-    source.playbackRate.value = 1.15;
+    // Pitch down for a deeper male voice
+    source.playbackRate.value = 0.82;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
     source.connect(gain);
@@ -513,7 +513,7 @@ function scheduleVoice(
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(String(num));
       utterance.rate = 1.5;
-      utterance.pitch = 0.65;
+      utterance.pitch = 0.4;
       utterance.volume = isAccent ? 1.0 : 0.7;
       if (voiceRef.current) {
         utterance.voice = voiceRef.current;
