@@ -33,7 +33,7 @@ export const CHORDS: ChordData[] = [
     category: 'open',
     type: 'major',
     frets: [0, 2, 2, 1, 0, 0],
-    fingers: [0, 2, 1, 3, 0, 0],
+    fingers: [0, 2, 3, 1, 0, 0],
     baseFret: 1,
     rootNoteString: 0,
   },
