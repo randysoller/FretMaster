@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePracticeStore } from '@/stores/practiceStore';
 import { useCountdown } from '@/hooks/useCountdown';
@@ -8,10 +8,23 @@ import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/c
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import CountdownRing from '@/components/features/CountdownRing';
-import { ArrowLeft, SkipForward, Eye, RotateCcw, Volume2, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, SkipForward, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
+
+function getStoredSensitivity(): number {
+  try {
+    const v = localStorage.getItem(SENSITIVITY_KEY);
+    if (v) {
+      const n = Number(v);
+      if (n >= 1 && n <= 10) return n;
+    }
+  } catch {}
+  return 5;
+}
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {
   return (
@@ -57,6 +70,50 @@ function DetectionFeedback({ result }: { result: DetectionResult }) {
   );
 }
 
+function SensitivitySlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const label =
+    value <= 3 ? 'Strict' : value <= 7 ? 'Balanced' : 'Sensitive';
+  const labelColor =
+    value <= 3
+      ? 'text-[hsl(var(--semantic-info))]'
+      : value <= 7
+        ? 'text-[hsl(var(--color-primary))]'
+        : 'text-[hsl(var(--semantic-success))]';
+
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      <SlidersHorizontal className="size-3.5 text-[hsl(var(--text-muted))] shrink-0" />
+      <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase tracking-wider shrink-0 hidden sm:inline">
+        Sensitivity
+      </span>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="volume-slider flex-1 min-w-[80px] max-w-[120px]"
+          title={`Detection sensitivity: ${value}/10 (${label})`}
+        />
+        <span className={`text-xs font-display font-bold tabular-nums w-5 text-center ${labelColor}`}>
+          {value}
+        </span>
+      </div>
+      <span className={`text-[10px] font-body font-medium ${labelColor} shrink-0`}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export default function Practice() {
   const navigate = useNavigate();
   const {
@@ -78,6 +135,15 @@ export default function Practice() {
 
   const chord = getCurrentChord();
   const { playChord } = useChordAudio();
+
+  // Sensitivity state with localStorage persistence
+  const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
+  const handleSensitivityChange = useCallback((v: number) => {
+    setSensitivity(v);
+    try {
+      localStorage.setItem(SENSITIVITY_KEY, String(v));
+    } catch {}
+  }, []);
 
   const handleReveal = useCallback(() => {
     revealChord();
@@ -105,6 +171,8 @@ export default function Practice() {
     useChordDetection({
       onCorrect: handleDetectionCorrect,
       targetChord: chord,
+      sensitivity,
+      autoStart: true, // mic on by default
     });
 
   useEffect(() => {
@@ -216,27 +284,40 @@ export default function Practice() {
         </div>
       )}
 
-      {/* Listening indicator bar */}
+      {/* Listening indicator + sensitivity */}
       {isListening && (
-        <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-2 rounded-lg bg-[hsl(var(--semantic-success)/0.06)] border border-[hsl(var(--semantic-success)/0.15)] px-4 py-2">
-          <div className="flex items-center gap-1">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <motion.div
-                key={i}
-                className="w-0.5 rounded-full bg-[hsl(var(--semantic-success))]"
-                animate={{ height: [4, 12, 4] }}
-                transition={{
-                  duration: 0.8,
-                  repeat: Infinity,
-                  delay: i * 0.12,
-                  ease: 'easeInOut',
-                }}
-              />
-            ))}
+        <div className="mx-4 sm:mx-6 mb-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 rounded-lg bg-[hsl(var(--semantic-success)/0.06)] border border-[hsl(var(--semantic-success)/0.15)] px-4 py-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-0.5 rounded-full bg-[hsl(var(--semantic-success))]"
+                  animate={{ height: [4, 12, 4] }}
+                  transition={{
+                    duration: 0.8,
+                    repeat: Infinity,
+                    delay: i * 0.12,
+                    ease: 'easeInOut',
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-body font-medium text-[hsl(var(--semantic-success))]">
+              Listening — play the chord
+            </span>
           </div>
-          <span className="text-xs font-body font-medium text-[hsl(var(--semantic-success))]">
-            Listening — play the chord on your guitar
-          </span>
+          <div className="h-4 w-px bg-[hsl(var(--border-subtle))] hidden sm:block" />
+          <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
+        </div>
+      )}
+
+      {/* Sensitivity control when mic is off */}
+      {!isListening && !permissionDenied && (
+        <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-4 rounded-lg bg-[hsl(var(--bg-elevated)/0.5)] border border-[hsl(var(--border-subtle)/0.5)] px-4 py-2">
+          <span className="text-xs font-body text-[hsl(var(--text-muted))]">Mic off</span>
+          <div className="h-4 w-px bg-[hsl(var(--border-subtle))]" />
+          <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
         </div>
       )}
 
