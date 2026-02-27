@@ -106,6 +106,7 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
           <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-5">
             {chord.isCustom ? (
               <CustomChordDiagram
+                key={`detail-${chord.id}-${(chord.customBarres ?? []).length}`}
                 chord={{
                   id: chord.id,
                   name: chord.name,

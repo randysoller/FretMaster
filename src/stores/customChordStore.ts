@@ -405,6 +405,8 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
     set({ customChords: newList, currentChord: createBlankChord(), isEditing: false });
     console.log('[FretMaster] Chord saved. ID:', updated.id, 'sourceChordId:', updated.sourceChordId,
       'markers:', updated.markers.length, 'barres:', updated.barres.length,
+      'barreData:', JSON.stringify(updated.barres),
+      'isEditing was:', isEditing, 'existedInList:', customChords.some((c) => c.id === updated.id),
       'Total custom chords:', newList.length,
       'Replaced standard chords:', newList.filter(c => c.sourceChordId).map(c => c.sourceChordId));
     // Verify persistence immediately
@@ -414,7 +416,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
         const parsed = JSON.parse(verification);
         const saved = parsed.find((c: any) => c.id === updated.id);
         if (saved) {
-          console.log('[FretMaster] Verified in localStorage: markers:', saved.markers?.length, 'barres:', saved.barres?.length);
+          console.log('[FretMaster] Verified in localStorage: markers:', saved.markers?.length, 'barres:', saved.barres?.length, 'barreData:', JSON.stringify(saved.barres));
         } else {
           console.error('[FretMaster] VERIFICATION FAILED: chord not found in localStorage after save!');
         }
@@ -436,7 +438,7 @@ export const useCustomChordStore = create<CustomChordStore>((set, get) => ({
   editChord: (id) => {
     const chord = get().customChords.find((c) => c.id === id);
     if (chord) {
-      console.log('[FretMaster] editChord: loading custom chord', chord.id, 'sourceChordId:', chord.sourceChordId, 'markers:', chord.markers.length);
+      console.log('[FretMaster] editChord: loading custom chord', chord.id, 'sourceChordId:', chord.sourceChordId, 'markers:', chord.markers.length, 'barres:', chord.barres.length, 'barreData:', JSON.stringify(chord.barres));
       set({
         currentChord: {
           ...chord,

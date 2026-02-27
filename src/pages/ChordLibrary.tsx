@@ -378,6 +378,7 @@ export default function ChordLibrary() {
                   </div>
                   {(chord as any).isCustom ? (
                     <CustomChordDiagram
+                      key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
                       chord={{
                         id: chord.id,
                         name: chord.name,

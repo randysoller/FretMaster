@@ -185,6 +185,7 @@ export default function Practice() {
                     <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
                       {(chord as any).isCustom ? (
                         <CustomChordDiagram
+                          key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`}
                           chord={{
                             id: chord.id,
                             name: chord.name,
