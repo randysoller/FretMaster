@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo, type JSX } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProgressionStore, type ProgressionTimerDuration } from '@/stores/progressionStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
@@ -140,6 +140,21 @@ function SensitivitySlider({
 
 // ─── Metronome Controls (Practice View - Compact) ──────────
 
+/** Get Italian tempo marking for a given BPM */
+function getTempoMarking(bpm: number): string {
+  if (bpm < 40) return 'Grave';
+  if (bpm < 55) return 'Largo';
+  if (bpm < 66) return 'Larghetto';
+  if (bpm < 76) return 'Adagio';
+  if (bpm < 92) return 'Andante';
+  if (bpm < 108) return 'Moderato';
+  if (bpm < 120) return 'Allegretto';
+  if (bpm < 156) return 'Allegro';
+  if (bpm < 176) return 'Vivace';
+  if (bpm < 200) return 'Presto';
+  return 'Prestissimo';
+}
+
 function MetronomeBar({
   isPlaying,
   bpm,
@@ -155,6 +170,8 @@ function MetronomeBar({
   onToggle: () => void;
   onBpmChange: (v: number) => void;
 }) {
+  const tempoMarking = getTempoMarking(bpm);
+
   return (
     <div
       className={`
@@ -210,6 +227,11 @@ function MetronomeBar({
           <Plus className="size-3" />
         </button>
       </div>
+
+      {/* Tempo marking */}
+      <span className="text-[10px] sm:text-xs font-body italic text-[hsl(var(--text-subtle))] min-w-[70px] text-center">
+        {tempoMarking}
+      </span>
 
       {/* Beat indicators */}
       {isPlaying && (
@@ -279,9 +301,14 @@ function MetronomeSetup({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Tempo</span>
-          <span className="text-lg font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
-            {bpm} <span className="text-xs font-body font-normal text-[hsl(var(--text-muted))]">BPM</span>
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-body italic text-[hsl(var(--text-subtle))]">
+              {getTempoMarking(bpm)}
+            </span>
+            <span className="text-lg font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
+              {bpm} <span className="text-xs font-body font-normal text-[hsl(var(--text-muted))]">BPM</span>
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <button

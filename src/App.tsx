@@ -30,6 +30,7 @@ export default function App() {
             <Route path="/library" element={<ChordLibrary />} />
             <Route path="/editor" element={<ChordEditor />} />
             <Route path="/progressions" element={<ProgressionPractice />} />
+            <Route path="*" element={<Home />} />
           </Route>
         </Routes>
       </Suspense>
