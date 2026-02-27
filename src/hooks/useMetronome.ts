@@ -494,12 +494,12 @@ function scheduleVoice(
   if (sample) {
     const source = ctx.createBufferSource();
     source.buffer = sample;
-    source.playbackRate.value = 1.03;
+    source.playbackRate.value = 0.65;
 
     // Gentle low-pass to tame harsh high frequencies
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 3200;
+    lp.frequency.value = 2200;
     lp.Q.value = 0.7;
 
     const gain = ctx.createGain();
@@ -520,7 +520,7 @@ function scheduleVoice(
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(String(num));
       utterance.rate = 1.5;
-      utterance.pitch = 0.65;
+      utterance.pitch = 0.35;
       utterance.volume = isAccent ? 1.0 : 0.7;
       if (voiceRef.current) {
         utterance.voice = voiceRef.current;
