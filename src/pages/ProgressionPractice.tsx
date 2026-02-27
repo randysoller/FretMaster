@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProgressionStore, type ProgressionTimerDuration } from '@/stores/progressionStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
+import { useChordDetection } from '@/hooks/useChordDetection';
+import type { DetectionResult } from '@/hooks/useChordDetection';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import CountdownRing from '@/components/features/CountdownRing';
@@ -25,7 +27,113 @@ import {
   Repeat,
   Timer,
   Trash2,
+  Mic,
+  MicOff,
+  SlidersHorizontal,
 } from 'lucide-react';
+
+// ─── Shared Detection UI ─────────────────────────────────
+
+const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
+
+function getStoredSensitivity(): number {
+  try {
+    const v = localStorage.getItem(SENSITIVITY_KEY);
+    if (v) {
+      const n = Number(v);
+      if (n >= 1 && n <= 10) return n;
+    }
+  } catch {}
+  return 5;
+}
+
+function DetectionFeedback({ result }: { result: DetectionResult }) {
+  return (
+    <AnimatePresence>
+      {result && (
+        <motion.div
+          key={result}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none pb-[8px]"
+        >
+          <div
+            className={`
+              px-10 py-[17px] rounded-2xl backdrop-blur-md border-2
+              ${result === 'correct'
+                ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]'
+                : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'
+              }
+            `}
+          >
+            <span
+              className={`
+                font-display text-5xl sm:text-6xl font-extrabold uppercase tracking-wider
+                ${result === 'correct'
+                  ? 'text-[hsl(142_71%_45%)]'
+                  : 'text-[hsl(0_84%_60%)]'
+                }
+              `}
+              style={{
+                textShadow: result === 'correct'
+                  ? '0 0 30px hsl(142 71% 45% / 0.5), 0 0 60px hsl(142 71% 45% / 0.2)'
+                  : '0 0 30px hsl(0 84% 60% / 0.5), 0 0 60px hsl(0 84% 60% / 0.2)',
+              }}
+            >
+              {result === 'correct' ? 'Correct' : 'Wrong'}
+            </span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function SensitivitySlider({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const label =
+    value <= 3 ? 'Strict' : value <= 7 ? 'Balanced' : 'Sensitive';
+  const labelColor =
+    value <= 3
+      ? 'text-[hsl(var(--semantic-info))]'
+      : value <= 7
+        ? 'text-[hsl(var(--color-primary))]'
+        : 'text-[hsl(var(--semantic-success))]';
+
+  return (
+    <div className="flex items-center gap-3 min-w-0">
+      <SlidersHorizontal className="size-3.5 text-[hsl(var(--text-muted))] shrink-0" />
+      <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase tracking-wider shrink-0 hidden sm:inline">
+        Sensitivity
+      </span>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="volume-slider flex-1 min-w-[80px] max-w-[120px]"
+          title={`Detection sensitivity: ${value}/10 (${label})`}
+        />
+        <span className={`text-xs font-display font-bold tabular-nums w-5 text-center ${labelColor}`}>
+          {value}
+        </span>
+      </div>
+      <span className={`text-[10px] font-body font-medium ${labelColor} shrink-0`}>
+        {label}
+      </span>
+    </div>
+  );
+}
 
 // ─── Setup View ──────────────────────────────────────────
 
@@ -314,6 +422,15 @@ export default function ProgressionPractice() {
   const { playChord } = useChordAudio();
   const currentInfo = getCurrentChord();
 
+  // Sensitivity state with localStorage persistence
+  const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
+  const handleSensitivityChange = useCallback((v: number) => {
+    setSensitivity(v);
+    try {
+      localStorage.setItem(SENSITIVITY_KEY, String(v));
+    } catch {}
+  }, []);
+
   const handleReveal = useCallback(() => {
     revealChord();
     const current = getCurrentChord();
@@ -325,6 +442,24 @@ export default function ProgressionPractice() {
     onComplete: handleReveal,
   });
 
+  // Chord detection — auto-advance on correct
+  const handleDetectionCorrect = useCallback(() => {
+    const s = useProgressionStore.getState();
+    if (!s.isRevealed) {
+      revealChord();
+    }
+    reset();
+    nextChord();
+  }, [revealChord, reset, nextChord]);
+
+  const { isListening, result: detectionResult, permissionDenied, toggleListening, stopListening, pauseDetection } =
+    useChordDetection({
+      onCorrect: handleDetectionCorrect,
+      targetChord: currentInfo?.chordData ?? undefined,
+      sensitivity,
+      autoStart: true,
+    });
+
   // Start timer on chord change
   useEffect(() => {
     if (isPracticing && !isRevealed && timerPerChord > 0) {
@@ -332,9 +467,16 @@ export default function ProgressionPractice() {
     }
   }, [isPracticing, isRevealed, currentChordIndex, start, timerPerChord]);
 
+  // Stop mic when leaving practice
+  useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, [stopListening]);
+
   const handleNext = () => { reset(); nextChord(); };
   const handlePrev = () => { reset(); prevChord(); };
-  const handleBack = () => { stopProgression(); };
+  const handleBack = () => { stopListening(); stopProgression(); };
   const handleRestart = () => { reset(); startProgression(); };
 
   const resolvedChords = getResolvedChords();
@@ -363,7 +505,7 @@ export default function ProgressionPractice() {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-xs font-body text-[hsl(var(--text-muted))]">
+            <div className="hidden sm:flex items-center gap-2 text-xs font-body text-[hsl(var(--text-muted))]">
               <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">
                 {NOTE_DISPLAY[selectedKey]} {selectedScale.name.replace(' Scale', '')}
               </span>
@@ -372,9 +514,75 @@ export default function ProgressionPractice() {
               <Repeat className="size-3" />
               <span className="font-display font-bold text-[hsl(var(--color-primary))]">{loopCount}</span>
             </div>
+
+            {/* Microphone Toggle */}
+            <button
+              onClick={toggleListening}
+              title={isListening ? 'Stop listening' : 'Start listening'}
+              className={`
+                relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200
+                ${isListening
+                  ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]'
+                  : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+                }
+              `}
+            >
+              {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+              {isListening && (
+                <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(var(--semantic-success))] animate-pulse" />
+              )}
+            </button>
+
             <VolumeControl compact />
           </div>
         </div>
+
+        {/* Permission denied warning */}
+        {permissionDenied && (
+          <div className="mx-4 sm:mx-6 mb-2 flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5">
+            <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
+            <span className="text-xs sm:text-sm font-body text-[hsl(var(--semantic-error))]">
+              Microphone access was denied. Please allow microphone access in your browser settings to use chord detection.
+            </span>
+          </div>
+        )}
+
+        {/* Listening indicator + sensitivity */}
+        {isListening && (
+          <div className="mx-4 sm:mx-6 mb-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 rounded-lg bg-[hsl(var(--semantic-success)/0.06)] border border-[hsl(var(--semantic-success)/0.15)] px-4 py-2">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-0.5 rounded-full bg-[hsl(var(--semantic-success))]"
+                    animate={{ height: [4, 12, 4] }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                      delay: i * 0.12,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-body font-medium text-[hsl(var(--semantic-success))]">
+                Listening — play the chord
+              </span>
+            </div>
+            <div className="h-4 w-px bg-[hsl(var(--border-subtle))] hidden sm:block" />
+            <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
+          </div>
+        )}
+
+        {/* Sensitivity control when mic is off */}
+        {!isListening && !permissionDenied && (
+          <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-4 rounded-lg bg-[hsl(var(--bg-elevated)/0.5)] border border-[hsl(var(--border-subtle)/0.5)] px-4 py-2">
+            <span className="text-xs font-body text-[hsl(var(--text-muted))]">Mic off</span>
+            <div className="h-4 w-px bg-[hsl(var(--border-subtle))]" />
+            <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
+          </div>
+        )}
 
         {/* Progression Timeline */}
         <div className="px-4 sm:px-6 py-2 flex justify-center">
@@ -383,6 +591,9 @@ export default function ProgressionPractice() {
 
         {/* Main practice area */}
         <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12">
+          {/* Detection result overlay */}
+          <DetectionFeedback result={detectionResult} />
+
           <AnimatePresence mode="wait">
             <motion.div
               key={`${currentInfo.chordSymbol}-${currentChordIndex}`}
@@ -463,7 +674,7 @@ export default function ProgressionPractice() {
                             )}
                           </div>
                           <button
-                            onClick={() => playChord(chord)}
+                            onClick={() => { pauseDetection(2000); playChord(chord); }}
                             className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
                           >
                             <Volume2 className="size-4" />
