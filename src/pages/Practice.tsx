@@ -49,7 +49,7 @@ function DetectionFeedback({ result }: { result: DetectionResult }) {
           >
             <span
               className={`
-                font-display text-4xl sm:text-5xl font-extrabold uppercase tracking-wider
+                font-display text-5xl sm:text-6xl font-extrabold uppercase tracking-wider
                 ${result === 'correct'
                   ? 'text-[hsl(142_71%_45%)]'
                   : 'text-[hsl(0_84%_60%)]'
