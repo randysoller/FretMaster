@@ -126,15 +126,18 @@ export default function Home() {
                   onClick={handleStart}
                   disabled={availableCount === 0}
                   className={`
-                    w-full flex items-center justify-center gap-3 rounded-lg py-5 font-display text-5xl font-bold transition-all duration-200
+                    group/btn relative w-full flex items-center justify-center gap-3 rounded-xl py-4 font-display text-lg font-bold tracking-wide uppercase overflow-hidden transition-all duration-200
                     ${availableCount > 0
-                      ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98]'
+                      ? 'bg-gradient-to-r from-[hsl(var(--color-brand))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))] glow-primary hover:shadow-[0_0_30px_hsl(var(--color-primary)/0.4),0_0_80px_hsl(var(--color-primary)/0.15)] active:scale-[0.97]'
                       : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] cursor-not-allowed'
                     }
                   `}
                 >
-                  <Play className="size-5" />
-                  Start Practice
+                  {availableCount > 0 && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 ease-in-out" />
+                  )}
+                  <Play className="size-5 transition-transform duration-200 group-hover/btn:scale-110" />
+                  <span className="relative">Start Practice</span>
                 </button>
               </div>
             </div>
