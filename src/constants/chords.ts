@@ -190,6 +190,7 @@ export const CHORDS: ChordData[] = [
     frets: [-1, -1, 0, 2, 2, 2],
     fingers: [0, 0, 0, 1, 1, 1],
     baseFret: 1,
+    barres: [2],
     rootNoteString: 2,
   },
   {
