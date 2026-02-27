@@ -36,11 +36,11 @@ function DetectionFeedback({ result }: { result: DetectionResult }) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.7 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none pb-[8px]"
         >
           <div
             className={`
-              px-10 py-5 rounded-2xl backdrop-blur-md border-2
+              px-10 py-[17px] rounded-2xl backdrop-blur-md border-2
               ${result === 'correct'
                 ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]'
                 : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'
