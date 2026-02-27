@@ -203,6 +203,7 @@ function MetronomeBar({
   onToggle,
   onBpmChange,
   onSoundChange,
+  onTap,
 }: {
   isPlaying: boolean;
   bpm: number;
@@ -356,6 +357,7 @@ function MetronomeSetup({
   onBeatsChange,
   onSoundChange,
   onToggle,
+  onTap,
 }: {
   bpm: number;
   beatsPerMeasure: number;
