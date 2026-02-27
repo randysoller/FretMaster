@@ -2,14 +2,60 @@ import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePracticeStore } from '@/stores/practiceStore';
 import { useCountdown } from '@/hooks/useCountdown';
+import { useChordDetection } from '@/hooks/useChordDetection';
+import type { DetectionResult } from '@/hooks/useChordDetection';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import CountdownRing from '@/components/features/CountdownRing';
-import { ArrowLeft, SkipForward, Eye, RotateCcw, Volume2 } from 'lucide-react';
+import { ArrowLeft, SkipForward, Eye, RotateCcw, Volume2, Mic, MicOff } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
 import { motion, AnimatePresence } from 'framer-motion';
+
+function DetectionFeedback({ result }: { result: DetectionResult }) {
+  return (
+    <AnimatePresence>
+      {result && (
+        <motion.div
+          key={result}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+        >
+          <div
+            className={`
+              px-10 py-5 rounded-2xl backdrop-blur-md border-2
+              ${result === 'correct'
+                ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]'
+                : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'
+              }
+            `}
+          >
+            <span
+              className={`
+                font-display text-5xl sm:text-6xl font-extrabold uppercase tracking-wider
+                ${result === 'correct'
+                  ? 'text-[hsl(142_71%_45%)]'
+                  : 'text-[hsl(0_84%_60%)]'
+                }
+              `}
+              style={{
+                textShadow: result === 'correct'
+                  ? '0 0 30px hsl(142 71% 45% / 0.5), 0 0 60px hsl(142 71% 45% / 0.2)'
+                  : '0 0 30px hsl(0 84% 60% / 0.5), 0 0 60px hsl(0 84% 60% / 0.2)',
+              }}
+            >
+              {result === 'correct' ? 'Correct' : 'Wrong'}
+            </span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function Practice() {
   const navigate = useNavigate();
@@ -44,6 +90,23 @@ export default function Practice() {
     onComplete: handleReveal,
   });
 
+  // Chord detection — auto-advance callback
+  const handleDetectionCorrect = useCallback(() => {
+    // Reveal the chord if not already
+    if (!usePracticeStore.getState().isRevealed) {
+      revealChord();
+    }
+    // Advance to next chord after the green flash
+    reset();
+    nextChord();
+  }, [revealChord, reset, nextChord]);
+
+  const { isListening, result, permissionDenied, toggleListening, stopListening } =
+    useChordDetection({
+      onCorrect: handleDetectionCorrect,
+      targetChord: chord,
+    });
+
   useEffect(() => {
     if (!isPracticing) {
       navigate('/');
@@ -56,6 +119,13 @@ export default function Practice() {
     }
   }, [isPracticing, isRevealed, currentIndex, start, timerDuration]);
 
+  // Stop mic when leaving practice
+  useEffect(() => {
+    return () => {
+      stopListening();
+    };
+  }, [stopListening]);
+
   const handleNext = () => {
     reset();
     nextChord();
@@ -67,6 +137,7 @@ export default function Practice() {
   };
 
   const handleBack = () => {
+    stopListening();
     stopPractice();
     navigate('/');
   };
@@ -81,7 +152,7 @@ export default function Practice() {
   return (
     <div className="stage-gradient min-h-[calc(100vh-3.5rem)] flex flex-col">
       {/* Top Bar */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4">
         <button
           onClick={handleBack}
           className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
@@ -90,7 +161,7 @@ export default function Practice() {
           Back
         </button>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <div className="hidden sm:flex items-center gap-2 text-xs font-body text-[hsl(var(--text-muted))]">
             <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">
               {categories.size === 0 || categories.size === 3 ? 'All Chords' : [...categories].map((c) => CATEGORY_LABELS[c]).join(', ')}
@@ -108,6 +179,25 @@ export default function Practice() {
               {chordTypes.size === 0 ? 'All Types' : [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')}
             </span>
           </div>
+
+          {/* Microphone Toggle */}
+          <button
+            onClick={toggleListening}
+            title={isListening ? 'Stop listening' : 'Start listening'}
+            className={`
+              relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200
+              ${isListening
+                ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]'
+                : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+              }
+            `}
+          >
+            {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
+            {isListening && (
+              <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(var(--semantic-success))] animate-pulse" />
+            )}
+          </button>
+
           <VolumeControl compact />
           <div className="text-sm font-body text-[hsl(var(--text-subtle))]">
             <span className="text-[hsl(var(--color-primary))] font-display font-bold">{totalPracticed + 1}</span>
@@ -116,8 +206,45 @@ export default function Practice() {
         </div>
       </div>
 
+      {/* Permission denied warning */}
+      {permissionDenied && (
+        <div className="mx-4 sm:mx-6 mb-2 flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5">
+          <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
+          <span className="text-xs sm:text-sm font-body text-[hsl(var(--semantic-error))]">
+            Microphone access was denied. Please allow microphone access in your browser settings to use chord detection.
+          </span>
+        </div>
+      )}
+
+      {/* Listening indicator bar */}
+      {isListening && (
+        <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-2 rounded-lg bg-[hsl(var(--semantic-success)/0.06)] border border-[hsl(var(--semantic-success)/0.15)] px-4 py-2">
+          <div className="flex items-center gap-1">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <motion.div
+                key={i}
+                className="w-0.5 rounded-full bg-[hsl(var(--semantic-success))]"
+                animate={{ height: [4, 12, 4] }}
+                transition={{
+                  duration: 0.8,
+                  repeat: Infinity,
+                  delay: i * 0.12,
+                  ease: 'easeInOut',
+                }}
+              />
+            ))}
+          </div>
+          <span className="text-xs font-body font-medium text-[hsl(var(--semantic-success))]">
+            Listening — play the chord on your guitar
+          </span>
+        </div>
+      )}
+
       {/* Main Practice Area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-12">
+      <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12">
+        {/* Detection result overlay */}
+        <DetectionFeedback result={result} />
+
         <AnimatePresence mode="wait">
           <motion.div
             key={`${chord.id}-${currentIndex}`}
