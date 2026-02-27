@@ -30,7 +30,7 @@ function getStoredBeats(): number {
     const v = localStorage.getItem(BEATS_KEY);
     if (v) {
       const n = Number(v);
-      if ([2, 3, 4, 6].includes(n)) return n;
+      if ([2, 3, 4, 6, 12].includes(n)) return n;
     }
   } catch {}
   return 4;
@@ -558,8 +558,10 @@ export function useMetronome(): MetronomeState {
 
     const lookahead = 0.1;
     while (nextNoteTimeRef.current < ctx.currentTime + lookahead) {
-      // In 6/8 time, accent beats 1 and 4 (indices 0 and 3)
-      const isAccent = beatRef.current === 0 || (beatsRef.current === 6 && beatRef.current === 3);
+      // Accent logic: beat 1 always; 6/8 adds beat 4; 12/8 adds beats 4, 7, 10
+      const isAccent = beatRef.current === 0
+        || (beatsRef.current === 6 && beatRef.current === 3)
+        || (beatsRef.current === 12 && (beatRef.current === 3 || beatRef.current === 6 || beatRef.current === 9));
       scheduleBeat(ctx, nextNoteTimeRef.current, isAccent, beatRef.current);
 
       const beatSnap = beatRef.current;

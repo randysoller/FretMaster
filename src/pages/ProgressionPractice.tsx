@@ -275,7 +275,7 @@ function MetronomeBar({
         <div className="flex items-center gap-1.5">
           {Array.from({ length: beatsPerMeasure }, (_, i) => {
             const isActive = i === currentBeat;
-            const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3);
+            const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3) || (beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
             return (
               <div
                 key={i}
@@ -285,7 +285,7 @@ function MetronomeBar({
                     ? isAccentBeat
                       ? 'size-3.5 bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.6)]'
                       : 'size-3 bg-[hsl(var(--color-primary))] shadow-[0_0_6px_hsl(var(--color-primary)/0.5)]'
-                    : 'size-2.5 bg-[hsl(var(--border-default))]'
+                    : 'size-2 bg-[hsl(var(--border-default))]'
                   }
                 `}
               />
@@ -326,6 +326,7 @@ function MetronomeSetup({
     { value: 3, label: '3/4' },
     { value: 4, label: '4/4' },
     { value: 6, label: '6/8' },
+    { value: 12, label: '12/8' },
   ];
 
   const presetBpms = [60, 80, 100, 120, 140, 160];
@@ -446,7 +447,7 @@ function MetronomeSetup({
           <div className="flex items-center gap-1.5">
             {Array.from({ length: beatsPerMeasure }, (_, i) => {
               const isActive = isPlaying && i === currentBeat;
-              const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3);
+              const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3) || (beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
               return (
                 <div
                   key={i}
@@ -458,7 +459,7 @@ function MetronomeSetup({
                         : 'size-3.5 bg-[hsl(var(--color-primary))] shadow-[0_0_8px_hsl(var(--color-primary)/0.5)]'
                       : isAccentBeat
                         ? 'size-3 bg-[hsl(var(--border-default))] border border-[hsl(var(--text-muted)/0.3)]'
-                        : 'size-2.5 bg-[hsl(var(--border-default))]'
+                        : 'size-2 bg-[hsl(var(--border-default))]'
                     }
                   `}
                 />
