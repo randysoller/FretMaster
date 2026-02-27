@@ -12,6 +12,7 @@ import VolumeControl from '@/components/features/VolumeControl';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMetronome } from '@/hooks/useMetronome';
 import {
   ArrowLeft,
   SkipForward,
@@ -30,6 +31,8 @@ import {
   Mic,
   MicOff,
   SlidersHorizontal,
+  Minus,
+  Gauge,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
@@ -131,6 +134,275 @@ function SensitivitySlider({
       <span className={`text-[10px] font-body font-medium ${labelColor} shrink-0`}>
         {label}
       </span>
+    </div>
+  );
+}
+
+// ─── Metronome Controls (Practice View - Compact) ──────────
+
+function MetronomeBar({
+  isPlaying,
+  bpm,
+  beatsPerMeasure,
+  currentBeat,
+  onToggle,
+  onBpmChange,
+}: {
+  isPlaying: boolean;
+  bpm: number;
+  beatsPerMeasure: number;
+  currentBeat: number;
+  onToggle: () => void;
+  onBpmChange: (v: number) => void;
+}) {
+  return (
+    <div
+      className={`
+        mx-4 sm:mx-6 mb-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-5 rounded-lg px-4 py-2 border transition-colors duration-200
+        ${isPlaying
+          ? 'bg-[hsl(var(--color-primary)/0.06)] border-[hsl(var(--color-primary)/0.2)]'
+          : 'bg-[hsl(var(--bg-elevated)/0.5)] border-[hsl(var(--border-subtle)/0.5)]'
+        }
+      `}
+    >
+      {/* Toggle */}
+      <button
+        onClick={onToggle}
+        className={`
+          flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-body font-medium transition-all duration-200
+          ${isPlaying
+            ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.25)]'
+            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+          }
+        `}
+      >
+        <Gauge className="size-3.5" />
+        {isPlaying ? 'Stop' : 'Metronome'}
+      </button>
+
+      {/* BPM control */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onBpmChange(bpm - 5)}
+          className="size-6 flex items-center justify-center rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+        >
+          <Minus className="size-3" />
+        </button>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="range"
+            min={30}
+            max={260}
+            step={1}
+            value={bpm}
+            onChange={(e) => onBpmChange(Number(e.target.value))}
+            className="volume-slider w-[80px] sm:w-[100px]"
+          />
+          <span className="text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-8 text-center">
+            {bpm}
+          </span>
+          <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">bpm</span>
+        </div>
+        <button
+          onClick={() => onBpmChange(bpm + 5)}
+          className="size-6 flex items-center justify-center rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+        >
+          <Plus className="size-3" />
+        </button>
+      </div>
+
+      {/* Beat indicators */}
+      {isPlaying && (
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: beatsPerMeasure }, (_, i) => {
+            const isActive = i === currentBeat;
+            const isAccent = i === 0;
+            return (
+              <div
+                key={i}
+                className={`
+                  rounded-full transition-all duration-100
+                  ${isActive
+                    ? isAccent
+                      ? 'size-3.5 bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.6)]'
+                      : 'size-3 bg-[hsl(var(--color-primary))] shadow-[0_0_6px_hsl(var(--color-primary)/0.5)]'
+                    : 'size-2.5 bg-[hsl(var(--border-default))]'
+                  }
+                `}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Metronome Setup Card ────────────────────────────────────
+
+function MetronomeSetup({
+  bpm,
+  beatsPerMeasure,
+  isPlaying,
+  currentBeat,
+  onBpmChange,
+  onBeatsChange,
+  onToggle,
+}: {
+  bpm: number;
+  beatsPerMeasure: number;
+  isPlaying: boolean;
+  currentBeat: number;
+  onBpmChange: (v: number) => void;
+  onBeatsChange: (v: number) => void;
+  onToggle: () => void;
+}) {
+  const timeSigOptions = [
+    { value: 2, label: '2/4' },
+    { value: 3, label: '3/4' },
+    { value: 4, label: '4/4' },
+    { value: 6, label: '6/8' },
+  ];
+
+  const presetBpms = [60, 80, 100, 120, 140, 160];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Gauge className="size-4 text-[hsl(var(--color-primary))]" />
+        <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+          Metronome
+        </h3>
+      </div>
+
+      {/* BPM control */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Tempo</span>
+          <span className="text-lg font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
+            {bpm} <span className="text-xs font-body font-normal text-[hsl(var(--text-muted))]">BPM</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onBpmChange(bpm - 1)}
+            className="size-8 flex items-center justify-center rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+          >
+            <Minus className="size-3.5" />
+          </button>
+          <input
+            type="range"
+            min={30}
+            max={260}
+            step={1}
+            value={bpm}
+            onChange={(e) => onBpmChange(Number(e.target.value))}
+            className="volume-slider flex-1"
+          />
+          <button
+            onClick={() => onBpmChange(bpm + 1)}
+            className="size-8 flex items-center justify-center rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+          >
+            <Plus className="size-3.5" />
+          </button>
+        </div>
+        {/* Quick-select BPM presets */}
+        <div className="flex flex-wrap gap-1.5">
+          {presetBpms.map((p) => (
+            <button
+              key={p}
+              onClick={() => onBpmChange(p)}
+              className={`
+                rounded-md px-2.5 py-1 text-xs font-display font-bold transition-all duration-150
+                ${bpm === p
+                  ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]'
+                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))] border border-transparent'
+                }
+              `}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Time signature */}
+      <div className="space-y-2">
+        <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Time Signature</span>
+        <div className="flex gap-2">
+          {timeSigOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => onBeatsChange(opt.value)}
+              className={`
+                rounded-lg px-4 py-2 text-sm font-display font-bold transition-all duration-200
+                ${beatsPerMeasure === opt.value
+                  ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
+                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                }
+              `}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Preview / tap-to-test */}
+      <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface)/0.5)] px-4 py-3">
+        <div className="flex items-center gap-3">
+          {/* Beat dots */}
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: beatsPerMeasure }, (_, i) => {
+              const isActive = isPlaying && i === currentBeat;
+              const isAccent = i === 0;
+              return (
+                <div
+                  key={i}
+                  className={`
+                    rounded-full transition-all duration-100
+                    ${isActive
+                      ? isAccent
+                        ? 'size-4 bg-[hsl(var(--color-emphasis))] shadow-[0_0_10px_hsl(var(--color-emphasis)/0.6)]'
+                        : 'size-3.5 bg-[hsl(var(--color-primary))] shadow-[0_0_8px_hsl(var(--color-primary)/0.5)]'
+                      : isAccent
+                        ? 'size-3 bg-[hsl(var(--border-default))] border border-[hsl(var(--text-muted)/0.3)]'
+                        : 'size-2.5 bg-[hsl(var(--border-default))]'
+                    }
+                  `}
+                />
+              );
+            })}
+          </div>
+          {isPlaying && (
+            <span className="text-xs font-body text-[hsl(var(--text-muted))]">
+              Playing...
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onToggle}
+          className={`
+            flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-display font-bold transition-all duration-200
+            ${isPlaying
+              ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
+              : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
+            }
+          `}
+        >
+          {isPlaying ? (
+            <>
+              <span className="size-3 rounded-sm bg-current" />
+              Stop
+            </>
+          ) : (
+            <>
+              <Play className="size-3.5" />
+              Preview
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
@@ -420,6 +692,7 @@ export default function ProgressionPractice() {
   } = store;
 
   const { playChord } = useChordAudio();
+  const metronome = useMetronome();
   const currentInfo = getCurrentChord();
 
   // Sensitivity state with localStorage persistence
@@ -467,16 +740,17 @@ export default function ProgressionPractice() {
     }
   }, [isPracticing, isRevealed, currentChordIndex, start, timerPerChord]);
 
-  // Stop mic when leaving practice
+  // Stop mic + metronome when leaving practice
   useEffect(() => {
     return () => {
       stopListening();
+      metronome.stop();
     };
-  }, [stopListening]);
+  }, [stopListening, metronome.stop]);
 
   const handleNext = () => { reset(); nextChord(); };
   const handlePrev = () => { reset(); prevChord(); };
-  const handleBack = () => { stopListening(); stopProgression(); };
+  const handleBack = () => { stopListening(); metronome.stop(); stopProgression(); };
   const handleRestart = () => { reset(); startProgression(); };
 
   const resolvedChords = getResolvedChords();
@@ -583,6 +857,16 @@ export default function ProgressionPractice() {
             <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
           </div>
         )}
+
+        {/* Metronome bar */}
+        <MetronomeBar
+          isPlaying={metronome.isPlaying}
+          bpm={metronome.bpm}
+          beatsPerMeasure={metronome.beatsPerMeasure}
+          currentBeat={metronome.currentBeat}
+          onToggle={metronome.toggle}
+          onBpmChange={metronome.setBpm}
+        />
 
         {/* Progression Timeline */}
         <div className="px-4 sm:px-6 py-2 flex justify-center">
@@ -816,6 +1100,19 @@ export default function ProgressionPractice() {
                   />
                 ))}
               </div>
+            </div>
+
+            {/* Metronome */}
+            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+              <MetronomeSetup
+                bpm={metronome.bpm}
+                beatsPerMeasure={metronome.beatsPerMeasure}
+                isPlaying={metronome.isPlaying}
+                currentBeat={metronome.currentBeat}
+                onBpmChange={metronome.setBpm}
+                onBeatsChange={metronome.setBeatsPerMeasure}
+                onToggle={metronome.toggle}
+              />
             </div>
 
             {/* Summary + Start */}
