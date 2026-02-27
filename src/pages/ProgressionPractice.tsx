@@ -139,6 +139,44 @@ function SensitivitySlider({
   );
 }
 
+// ─── Tap Tempo Hook ──────────────────────────────────────────
+
+function useTapTempo(onBpmChange: (bpm: number) => void) {
+  const tapsRef = useRef<number[]>([]);
+
+  const tap = useCallback(() => {
+    const now = performance.now();
+    const taps = tapsRef.current;
+
+    // Reset if last tap was more than 2 seconds ago
+    if (taps.length > 0 && now - taps[taps.length - 1] > 2000) {
+      tapsRef.current = [now];
+      return;
+    }
+
+    taps.push(now);
+
+    // Keep last 8 taps for a smooth rolling average
+    if (taps.length > 8) taps.shift();
+
+    // Need at least 2 taps to calculate BPM
+    if (taps.length < 2) return;
+
+    let totalInterval = 0;
+    for (let i = 1; i < taps.length; i++) {
+      totalInterval += taps[i] - taps[i - 1];
+    }
+    const avgInterval = totalInterval / (taps.length - 1);
+    const bpm = Math.round(60000 / avgInterval);
+
+    if (bpm >= 30 && bpm <= 260) {
+      onBpmChange(bpm);
+    }
+  }, [onBpmChange]);
+
+  return tap;
+}
+
 // ─── Metronome Controls (Practice View - Compact) ──────────
 
 /** Get Italian tempo marking for a given BPM */
@@ -174,6 +212,7 @@ function MetronomeBar({
   onToggle: () => void;
   onBpmChange: (v: number) => void;
   onSoundChange: (s: MetronomeSoundType) => void;
+  onTap: () => void;
 }) {
   const tempoMarking = getTempoMarking(bpm);
   const [soundOpen, setSoundOpen] = useState(false);
@@ -233,6 +272,14 @@ function MetronomeBar({
           </div>
         )}
       </div>
+
+      {/* Tap tempo */}
+      <button
+        onClick={onTap}
+        className="rounded-md px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.1)] border border-[hsl(var(--border-subtle))] transition-all duration-150 active:scale-90"
+      >
+        TAP
+      </button>
 
       {/* BPM control */}
       <div className="flex items-center gap-2">
@@ -319,6 +366,7 @@ function MetronomeSetup({
   onBeatsChange: (v: number) => void;
   onSoundChange: (s: MetronomeSoundType) => void;
   onToggle: () => void;
+  onTap: () => void;
 }) {
   const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat', 'rimclick'];
   const timeSigOptions = [
@@ -376,8 +424,8 @@ function MetronomeSetup({
             <Plus className="size-3.5" />
           </button>
         </div>
-        {/* Quick-select BPM presets */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Quick-select BPM presets + Tap tempo */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {presetBpms.map((p) => (
             <button
               key={p}
@@ -393,6 +441,12 @@ function MetronomeSetup({
               {p}
             </button>
           ))}
+          <button
+            onClick={onTap}
+            className="rounded-md px-3 py-1 text-xs font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all duration-150 active:scale-90"
+          >
+            Tap Tempo
+          </button>
         </div>
       </div>
 
@@ -787,6 +841,7 @@ export default function ProgressionPractice() {
 
   const { playChord } = useChordAudio();
   const metronome = useMetronome();
+  const tapTempo = useTapTempo(metronome.setBpm);
   const currentInfo = getCurrentChord();
 
   // Sensitivity state with localStorage persistence
@@ -972,6 +1027,7 @@ export default function ProgressionPractice() {
           onToggle={metronome.toggle}
           onBpmChange={metronome.setBpm}
           onSoundChange={metronome.setSoundType}
+          onTap={tapTempo}
         />
 
         {/* Progression Timeline */}
@@ -1220,6 +1276,7 @@ export default function ProgressionPractice() {
                 onBeatsChange={metronome.setBeatsPerMeasure}
                 onSoundChange={metronome.setSoundType}
                 onToggle={metronome.toggle}
+                onTap={tapTempo}
               />
             </div>
 
