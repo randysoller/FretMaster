@@ -11,7 +11,7 @@ export const CHORDS: ChordData[] = [
     category: 'open',
     type: 'major',
     frets: [-1, 3, 2, 0, 1, 0],
-    fingers: [0, 2, 3, 0, 1, 0],
+    fingers: [0, 3, 2, 0, 1, 0],
     baseFret: 1,
     rootNoteString: 1,
   },
