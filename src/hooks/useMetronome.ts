@@ -77,62 +77,129 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
   osc.stop(time + 0.05);
 }
 
-/** Deep wood block — pitched noise burst with resonant bandpass */
+// ─── Wood Block Sample Buffer ────────────────────────────
+
+/**
+ * Pre-render a realistic wood block hit as an AudioBuffer.
+ * Models the physical resonance of a struck wood block:
+ * - Sharp mallet transient (broadband noise, <2ms)
+ * - Multiple slightly inharmonic resonant modes (characteristic of wood)
+ * - Fast exponential decay with higher partials decaying faster
+ */
+function generateWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  // Use OfflineAudioContext if available, otherwise we build raw samples
+  const duration = 0.18;
+  const length = Math.floor(sampleRate * duration);
+  // We'll build the buffer manually for maximum control
+  const ctx = new OfflineAudioContext(1, length, sampleRate);
+  const buffer = ctx.createBuffer(1, length, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  // Resonant frequencies — wood blocks have characteristic tuned modes
+  const f1 = isAccent ? 830 : 690;    // fundamental
+  const f2 = f1 * 2.13;               // second mode (slightly inharmonic, key to "wood" character)
+  const f3 = f1 * 3.47;               // third mode
+  const f4 = f1 * 5.12;               // fourth mode (weak, adds brightness)
+  const f5 = f1 * 6.83;               // fifth mode (very weak shimmer)
+
+  // Amplitudes
+  const a1 = 1.0;
+  const a2 = 0.52;
+  const a3 = 0.22;
+  const a4 = 0.07;
+  const a5 = 0.025;
+
+  // Decay rates (1/seconds) — higher modes decay faster, like real wood
+  const d1 = 38;
+  const d2 = 62;
+  const d3 = 95;
+  const d4 = 140;
+  const d5 = 200;
+
+  // Use a seeded-ish noise for the transient so it's consistent
+  let noiseState = 12345;
+  function pseudoRandom() {
+    noiseState = (noiseState * 16807 + 0) % 2147483647;
+    return (noiseState / 2147483647) * 2 - 1;
+  }
+
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    const twoPi = 2 * Math.PI;
+
+    // Resonant body — sum of decaying sinusoidal modes
+    let sample =
+      a1 * Math.sin(twoPi * f1 * t) * Math.exp(-d1 * t) +
+      a2 * Math.sin(twoPi * f2 * t) * Math.exp(-d2 * t) +
+      a3 * Math.sin(twoPi * f3 * t) * Math.exp(-d3 * t) +
+      a4 * Math.sin(twoPi * f4 * t) * Math.exp(-d4 * t) +
+      a5 * Math.sin(twoPi * f5 * t) * Math.exp(-d5 * t);
+
+    // Mallet impact transient — broadband noise burst (<2ms)
+    // This gives the initial "click/tok" before the wood resonance rings
+    if (t < 0.0025) {
+      const env = 1.0 - t / 0.0025; // linear fade
+      sample += pseudoRandom() * 0.65 * env * env; // squared envelope for sharper cutoff
+    }
+
+    // Secondary shell noise (very short, band-limited feel, 2–6ms)
+    // Simulates the brief broadband vibration of the wood surface
+    if (t >= 0.001 && t < 0.007) {
+      const env = Math.exp(-500 * (t - 0.001));
+      sample += pseudoRandom() * 0.15 * env;
+    }
+
+    // Overall amplitude
+    const vol = isAccent ? 0.48 : 0.30;
+    data[i] = sample * vol;
+  }
+
+  // Normalize to prevent clipping
+  let peak = 0;
+  for (let i = 0; i < length; i++) {
+    const abs = Math.abs(data[i]);
+    if (abs > peak) peak = abs;
+  }
+  if (peak > 0.95) {
+    const scale = 0.92 / peak;
+    for (let i = 0; i < length; i++) data[i] *= scale;
+  }
+
+  return buffer;
+}
+
+let woodBlockBufferAccent: AudioBuffer | null = null;
+let woodBlockBufferNormal: AudioBuffer | null = null;
+let woodBlockSampleRate = 0;
+
+function getWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  // Regenerate if sample rate changed (e.g., different AudioContext)
+  if (woodBlockSampleRate !== sampleRate) {
+    woodBlockBufferAccent = null;
+    woodBlockBufferNormal = null;
+    woodBlockSampleRate = sampleRate;
+  }
+  if (isAccent) {
+    if (!woodBlockBufferAccent) woodBlockBufferAccent = generateWoodBlockBuffer(sampleRate, true);
+    return woodBlockBufferAccent;
+  } else {
+    if (!woodBlockBufferNormal) woodBlockBufferNormal = generateWoodBlockBuffer(sampleRate, false);
+    return woodBlockBufferNormal;
+  }
+}
+
+/** Play a pre-rendered wood block sample */
 function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
-  // Noise buffer (~50ms)
-  const len = Math.floor(ctx.sampleRate * 0.06);
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  const buf = getWoodBlockBuffer(ctx.sampleRate, isAccent);
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
 
-  const noise = ctx.createBufferSource();
-  noise.buffer = buf;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.75, time);
+  source.connect(gain);
+  gain.connect(ctx.destination);
 
-  // Resonant bandpass for hollow wood character — deep tuning
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'bandpass';
-  bp.frequency.value = isAccent ? 380 : 300;
-  bp.Q.value = 18;
-
-  const noiseGain = ctx.createGain();
-  const vol = isAccent ? 0.55 : 0.32;
-  noiseGain.gain.setValueAtTime(vol, time);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.045);
-
-  noise.connect(bp);
-  bp.connect(noiseGain);
-  noiseGain.connect(ctx.destination);
-
-  // Pitched "knock" component — low sine for body
-  const osc = ctx.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.value = isAccent ? 420 : 340;
-
-  const oscGain = ctx.createGain();
-  oscGain.gain.setValueAtTime(vol * 0.45, time);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
-
-  osc.connect(oscGain);
-  oscGain.connect(ctx.destination);
-
-  // Second harmonic for realism
-  const osc2 = ctx.createOscillator();
-  osc2.type = 'sine';
-  osc2.frequency.value = isAccent ? 840 : 680;
-
-  const osc2Gain = ctx.createGain();
-  osc2Gain.gain.setValueAtTime(vol * 0.15, time);
-  osc2Gain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
-
-  osc2.connect(osc2Gain);
-  osc2Gain.connect(ctx.destination);
-
-  noise.start(time);
-  noise.stop(time + 0.06);
-  osc.start(time);
-  osc.stop(time + 0.04);
-  osc2.start(time);
-  osc2.stop(time + 0.03);
+  source.start(time);
 }
 
 /** Deep hi-hat — filtered noise with lower cutoff than typical hi-hat */
