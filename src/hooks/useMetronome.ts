@@ -396,9 +396,77 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
+// ─── Voice Count Real Sample Loader ──────────────────────
+
 /**
- * Voice count — uses SpeechSynthesis API to speak beat numbers aloud.
- * Warm reference tick with two tonal layers for body, plus speech.
+ * Load real spoken digit samples from the Free Spoken Digit Dataset (FSDD).
+ * CC-BY-SA 4.0 licensed, hosted on GitHub. Uses "jackson" speaker (clear male voice).
+ * Files are 8kHz WAV — Web Audio API automatically resamples on decode.
+ * Loads digits 1–9 as real samples; 10–12 fall back to SpeechSynthesis.
+ */
+
+const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
+
+// Best sample indices per digit for the "jackson" speaker (selected for clarity)
+const VOICE_SAMPLE_MAP: Record<number, string> = {
+  1: `${FSDD_BASE}/1_jackson_0.wav`,
+  2: `${FSDD_BASE}/2_jackson_0.wav`,
+  3: `${FSDD_BASE}/3_jackson_0.wav`,
+  4: `${FSDD_BASE}/4_jackson_0.wav`,
+  5: `${FSDD_BASE}/5_jackson_0.wav`,
+  6: `${FSDD_BASE}/6_jackson_0.wav`,
+  7: `${FSDD_BASE}/7_jackson_0.wav`,
+  8: `${FSDD_BASE}/8_jackson_0.wav`,
+  9: `${FSDD_BASE}/9_jackson_0.wav`,
+};
+
+const voiceSamples: Map<number, AudioBuffer> = new Map();
+let voiceLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
+let voiceLoadPromise: Promise<void> | null = null;
+
+function loadVoiceSamples(ctx: AudioContext): Promise<void> {
+  if (voiceLoadState === 'loaded') return Promise.resolve();
+  if (voiceLoadPromise) return voiceLoadPromise;
+
+  voiceLoadState = 'loading';
+  const entries = Object.entries(VOICE_SAMPLE_MAP).map(([digit, url]) => ({
+    digit: Number(digit),
+    url,
+  }));
+
+  voiceLoadPromise = Promise.all(
+    entries.map(({ digit, url }) =>
+      fetchAudioBuffer(url, ctx)
+        .then((buf) => ({ digit, buf }))
+        .catch((err) => {
+          console.warn(`[Metronome] Failed to load voice sample for digit ${digit}:`, err);
+          return null;
+        })
+    )
+  )
+    .then((results) => {
+      let loaded = 0;
+      for (const r of results) {
+        if (r) {
+          voiceSamples.set(r.digit, r.buf);
+          loaded++;
+        }
+      }
+      voiceLoadState = loaded > 0 ? 'loaded' : 'failed';
+      console.log(`[Metronome] Voice samples loaded: ${loaded}/9`);
+    })
+    .catch(() => {
+      voiceLoadState = 'failed';
+      voiceLoadPromise = null;
+    });
+
+  return voiceLoadPromise;
+}
+
+/**
+ * Voice count — plays real spoken digit samples from FSDD for beats 1–9.
+ * Falls back to SpeechSynthesis for beats 10–12 and if samples fail to load.
+ * Includes a subtle reference tick for rhythmic precision.
  */
 function scheduleVoice(
   ctx: AudioContext,
@@ -407,52 +475,55 @@ function scheduleVoice(
   beatNumber: number,
   voiceRef: React.MutableRefObject<SpeechSynthesisVoice | null>,
 ) {
-  const delay = Math.max(0, (time - ctx.currentTime) * 1000);
+  const num = beatNumber + 1; // 1-indexed beat number
 
-  // Warm reference tick — low sine + higher triangle for audible anchor
+  // Subtle reference tick for rhythmic anchor
   const osc1 = ctx.createOscillator();
   const g1 = ctx.createGain();
   osc1.connect(g1);
   g1.connect(ctx.destination);
   osc1.frequency.value = isAccent ? 440 : 380;
   osc1.type = 'sine';
-  g1.gain.setValueAtTime(isAccent ? 0.1 : 0.05, time);
-  g1.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  g1.gain.setValueAtTime(isAccent ? 0.08 : 0.04, time);
+  g1.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
   osc1.start(time);
-  osc1.stop(time + 0.05);
+  osc1.stop(time + 0.045);
 
-  const osc2 = ctx.createOscillator();
-  const g2 = ctx.createGain();
-  osc2.connect(g2);
-  g2.connect(ctx.destination);
-  osc2.frequency.value = isAccent ? 880 : 760;
-  osc2.type = 'triangle';
-  g2.gain.setValueAtTime(isAccent ? 0.04 : 0.02, time);
-  g2.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
-  osc2.start(time);
-  osc2.stop(time + 0.035);
+  // Try real sample for digits 1–9
+  const sample = voiceSamples.get(num);
+  if (sample) {
+    const source = ctx.createBufferSource();
+    source.buffer = sample;
+    // Pitch up slightly to sound snappier and more rhythmic
+    source.playbackRate.value = 1.15;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(time);
+    return;
+  }
 
-  // Schedule speech
+  // Fallback to SpeechSynthesis for 10–12 or if samples not loaded
+  if (voiceLoadState !== 'loading') loadVoiceSamples(ctx);
+
+  const delay = Math.max(0, (time - ctx.currentTime) * 1000);
   if (typeof speechSynthesis !== 'undefined') {
     setTimeout(() => {
       speechSynthesis.cancel();
-
-      const num = beatNumber + 1;
       const utterance = new SpeechSynthesisUtterance(String(num));
       utterance.rate = 1.5;
-      utterance.pitch = 0.65; // deeper calm voice
+      utterance.pitch = 0.65;
       utterance.volume = isAccent ? 1.0 : 0.7;
-
       if (voiceRef.current) {
         utterance.voice = voiceRef.current;
       }
-
       speechSynthesis.speak(utterance);
     }, delay);
   }
 }
 
-// ─── Voice Selection Helper ──────────────────────────────
+// ─── Voice Selection Helper (fallback for SpeechSynthesis) ───
 
 function selectMaleVoice(): SpeechSynthesisVoice | null {
   if (typeof speechSynthesis === 'undefined') return null;
@@ -460,7 +531,6 @@ function selectMaleVoice(): SpeechSynthesisVoice | null {
   const voices = speechSynthesis.getVoices();
   if (!voices.length) return null;
 
-  // Preferred voice names (deeper / male)
   const preferred = [
     'google us english', 'daniel', 'james', 'david', 'alex',
     'tom', 'male', 'en-us', 'en-gb',
@@ -473,7 +543,6 @@ function selectMaleVoice(): SpeechSynthesisVoice | null {
     if (match) return match;
   }
 
-  // Fallback: any English voice
   return voices.find((v) => v.lang.startsWith('en')) || null;
 }
 
@@ -585,6 +654,7 @@ export function useMetronome(): MetronomeState {
     loadHiHatSamples(ctx);
     loadWoodBlockSamples(ctx);
     loadRimClickSamples(ctx);
+    loadVoiceSamples(ctx);
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;
