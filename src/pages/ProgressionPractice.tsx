@@ -12,7 +12,7 @@ import VolumeControl from '@/components/features/VolumeControl';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMetronome } from '@/hooks/useMetronome';
+import { useMetronome, SOUND_LABELS, type MetronomeSoundType } from '@/hooks/useMetronome';
 import {
   ArrowLeft,
   SkipForward,
@@ -33,6 +33,7 @@ import {
   SlidersHorizontal,
   Minus,
   Gauge,
+  ChevronUp,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
@@ -160,17 +161,23 @@ function MetronomeBar({
   bpm,
   beatsPerMeasure,
   currentBeat,
+  soundType,
   onToggle,
   onBpmChange,
+  onSoundChange,
 }: {
   isPlaying: boolean;
   bpm: number;
   beatsPerMeasure: number;
   currentBeat: number;
+  soundType: MetronomeSoundType;
   onToggle: () => void;
   onBpmChange: (v: number) => void;
+  onSoundChange: (s: MetronomeSoundType) => void;
 }) {
   const tempoMarking = getTempoMarking(bpm);
+  const [soundOpen, setSoundOpen] = useState(false);
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat'];
 
   return (
     <div
@@ -196,6 +203,36 @@ function MetronomeBar({
         <Gauge className="size-3.5" />
         {isPlaying ? 'Stop' : 'Metronome'}
       </button>
+
+      {/* Sound type compact selector */}
+      <div className="relative">
+        <button
+          onClick={() => setSoundOpen(!soundOpen)}
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-body font-medium bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors border border-[hsl(var(--border-subtle))]"
+        >
+          <span>{SOUND_LABELS[soundType]}</span>
+          <ChevronUp className={`size-3 transition-transform ${soundOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {soundOpen && (
+          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-30 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden min-w-[120px]">
+            {soundTypes.map((s) => (
+              <button
+                key={s}
+                onClick={() => { onSoundChange(s); setSoundOpen(false); }}
+                className={`
+                  w-full text-left px-3 py-2 text-xs font-body transition-colors
+                  ${s === soundType
+                    ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
+                    : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                  }
+                `}
+              >
+                {SOUND_LABELS[s]}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* BPM control */}
       <div className="flex items-center gap-2">
@@ -267,18 +304,23 @@ function MetronomeSetup({
   beatsPerMeasure,
   isPlaying,
   currentBeat,
+  soundType,
   onBpmChange,
   onBeatsChange,
+  onSoundChange,
   onToggle,
 }: {
   bpm: number;
   beatsPerMeasure: number;
   isPlaying: boolean;
   currentBeat: number;
+  soundType: MetronomeSoundType;
   onBpmChange: (v: number) => void;
   onBeatsChange: (v: number) => void;
+  onSoundChange: (s: MetronomeSoundType) => void;
   onToggle: () => void;
 }) {
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat'];
   const timeSigOptions = [
     { value: 2, label: '2/4' },
     { value: 3, label: '3/4' },
@@ -348,6 +390,28 @@ function MetronomeSetup({
               `}
             >
               {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Sound type */}
+      <div className="space-y-2">
+        <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Sound</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {soundTypes.map((s) => (
+            <button
+              key={s}
+              onClick={() => onSoundChange(s)}
+              className={`
+                rounded-lg px-3 py-2.5 text-sm font-display font-bold transition-all duration-200
+                ${soundType === s
+                  ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
+                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                }
+              `}
+            >
+              {SOUND_LABELS[s]}
             </button>
           ))}
         </div>
@@ -891,8 +955,10 @@ export default function ProgressionPractice() {
           bpm={metronome.bpm}
           beatsPerMeasure={metronome.beatsPerMeasure}
           currentBeat={metronome.currentBeat}
+          soundType={metronome.soundType}
           onToggle={metronome.toggle}
           onBpmChange={metronome.setBpm}
+          onSoundChange={metronome.setSoundType}
         />
 
         {/* Progression Timeline */}
@@ -1136,8 +1202,10 @@ export default function ProgressionPractice() {
                 beatsPerMeasure={metronome.beatsPerMeasure}
                 isPlaying={metronome.isPlaying}
                 currentBeat={metronome.currentBeat}
+                soundType={metronome.soundType}
                 onBpmChange={metronome.setBpm}
                 onBeatsChange={metronome.setBeatsPerMeasure}
+                onSoundChange={metronome.setSoundType}
                 onToggle={metronome.toggle}
               />
             </div>
