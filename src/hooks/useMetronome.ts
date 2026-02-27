@@ -82,109 +82,94 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
 /**
  * Pre-render a realistic wood block hit as an AudioBuffer.
  *
- * Real wood blocks produce almost NO tonal ringing. The sound is:
- * - A sharp "tok/clack" dominated by broadband noise (the stick hitting wood)
- * - Very brief bandpass-filtered noise body (~1.5–4 kHz) that decays in <30ms
- * - Virtually zero sustained pitch — unlike bells which ring with sinusoids
- * - Total sound duration ~40–60ms
- *
- * This uses noise-based synthesis with aggressive bandpass filtering
- * and ultra-fast envelopes — NOT sinusoidal modes (which produce bell sounds).
+ * Modeled after orchestral wood block recordings:
+ * - Hard transient "tok" from stick impact (sub-ms broadband impulse)
+ * - 3 resonant noise bands at wood-body frequencies, each with independent fast decay
+ * - Subtle low-mid "thump" from the hollow cavity
+ * - Total sound ≈50ms, no perceptible pitch or ringing
  */
 function generateWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  const duration = 0.08; // very short — real wood blocks are ~40-60ms
+  const duration = 0.065;
   const length = Math.floor(sampleRate * duration);
   const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
   const data = buffer.getChannelData(0);
 
-  // Seeded PRNG for consistent noise
   let noiseState = 48271;
   function rand() {
     noiseState = (noiseState * 16807) % 2147483647;
     return (noiseState / 2147483647) * 2 - 1;
   }
 
-  // ─── Parameters tuned to real wood block recordings ───
-  const centerFreq = isAccent ? 2400 : 2000;  // bandpass center (wood body resonance)
-  const bandwidth = 1800;                      // wide — wood is noisy, not tonal
-  const attackMs = 0.3;                        // stick contact (<1ms)
-  const bodyDecayRate = isAccent ? 120 : 150;  // very fast exponential decay
-  const clickDecayRate = 600;                  // transient click dies almost instantly
+  // ─── Biquad bandpass helper (stateful) ───
+  function makeBP(freq: number, q: number) {
+    const w = 2 * Math.PI * freq / sampleRate;
+    const a = Math.sin(w) / (2 * q);
+    const cosW = Math.cos(w);
+    const a0 = 1 + a;
+    return {
+      b0: a / a0, b2: -a / a0,
+      a1: -2 * cosW / a0, a2: (1 - a) / a0,
+      x1: 0, x2: 0, y1: 0, y2: 0,
+      process(x: number): number {
+        const y = this.b0 * x + 0 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+        this.x2 = this.x1; this.x1 = x;
+        this.y2 = this.y1; this.y1 = y;
+        return y;
+      },
+    };
+  }
 
-  // Two-pole bandpass filter state (resonant noise shaping)
-  const Q = centerFreq / bandwidth;
-  const omega = 2 * Math.PI * centerFreq / sampleRate;
-  const alpha = Math.sin(omega) / (2 * Q);
-  const b0 = alpha;
-  const b1 = 0;
-  const b2 = -alpha;
-  const a0 = 1 + alpha;
-  const a1 = -2 * Math.cos(omega);
-  const a2 = 1 - alpha;
-  // Normalize
-  const nb0 = b0 / a0, nb1 = b1 / a0, nb2 = b2 / a0;
-  const na1 = a1 / a0, na2 = a2 / a0;
+  // Three resonant body bands — spread across wood-block spectrum
+  const bodyLo = makeBP(isAccent ? 1100 : 900, 1.8);   // hollow cavity
+  const bodyMid = makeBP(isAccent ? 2200 : 1900, 2.2);  // primary "tok"
+  const bodyHi = makeBP(isAccent ? 3800 : 3400, 1.5);   // stick brightness
 
-  // Second bandpass at higher freq for the "click" layer
-  const clickCenter = isAccent ? 4500 : 3800;
-  const clickQ = 1.2;
-  const cOmega = 2 * Math.PI * clickCenter / sampleRate;
-  const cAlpha = Math.sin(cOmega) / (2 * clickQ);
-  const cb0 = cAlpha / (1 + cAlpha);
-  const cb2 = -cAlpha / (1 + cAlpha);
-  const ca1 = -2 * Math.cos(cOmega) / (1 + cAlpha);
-  const ca2 = (1 - cAlpha) / (1 + cAlpha);
-
-  // Filter states
-  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;     // body bandpass
-  let cx1 = 0, cx2 = 0, cy1 = 0, cy2 = 0;  // click bandpass
-
-  const attackSamples = attackMs * 0.001 * sampleRate;
+  // Stick click — very high frequency, ultra-short
+  const clickBP = makeBP(isAccent ? 5500 : 4800, 1.0);
 
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    const noise = rand();
+    const n = rand();
 
-    // ── Body layer: bandpass-filtered noise with fast decay ──
-    // Attack envelope: ramps up in <0.3ms then decays exponentially
-    let bodyEnv: number;
-    if (i < attackSamples) {
-      bodyEnv = i / attackSamples; // linear ramp up
-    } else {
-      bodyEnv = Math.exp(-bodyDecayRate * (t - attackMs * 0.001));
-    }
+    // ── Envelope: 0.15ms attack, then multi-rate decay ──
+    const attackEnd = 0.00015;
+    const att = t < attackEnd ? t / attackEnd : 1.0;
 
-    // Apply bandpass filter to noise
-    const bodyIn = noise * bodyEnv;
-    const bodyOut = nb0 * bodyIn + nb1 * x1 + nb2 * x2 - na1 * y1 - na2 * y2;
-    x2 = x1; x1 = bodyIn;
-    y2 = y1; y1 = bodyOut;
+    // Body layers — each with progressively faster decay
+    const loEnv = att * Math.exp(-90 * Math.max(0, t - attackEnd));
+    const midEnv = att * Math.exp(-140 * Math.max(0, t - attackEnd));
+    const hiEnv = att * Math.exp(-200 * Math.max(0, t - attackEnd));
 
-    // ── Click layer: higher-freq transient for the stick "tick" ──
-    const clickEnv = t < 0.002 ? Math.exp(-clickDecayRate * t) : 0;
-    const clickIn = noise * clickEnv * 1.5;
-    const clickOut = cb0 * clickIn + 0 * cx1 + cb2 * cx2 - ca1 * cy1 - ca2 * cy2;
-    cx2 = cx1; cx1 = clickIn;
-    cy2 = cy1; cy1 = clickOut;
+    const lo = bodyLo.process(n * loEnv) * 0.5;
+    const mid = bodyMid.process(n * midEnv) * 1.0;
+    const hi = bodyHi.process(n * hiEnv) * 0.6;
 
-    // ── Raw transient impulse (first ~0.5ms) ──
-    // Adds the percussive "snap" of stick-on-wood contact
-    const impulseEnv = t < 0.0005 ? (1.0 - t / 0.0005) : 0;
-    const impulse = noise * impulseEnv * 0.8;
+    // ── Stick transient — first 1.5ms only ──
+    const clickEnv = t < 0.0015 ? Math.exp(-800 * t) : 0;
+    const click = clickBP.process(n * clickEnv) * 1.2;
 
-    // Mix layers
-    const vol = isAccent ? 0.65 : 0.42;
-    data[i] = (bodyOut * 0.7 + clickOut * 0.5 + impulse) * vol;
+    // ── Sub-ms impulse snap ──
+    const snapEnv = t < 0.0003 ? (1.0 - t / 0.0003) : 0;
+    const snap = n * snapEnv * 0.6;
+
+    // ── Cavity thump — very brief low-mid content ──
+    const thumpFreq = isAccent ? 600 : 480;
+    const thumpEnv = t < 0.008 ? Math.exp(-250 * t) : 0;
+    const thump = Math.sin(2 * Math.PI * thumpFreq * t) * thumpEnv * 0.15;
+
+    const vol = isAccent ? 0.72 : 0.48;
+    data[i] = (lo + mid + hi + click + snap + thump) * vol;
   }
 
-  // Normalize to prevent clipping
-  let peak = 0;
+  // Soft-clip + normalize
   for (let i = 0; i < length; i++) {
-    const abs = Math.abs(data[i]);
-    if (abs > peak) peak = abs;
+    data[i] = Math.tanh(data[i] * 1.4);
   }
-  if (peak > 0.92) {
-    const scale = 0.88 / peak;
+  let peak = 0;
+  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
+  if (peak > 0.01) {
+    const target = isAccent ? 0.85 : 0.65;
+    const scale = target / peak;
     for (let i = 0; i < length; i++) data[i] *= scale;
   }
 
@@ -225,55 +210,147 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
-/** Deep hi-hat — filtered noise with lower cutoff than typical hi-hat */
+// ─── Hi-Hat Sample Buffer ────────────────────────────────
+
+/**
+ * Pre-render a realistic closed hi-hat as an AudioBuffer.
+ *
+ * Real hi-hats are two bronze discs producing inharmonic metallic overtones.
+ * Key characteristics:
+ * - Metallic "chick" from inharmonic frequency ratios (not integer harmonics)
+ * - Broadband noise component for the "wash"
+ * - Sharp attack, controlled exponential decay (~60-120ms)
+ * - Accent hits are slightly more open (longer decay, brighter)
+ */
+function generateHiHatBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  const duration = isAccent ? 0.14 : 0.09;
+  const length = Math.floor(sampleRate * duration);
+  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  let noiseState = 31337;
+  function rand() {
+    noiseState = (noiseState * 16807) % 2147483647;
+    return (noiseState / 2147483647) * 2 - 1;
+  }
+
+  // Inharmonic metallic partials — ratios from real cymbal analysis
+  // These are NOT integer multiples, which gives cymbals their characteristic shimmer
+  const partials = [
+    { freq: isAccent ? 3150 : 2900, amp: 0.35, decay: isAccent ? 55 : 70 },
+    { freq: isAccent ? 4230 : 3950, amp: 0.30, decay: isAccent ? 65 : 85 },
+    { freq: isAccent ? 5710 : 5400, amp: 0.22, decay: isAccent ? 80 : 100 },
+    { freq: isAccent ? 7340 : 6800, amp: 0.15, decay: isAccent ? 95 : 120 },
+    { freq: isAccent ? 9870 : 9200, amp: 0.10, decay: isAccent ? 110 : 140 },
+    { freq: isAccent ? 12600 : 11800, amp: 0.06, decay: isAccent ? 130 : 160 },
+  ];
+
+  // Biquad highpass for noise component
+  function makeHP(freq: number, q: number) {
+    const w = 2 * Math.PI * freq / sampleRate;
+    const cosW = Math.cos(w);
+    const a = Math.sin(w) / (2 * q);
+    const a0 = 1 + a;
+    return {
+      b0: ((1 + cosW) / 2) / a0,
+      b1: (-(1 + cosW)) / a0,
+      b2: ((1 + cosW) / 2) / a0,
+      a1: (-2 * cosW) / a0,
+      a2: (1 - a) / a0,
+      x1: 0, x2: 0, y1: 0, y2: 0,
+      process(x: number): number {
+        const y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+        this.x2 = this.x1; this.x1 = x;
+        this.y2 = this.y1; this.y1 = y;
+        return y;
+      },
+    };
+  }
+
+  const noiseHP = makeHP(isAccent ? 5500 : 6500, 0.7);
+
+  // Phase accumulators for partials
+  const phases = partials.map(() => 0);
+
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    const n = rand();
+
+    // ── Metallic partials with inharmonic frequencies ──
+    let metallic = 0;
+    for (let p = 0; p < partials.length; p++) {
+      const { freq, amp, decay } = partials[p];
+      phases[p] += 2 * Math.PI * freq / sampleRate;
+      if (phases[p] > 2 * Math.PI) phases[p] -= 2 * Math.PI;
+
+      // Use mix of sine and slightly clipped sine for metallic edge
+      const raw = Math.sin(phases[p]);
+      const clipped = Math.tanh(raw * 1.8);
+      const mix = raw * 0.6 + clipped * 0.4;
+
+      const env = Math.exp(-decay * t);
+      metallic += mix * amp * env;
+    }
+
+    // ── Filtered noise "wash" component ──
+    const noiseEnv = Math.exp(-(isAccent ? 40 : 60) * t);
+    const filteredNoise = noiseHP.process(n * noiseEnv);
+
+    // ── Stick transient — very brief broadband click ──
+    const stickEnv = t < 0.001 ? Math.exp(-1200 * t) : 0;
+    const stick = n * stickEnv * 0.5;
+
+    // Mix: metallic dominates for realistic cymbal character
+    const vol = isAccent ? 0.55 : 0.35;
+    data[i] = (metallic * 0.55 + filteredNoise * 0.35 + stick) * vol;
+  }
+
+  // Soft-clip + normalize
+  for (let i = 0; i < length; i++) {
+    data[i] = Math.tanh(data[i] * 1.6);
+  }
+  let peak = 0;
+  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
+  if (peak > 0.01) {
+    const target = isAccent ? 0.7 : 0.5;
+    const scale = target / peak;
+    for (let i = 0; i < length; i++) data[i] *= scale;
+  }
+
+  return buffer;
+}
+
+let hiHatBufferAccent: AudioBuffer | null = null;
+let hiHatBufferNormal: AudioBuffer | null = null;
+let hiHatSampleRate = 0;
+
+function getHiHatBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  if (hiHatSampleRate !== sampleRate) {
+    hiHatBufferAccent = null;
+    hiHatBufferNormal = null;
+    hiHatSampleRate = sampleRate;
+  }
+  if (isAccent) {
+    if (!hiHatBufferAccent) hiHatBufferAccent = generateHiHatBuffer(sampleRate, true);
+    return hiHatBufferAccent;
+  } else {
+    if (!hiHatBufferNormal) hiHatBufferNormal = generateHiHatBuffer(sampleRate, false);
+    return hiHatBufferNormal;
+  }
+}
+
+/** Play a pre-rendered hi-hat sample */
 function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
-  const len = Math.floor(ctx.sampleRate * 0.12);
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-
-  const noise = ctx.createBufferSource();
-  noise.buffer = buf;
-
-  // High-pass but at a lower frequency for "deeper" hi-hat character
-  const hp = ctx.createBiquadFilter();
-  hp.type = 'highpass';
-  hp.frequency.value = isAccent ? 3200 : 2800;
-  hp.Q.value = 0.8;
-
-  // Gentle bandpass to shape the body
-  const bp = ctx.createBiquadFilter();
-  bp.type = 'peaking';
-  bp.frequency.value = 5000;
-  bp.Q.value = 1.5;
-  bp.gain.value = 3;
+  const buf = getHiHatBuffer(ctx.sampleRate, isAccent);
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
 
   const gain = ctx.createGain();
-  const vol = isAccent ? 0.38 : 0.2;
-  gain.gain.setValueAtTime(vol, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + (isAccent ? 0.1 : 0.07));
-
-  noise.connect(hp);
-  hp.connect(bp);
-  bp.connect(gain);
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.8, time);
+  source.connect(gain);
   gain.connect(ctx.destination);
 
-  // Metallic sine component for shimmer
-  const osc = ctx.createOscillator();
-  osc.type = 'square';
-  osc.frequency.value = isAccent ? 6200 : 5800;
-
-  const oscGain = ctx.createGain();
-  oscGain.gain.setValueAtTime(vol * 0.08, time);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-
-  osc.connect(oscGain);
-  oscGain.connect(ctx.destination);
-
-  noise.start(time);
-  noise.stop(time + 0.12);
-  osc.start(time);
-  osc.stop(time + 0.05);
+  source.start(time);
 }
 
 /**
