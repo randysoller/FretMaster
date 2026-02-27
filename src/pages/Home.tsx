@@ -31,7 +31,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--bg-base)/0.3)] via-[hsl(var(--bg-base)/0.7)] to-[hsl(var(--bg-base))]" />
         </div>
 
-        <div className="relative px-6 py-16 md:py-24 text-center max-w-3xl mx-auto">
+        <div className="relative px-4 sm:px-6 py-10 sm:py-16 md:py-24 text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-6">
             <Music className="size-3.5 text-[hsl(var(--color-primary))]" />
             <span className="text-xs font-body font-medium text-[hsl(var(--color-primary))]">
@@ -39,41 +39,41 @@ export default function Home() {
             </span>
           </div>
 
-          <h1 className="font-display text-4xl md:text-6xl font-extrabold leading-tight text-balance">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-6xl font-extrabold leading-tight text-balance">
             <span className="text-[hsl(var(--text-default))]">Master Every Chord.</span>
             <br />
             <span className="text-gradient">One Fret at a Time.</span>
           </h1>
 
-          <p className="mt-5 font-body text-base md:text-lg text-[hsl(var(--text-subtle))] max-w-xl mx-auto text-pretty">
+          <p className="mt-3 sm:mt-5 font-body text-sm sm:text-base md:text-lg text-[hsl(var(--text-subtle))] max-w-xl mx-auto text-pretty">
             Challenge yourself with timed chord reveals. Pick a category, set your timer, and test how well you know your fretboard.
           </p>
         </div>
       </div>
 
       {/* Setup Section */}
-      <div className="px-6 pb-16 -mt-4">
+      <div className="px-4 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4">
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
             {/* Left: Category + Type */}
-            <div className="lg:col-span-7 space-y-8">
-              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-6 lg:space-y-8">
+              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <CategorySelector />
               </div>
-              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6">
+              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <TypeSelector />
               </div>
             </div>
 
             {/* Right: Timer + Start */}
-            <div className="lg:col-span-5 space-y-8">
-              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6">
+            <div className="lg:col-span-5 space-y-4 sm:space-y-6 lg:space-y-8">
+              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <TimerSelector />
               </div>
 
               {/* Summary + Start */}
-              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 space-y-5">
-                <h3 className="font-display text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
+                <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
                   Ready to Practice
                 </h3>
 

@@ -66,7 +66,7 @@ export default function TypeSelector() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+        <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
           Chord Type
         </h3>
         {chordTypes.size > 0 && (
@@ -107,7 +107,7 @@ export default function TypeSelector() {
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 max-h-[360px] overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 max-h-[55vh] sm:max-h-[360px] overflow-y-auto">
             {/* All Types option */}
             <button
               onClick={handleToggleAll}

@@ -9,7 +9,7 @@ export default function TimerSelector() {
 
   return (
     <div className="space-y-3">
-      <h3 className="font-display text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider flex items-center gap-2">
+      <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider flex items-center gap-2">
         <Timer className="size-4" />
         Reveal Timer
       </h3>
@@ -26,7 +26,7 @@ export default function TimerSelector() {
         <TimerOff className="size-4" />
         No Timer
       </button>
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         {APP_CONFIG.timerOptions.map((dur) => {
           const isActive = timerDuration === dur;
           return (
@@ -42,7 +42,7 @@ export default function TimerSelector() {
               `}
             >
               <span className={`
-                font-display text-2xl font-bold
+                font-display text-xl sm:text-2xl font-bold
                 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'}
               `}>
                 {dur}

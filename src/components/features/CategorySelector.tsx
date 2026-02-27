@@ -62,7 +62,7 @@ export default function CategorySelector() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+        <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
           Shape Category
         </h3>
         {categories.size > 0 && (
@@ -103,7 +103,7 @@ export default function CategorySelector() {
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden overflow-y-auto max-h-[60vh] sm:max-h-[400px] animate-in fade-in slide-in-from-top-2 duration-150">
             {/* All Chords option */}
             <button
               onClick={handleToggleAll}
