@@ -110,133 +110,89 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
   noiseSrc.start(time);
 }
 
-// ─── Wood Block Sample Buffer ────────────────────────────
+// ─── Wood Block Real Sample Loader ───────────────────────
 
 /**
- * Pre-render a realistic wood block hit as an AudioBuffer.
- *
- * Modeled after orchestral wood block recordings:
- * - Hard transient "tok" from stick impact (sub-ms broadband impulse)
- * - 3 resonant noise bands at wood-body frequencies, each with independent fast decay
- * - Subtle low-mid "thump" from the hollow cavity
- * - Total sound ≈50ms, no perceptible pitch or ringing
+ * Load real wood block samples from AVL Drum Kit Percussions (CC-BY-SA).
+ * Uses two different velocity samples for accent vs regular hits.
+ * Falls back to basic synthesis if fetch fails.
  */
-function generateWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  const duration = 0.065;
-  const length = Math.floor(sampleRate * duration);
-  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
-  const data = buffer.getChannelData(0);
 
-  let noiseState = 48271;
-  function rand() {
-    noiseState = (noiseState * 16807) % 2147483647;
-    return (noiseState / 2147483647) * 2 - 1;
-  }
+const WOODBLOCK_URLS = {
+  // Real wood block recordings from AVL Drumkits Percussion by Glen MacArthur
+  normal: 'https://raw.githubusercontent.com/studiorack/avl-percussions/main/Samples/37-Woodblock-1.flac',
+  accent: 'https://raw.githubusercontent.com/studiorack/avl-percussions/main/Samples/37-Woodblock-5.flac',
+};
 
-  // ─── Biquad bandpass helper (stateful) ───
-  function makeBP(freq: number, q: number) {
-    const w = 2 * Math.PI * freq / sampleRate;
-    const a = Math.sin(w) / (2 * q);
-    const cosW = Math.cos(w);
-    const a0 = 1 + a;
-    return {
-      b0: a / a0, b2: -a / a0,
-      a1: -2 * cosW / a0, a2: (1 - a) / a0,
-      x1: 0, x2: 0, y1: 0, y2: 0,
-      process(x: number): number {
-        const y = this.b0 * x + 0 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
-        this.x2 = this.x1; this.x1 = x;
-        this.y2 = this.y1; this.y1 = y;
-        return y;
-      },
-    };
-  }
+let woodBlockSampleNormal: AudioBuffer | null = null;
+let woodBlockSampleAccent: AudioBuffer | null = null;
+let woodBlockLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
+let woodBlockLoadPromise: Promise<void> | null = null;
 
-  // Three resonant body bands — spread across wood-block spectrum
-  const bodyLo = makeBP(isAccent ? 1100 : 900, 1.8);   // hollow cavity
-  const bodyMid = makeBP(isAccent ? 2200 : 1900, 2.2);  // primary "tok"
-  const bodyHi = makeBP(isAccent ? 3800 : 3400, 1.5);   // stick brightness
+function loadWoodBlockSamples(ctx: AudioContext): Promise<void> {
+  if (woodBlockLoadState === 'loaded') return Promise.resolve();
+  if (woodBlockLoadPromise) return woodBlockLoadPromise;
 
-  // Stick click — very high frequency, ultra-short
-  const clickBP = makeBP(isAccent ? 5500 : 4800, 1.0);
+  woodBlockLoadState = 'loading';
+  woodBlockLoadPromise = Promise.all([
+    fetchAudioBuffer(WOODBLOCK_URLS.normal, ctx),
+    fetchAudioBuffer(WOODBLOCK_URLS.accent, ctx),
+  ])
+    .then(([normal, accent]) => {
+      woodBlockSampleNormal = normal;
+      woodBlockSampleAccent = accent;
+      woodBlockLoadState = 'loaded';
+      console.log('[Metronome] Wood block samples loaded successfully');
+    })
+    .catch((err) => {
+      console.warn('[Metronome] Failed to load wood block samples, falling back to synthesis:', err);
+      woodBlockLoadState = 'failed';
+      woodBlockLoadPromise = null;
+    });
 
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const n = rand();
-
-    // ── Envelope: 0.15ms attack, then multi-rate decay ──
-    const attackEnd = 0.00015;
-    const att = t < attackEnd ? t / attackEnd : 1.0;
-
-    // Body layers — each with progressively faster decay
-    const loEnv = att * Math.exp(-90 * Math.max(0, t - attackEnd));
-    const midEnv = att * Math.exp(-140 * Math.max(0, t - attackEnd));
-    const hiEnv = att * Math.exp(-200 * Math.max(0, t - attackEnd));
-
-    const lo = bodyLo.process(n * loEnv) * 0.5;
-    const mid = bodyMid.process(n * midEnv) * 1.0;
-    const hi = bodyHi.process(n * hiEnv) * 0.6;
-
-    // ── Stick transient — first 1.5ms only ──
-    const clickEnv = t < 0.0015 ? Math.exp(-800 * t) : 0;
-    const click = clickBP.process(n * clickEnv) * 1.2;
-
-    // ── Sub-ms impulse snap ──
-    const snapEnv = t < 0.0003 ? (1.0 - t / 0.0003) : 0;
-    const snap = n * snapEnv * 0.6;
-
-    // ── Cavity thump — very brief low-mid content ──
-    const thumpFreq = isAccent ? 600 : 480;
-    const thumpEnv = t < 0.008 ? Math.exp(-250 * t) : 0;
-    const thump = Math.sin(2 * Math.PI * thumpFreq * t) * thumpEnv * 0.15;
-
-    const vol = isAccent ? 0.72 : 0.48;
-    data[i] = (lo + mid + hi + click + snap + thump) * vol;
-  }
-
-  // Soft-clip + normalize
-  for (let i = 0; i < length; i++) {
-    data[i] = Math.tanh(data[i] * 1.4);
-  }
-  let peak = 0;
-  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
-  if (peak > 0.01) {
-    const target = isAccent ? 0.85 : 0.65;
-    const scale = target / peak;
-    for (let i = 0; i < length; i++) data[i] *= scale;
-  }
-
-  return buffer;
+  return woodBlockLoadPromise;
 }
 
-let woodBlockBufferAccent: AudioBuffer | null = null;
-let woodBlockBufferNormal: AudioBuffer | null = null;
-let woodBlockSampleRate = 0;
-
-function getWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  // Regenerate if sample rate changed (e.g., different AudioContext)
-  if (woodBlockSampleRate !== sampleRate) {
-    woodBlockBufferAccent = null;
-    woodBlockBufferNormal = null;
-    woodBlockSampleRate = sampleRate;
+/** Fallback synthesis for wood block when samples fail to load */
+function scheduleWoodBlockFallback(ctx: AudioContext, time: number, isAccent: boolean) {
+  const dur = isAccent ? 0.06 : 0.04;
+  const bufSize = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let ns = 48271;
+  for (let i = 0; i < bufSize; i++) {
+    ns = (ns * 16807) % 2147483647;
+    const t = i / ctx.sampleRate;
+    data[i] = ((ns / 2147483647) * 2 - 1) * Math.exp(-120 * t);
   }
-  if (isAccent) {
-    if (!woodBlockBufferAccent) woodBlockBufferAccent = generateWoodBlockBuffer(sampleRate, true);
-    return woodBlockBufferAccent;
-  } else {
-    if (!woodBlockBufferNormal) woodBlockBufferNormal = generateWoodBlockBuffer(sampleRate, false);
-    return woodBlockBufferNormal;
-  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 2000;
+  bp.Q.value = 2;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(isAccent ? 0.6 : 0.4, time);
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(ctx.destination);
+  src.start(time);
 }
 
-/** Play a pre-rendered wood block sample */
+/** Play a real wood block sample, or fallback if not loaded */
 function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
-  const buf = getWoodBlockBuffer(ctx.sampleRate, isAccent);
+  const sample = isAccent ? woodBlockSampleAccent : woodBlockSampleNormal;
+  if (!sample) {
+    if (woodBlockLoadState !== 'loading') loadWoodBlockSamples(ctx);
+    scheduleWoodBlockFallback(ctx, time, isAccent);
+    return;
+  }
+
   const source = ctx.createBufferSource();
-  source.buffer = buf;
+  source.buffer = sample;
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.75, time);
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
   source.connect(gain);
   gain.connect(ctx.destination);
 
@@ -351,136 +307,89 @@ function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
-// ─── Rim Click (Cross-Stick) Sample Buffer ───────────────
+// ─── Rim Click (Sidestick) Real Sample Loader ────────────
 
 /**
- * Pre-render a rim click / cross-stick as an AudioBuffer.
- *
- * Characteristics of a real cross-stick:
- * - Ultra-sharp attack: stick shaft hits the rim producing a bright transient
- * - Very short sustain (~30-50ms total)
- * - Narrow-band resonance in the 1.5–3 kHz range from the shell
- * - Dry, no sustain or ringing — the snare head is dampened by the palm
- * - Subtle low-end "thud" from the head contact
+ * Load real sidestick / cross-stick samples from The Open Source Drum Kit.
+ * Uses two different velocity samples for accent vs regular hits.
+ * Falls back to basic synthesis if fetch fails.
  */
-function generateRimClickBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  const duration = 0.05;
-  const length = Math.floor(sampleRate * duration);
-  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
-  const data = buffer.getChannelData(0);
 
-  let noiseState = 77773;
-  function rand() {
-    noiseState = (noiseState * 16807) % 2147483647;
-    return (noiseState / 2147483647) * 2 - 1;
-  }
+const RIMCLICK_URLS = {
+  // Real sidestick recordings from The Open Source Drum Kit by Real Music Media
+  normal: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/sidestick/sidestick1.wav',
+  accent: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/sidestick/sidestick10.wav',
+};
 
-  // Biquad bandpass helper
-  function makeBP(freq: number, q: number) {
-    const w = 2 * Math.PI * freq / sampleRate;
-    const a = Math.sin(w) / (2 * q);
-    const cosW = Math.cos(w);
-    const a0 = 1 + a;
-    return {
-      b0: a / a0, b2: -a / a0,
-      a1: -2 * cosW / a0, a2: (1 - a) / a0,
-      x1: 0, x2: 0, y1: 0, y2: 0,
-      process(x: number): number {
-        const y = this.b0 * x + 0 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
-        this.x2 = this.x1; this.x1 = x;
-        this.y2 = this.y1; this.y1 = y;
-        return y;
-      },
-    };
-  }
+let rimClickSampleNormal: AudioBuffer | null = null;
+let rimClickSampleAccent: AudioBuffer | null = null;
+let rimClickLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
+let rimClickLoadPromise: Promise<void> | null = null;
 
-  // Shell resonance — narrow band at rim frequency
-  const rimBand = makeBP(isAccent ? 2800 : 2400, 3.5);
-  // Secondary shell overtone
-  const shellBand = makeBP(isAccent ? 4200 : 3800, 2.5);
-  // Stick brightness
-  const brightBand = makeBP(isAccent ? 6500 : 5800, 1.8);
+function loadRimClickSamples(ctx: AudioContext): Promise<void> {
+  if (rimClickLoadState === 'loaded') return Promise.resolve();
+  if (rimClickLoadPromise) return rimClickLoadPromise;
 
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const n = rand();
+  rimClickLoadState = 'loading';
+  rimClickLoadPromise = Promise.all([
+    fetchAudioBuffer(RIMCLICK_URLS.normal, ctx),
+    fetchAudioBuffer(RIMCLICK_URLS.accent, ctx),
+  ])
+    .then(([normal, accent]) => {
+      rimClickSampleNormal = normal;
+      rimClickSampleAccent = accent;
+      rimClickLoadState = 'loaded';
+      console.log('[Metronome] Rim click samples loaded successfully');
+    })
+    .catch((err) => {
+      console.warn('[Metronome] Failed to load rim click samples, falling back to synthesis:', err);
+      rimClickLoadState = 'failed';
+      rimClickLoadPromise = null;
+    });
 
-    // Ultra-fast attack envelope
-    const attackEnd = 0.0001;
-    const att = t < attackEnd ? t / attackEnd : 1.0;
-
-    // Rim resonance — tight, very fast decay
-    const rimEnv = att * Math.exp(-180 * Math.max(0, t - attackEnd));
-    const rim = rimBand.process(n * rimEnv) * 1.0;
-
-    // Shell overtone — slightly faster decay
-    const shellEnv = att * Math.exp(-250 * Math.max(0, t - attackEnd));
-    const shell = shellBand.process(n * shellEnv) * 0.5;
-
-    // High-freq stick brightness — extremely short
-    const brightEnv = att * Math.exp(-400 * Math.max(0, t - attackEnd));
-    const bright = brightBand.process(n * brightEnv) * 0.35;
-
-    // Initial transient impulse — sub-ms "crack"
-    const crackEnv = t < 0.0002 ? (1.0 - t / 0.0002) : 0;
-    const crack = n * crackEnv * 0.8;
-
-    // Head thud — very brief low content from dampened snare head
-    const thudFreq = isAccent ? 350 : 280;
-    const thudEnv = t < 0.005 ? Math.exp(-400 * t) : 0;
-    const thud = Math.sin(2 * Math.PI * thudFreq * t) * thudEnv * 0.12;
-
-    // Pitched "tick" — single cycle of tuned resonance for the distinctive rim pitch
-    const tickFreq = isAccent ? 1800 : 1500;
-    const tickEnv = Math.exp(-220 * t) * att;
-    const tick = Math.sin(2 * Math.PI * tickFreq * t) * tickEnv * 0.2;
-
-    const vol = isAccent ? 0.8 : 0.55;
-    data[i] = (rim + shell + bright + crack + thud + tick) * vol;
-  }
-
-  // Soft-clip + normalize
-  for (let i = 0; i < length; i++) {
-    data[i] = Math.tanh(data[i] * 1.6);
-  }
-  let peak = 0;
-  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
-  if (peak > 0.01) {
-    const target = isAccent ? 0.85 : 0.6;
-    const scale = target / peak;
-    for (let i = 0; i < length; i++) data[i] *= scale;
-  }
-
-  return buffer;
+  return rimClickLoadPromise;
 }
 
-let rimClickBufferAccent: AudioBuffer | null = null;
-let rimClickBufferNormal: AudioBuffer | null = null;
-let rimClickSampleRate = 0;
-
-function getRimClickBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  if (rimClickSampleRate !== sampleRate) {
-    rimClickBufferAccent = null;
-    rimClickBufferNormal = null;
-    rimClickSampleRate = sampleRate;
+/** Fallback synthesis for rim click when samples fail to load */
+function scheduleRimClickFallback(ctx: AudioContext, time: number, isAccent: boolean) {
+  const dur = isAccent ? 0.04 : 0.03;
+  const bufSize = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let ns = 77773;
+  for (let i = 0; i < bufSize; i++) {
+    ns = (ns * 16807) % 2147483647;
+    const t = i / ctx.sampleRate;
+    data[i] = ((ns / 2147483647) * 2 - 1) * Math.exp(-200 * t);
   }
-  if (isAccent) {
-    if (!rimClickBufferAccent) rimClickBufferAccent = generateRimClickBuffer(sampleRate, true);
-    return rimClickBufferAccent;
-  } else {
-    if (!rimClickBufferNormal) rimClickBufferNormal = generateRimClickBuffer(sampleRate, false);
-    return rimClickBufferNormal;
-  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 2800;
+  bp.Q.value = 3;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(isAccent ? 0.7 : 0.45, time);
+  src.connect(bp);
+  bp.connect(g);
+  g.connect(ctx.destination);
+  src.start(time);
 }
 
-/** Play a pre-rendered rim click sample */
+/** Play a real rim click sample, or fallback if not loaded */
 function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
-  const buf = getRimClickBuffer(ctx.sampleRate, isAccent);
+  const sample = isAccent ? rimClickSampleAccent : rimClickSampleNormal;
+  if (!sample) {
+    if (rimClickLoadState !== 'loading') loadRimClickSamples(ctx);
+    scheduleRimClickFallback(ctx, time, isAccent);
+    return;
+  }
+
   const source = ctx.createBufferSource();
-  source.buffer = buf;
+  source.buffer = sample;
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.75, time);
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
   source.connect(gain);
   gain.connect(ctx.destination);
 
@@ -649,7 +558,8 @@ export function useMetronome(): MetronomeState {
 
     const lookahead = 0.1;
     while (nextNoteTimeRef.current < ctx.currentTime + lookahead) {
-      const isAccent = beatRef.current === 0;
+      // In 6/8 time, accent beats 1 and 4 (indices 0 and 3)
+      const isAccent = beatRef.current === 0 || (beatsRef.current === 6 && beatRef.current === 3);
       scheduleBeat(ctx, nextNoteTimeRef.current, isAccent, beatRef.current);
 
       const beatSnap = beatRef.current;
@@ -669,8 +579,10 @@ export function useMetronome(): MetronomeState {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
 
-    // Pre-load hi-hat samples when starting (non-blocking)
+    // Pre-load all real samples when starting (non-blocking)
     loadHiHatSamples(ctx);
+    loadWoodBlockSamples(ctx);
+    loadRimClickSamples(ctx);
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;

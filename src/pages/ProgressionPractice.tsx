@@ -275,14 +275,14 @@ function MetronomeBar({
         <div className="flex items-center gap-1.5">
           {Array.from({ length: beatsPerMeasure }, (_, i) => {
             const isActive = i === currentBeat;
-            const isAccent = i === 0;
+            const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3);
             return (
               <div
                 key={i}
                 className={`
                   rounded-full transition-all duration-100
                   ${isActive
-                    ? isAccent
+                    ? isAccentBeat
                       ? 'size-3.5 bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.6)]'
                       : 'size-3 bg-[hsl(var(--color-primary))] shadow-[0_0_6px_hsl(var(--color-primary)/0.5)]'
                     : 'size-2.5 bg-[hsl(var(--border-default))]'
@@ -446,17 +446,17 @@ function MetronomeSetup({
           <div className="flex items-center gap-1.5">
             {Array.from({ length: beatsPerMeasure }, (_, i) => {
               const isActive = isPlaying && i === currentBeat;
-              const isAccent = i === 0;
+              const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3);
               return (
                 <div
                   key={i}
                   className={`
                     rounded-full transition-all duration-100
                     ${isActive
-                      ? isAccent
+                      ? isAccentBeat
                         ? 'size-4 bg-[hsl(var(--color-emphasis))] shadow-[0_0_10px_hsl(var(--color-emphasis)/0.6)]'
                         : 'size-3.5 bg-[hsl(var(--color-primary))] shadow-[0_0_8px_hsl(var(--color-primary)/0.5)]'
-                      : isAccent
+                      : isAccentBeat
                         ? 'size-3 bg-[hsl(var(--border-default))] border border-[hsl(var(--text-muted)/0.3)]'
                         : 'size-2.5 bg-[hsl(var(--border-default))]'
                     }
