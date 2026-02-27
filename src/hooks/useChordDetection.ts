@@ -120,7 +120,7 @@ export function useChordDetection({ onCorrect, targetChord }: UseChordDetectionO
             onCorrectRef.current?.();
             setResult(null);
             cooldownRef.current = false;
-          }, 1400);
+          }, 3000);
         } else {
           setResult('wrong');
           setTimeout(() => {
