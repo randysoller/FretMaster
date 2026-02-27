@@ -413,45 +413,46 @@ export default function Practice() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Reveal button — above controls */}
-        {!isRevealed && (
-          <div className="mb-[3em]">
-            {timerDuration > 0 ? (
-              <button
-                onClick={handleSkipReveal}
-                className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-              >
-                <Eye className="size-4" />
-                Reveal Now
-              </button>
-            ) : (
-              <button
-                onClick={handleReveal}
-                className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-              >
-                <Eye className="size-5" />
-                Reveal Chord
-              </button>
-            )}
-          </div>
-        )}
+        {/* Controls group — reveal button + restart/next */}
+        <div className="mt-8 flex flex-col items-center gap-4">
+          {!isRevealed && (
+            <div>
+              {timerDuration > 0 ? (
+                <button
+                  onClick={handleSkipReveal}
+                  className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
+                >
+                  <Eye className="size-4" />
+                  Reveal Now
+                </button>
+              ) : (
+                <button
+                  onClick={handleReveal}
+                  className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
+                >
+                  <Eye className="size-5" />
+                  Reveal Chord
+                </button>
+              )}
+            </div>
+          )}
 
-        {/* Controls */}
-        <div className="mt-8 flex items-center gap-4">
-          <button
-            onClick={handleRestart}
-            className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-5 py-3 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-          >
-            <RotateCcw className="size-4" />
-            Restart
-          </button>
-          <button
-            onClick={handleNext}
-            className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-3 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-          >
-            Next Chord
-            <SkipForward className="size-4" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleRestart}
+              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-5 py-3 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+            >
+              <RotateCcw className="size-4" />
+              Restart
+            </button>
+            <button
+              onClick={handleNext}
+              className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-3 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
+            >
+              Next Chord
+              <SkipForward className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
