@@ -203,12 +203,20 @@ export function useChordDetection({
     };
   }, [stopListening]);
 
+  const pauseDetection = useCallback((ms: number) => {
+    cooldownRef.current = true;
+    setTimeout(() => {
+      cooldownRef.current = false;
+    }, ms);
+  }, []);
+
   return {
     isListening,
     result,
     permissionDenied,
     toggleListening,
     stopListening,
+    pauseDetection,
   };
 }
 

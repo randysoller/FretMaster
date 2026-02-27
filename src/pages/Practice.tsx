@@ -167,7 +167,7 @@ export default function Practice() {
     nextChord();
   }, [revealChord, reset, nextChord]);
 
-  const { isListening, result, permissionDenied, toggleListening, stopListening } =
+  const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
     useChordDetection({
       onCorrect: handleDetectionCorrect,
       targetChord: chord,
@@ -400,7 +400,7 @@ export default function Practice() {
                       )}
                     </div>
                     <button
-                      onClick={() => playChord(chord)}
+                      onClick={() => { pauseDetection(2000); playChord(chord); }}
                       className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
                     >
                       <Volume2 className="size-4" />
