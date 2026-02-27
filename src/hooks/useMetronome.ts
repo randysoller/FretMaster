@@ -243,143 +243,108 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
-// ─── Hi-Hat Sample Buffer ────────────────────────────────
+// ─── Hi-Hat Real Sample Loader ───────────────────────────
 
 /**
- * Pre-render a realistic closed hi-hat as an AudioBuffer.
- *
- * Real hi-hats are two bronze discs producing inharmonic metallic overtones.
- * Key characteristics:
- * - Metallic "chick" from inharmonic frequency ratios (not integer harmonics)
- * - Broadband noise component for the "wash"
- * - Sharp attack, controlled exponential decay (~60-120ms)
- * - Accent hits are slightly more open (longer decay, brighter)
+ * Load real hi-hat samples from The Open Source Drum Kit (public domain).
+ * Uses two different velocity samples for accent vs regular hits.
+ * Falls back to basic synthesis if fetch fails.
  */
-function generateHiHatBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  const duration = isAccent ? 0.14 : 0.09;
-  const length = Math.floor(sampleRate * duration);
-  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
-  const data = buffer.getChannelData(0);
 
-  let noiseState = 31337;
-  function rand() {
-    noiseState = (noiseState * 16807) % 2147483647;
-    return (noiseState / 2147483647) * 2 - 1;
-  }
+const HIHAT_URLS = {
+  // Real closed hi-hat recordings from The Open Source Drum Kit by Real Music Media
+  normal: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh1.wav',
+  accent: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh10.wav',
+};
 
-  // Inharmonic metallic partials — ratios from real cymbal analysis
-  // These are NOT integer multiples, which gives cymbals their characteristic shimmer
-  const partials = [
-    { freq: isAccent ? 3150 : 2900, amp: 0.35, decay: isAccent ? 55 : 70 },
-    { freq: isAccent ? 4230 : 3950, amp: 0.30, decay: isAccent ? 65 : 85 },
-    { freq: isAccent ? 5710 : 5400, amp: 0.22, decay: isAccent ? 80 : 100 },
-    { freq: isAccent ? 7340 : 6800, amp: 0.15, decay: isAccent ? 95 : 120 },
-    { freq: isAccent ? 9870 : 9200, amp: 0.10, decay: isAccent ? 110 : 140 },
-    { freq: isAccent ? 12600 : 11800, amp: 0.06, decay: isAccent ? 130 : 160 },
-  ];
+let hiHatSampleNormal: AudioBuffer | null = null;
+let hiHatSampleAccent: AudioBuffer | null = null;
+let hiHatLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
+let hiHatLoadPromise: Promise<void> | null = null;
 
-  // Biquad highpass for noise component
-  function makeHP(freq: number, q: number) {
-    const w = 2 * Math.PI * freq / sampleRate;
-    const cosW = Math.cos(w);
-    const a = Math.sin(w) / (2 * q);
-    const a0 = 1 + a;
-    return {
-      b0: ((1 + cosW) / 2) / a0,
-      b1: (-(1 + cosW)) / a0,
-      b2: ((1 + cosW) / 2) / a0,
-      a1: (-2 * cosW) / a0,
-      a2: (1 - a) / a0,
-      x1: 0, x2: 0, y1: 0, y2: 0,
-      process(x: number): number {
-        const y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
-        this.x2 = this.x1; this.x1 = x;
-        this.y2 = this.y1; this.y1 = y;
-        return y;
-      },
-    };
-  }
-
-  const noiseHP = makeHP(isAccent ? 5500 : 6500, 0.7);
-
-  // Phase accumulators for partials
-  const phases = partials.map(() => 0);
-
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const n = rand();
-
-    // ── Metallic partials with inharmonic frequencies ──
-    let metallic = 0;
-    for (let p = 0; p < partials.length; p++) {
-      const { freq, amp, decay } = partials[p];
-      phases[p] += 2 * Math.PI * freq / sampleRate;
-      if (phases[p] > 2 * Math.PI) phases[p] -= 2 * Math.PI;
-
-      // Use mix of sine and slightly clipped sine for metallic edge
-      const raw = Math.sin(phases[p]);
-      const clipped = Math.tanh(raw * 1.8);
-      const mix = raw * 0.6 + clipped * 0.4;
-
-      const env = Math.exp(-decay * t);
-      metallic += mix * amp * env;
-    }
-
-    // ── Filtered noise "wash" component ──
-    const noiseEnv = Math.exp(-(isAccent ? 40 : 60) * t);
-    const filteredNoise = noiseHP.process(n * noiseEnv);
-
-    // ── Stick transient — very brief broadband click ──
-    const stickEnv = t < 0.001 ? Math.exp(-1200 * t) : 0;
-    const stick = n * stickEnv * 0.5;
-
-    // Mix: metallic dominates for realistic cymbal character
-    const vol = isAccent ? 0.55 : 0.35;
-    data[i] = (metallic * 0.55 + filteredNoise * 0.35 + stick) * vol;
-  }
-
-  // Soft-clip + normalize
-  for (let i = 0; i < length; i++) {
-    data[i] = Math.tanh(data[i] * 1.6);
-  }
-  let peak = 0;
-  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
-  if (peak > 0.01) {
-    const target = isAccent ? 0.7 : 0.5;
-    const scale = target / peak;
-    for (let i = 0; i < length; i++) data[i] *= scale;
-  }
-
-  return buffer;
+/**
+ * Fetch and decode a WAV file from a URL into an AudioBuffer.
+ */
+async function fetchAudioBuffer(url: string, ctx: AudioContext): Promise<AudioBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  const arrayBuffer = await response.arrayBuffer();
+  return ctx.decodeAudioData(arrayBuffer);
 }
 
-let hiHatBufferAccent: AudioBuffer | null = null;
-let hiHatBufferNormal: AudioBuffer | null = null;
-let hiHatSampleRate = 0;
+/**
+ * Load both hi-hat samples (normal + accent). Caches the result.
+ * Safe to call multiple times — deduplicates concurrent loads.
+ */
+function loadHiHatSamples(ctx: AudioContext): Promise<void> {
+  if (hiHatLoadState === 'loaded') return Promise.resolve();
+  if (hiHatLoadPromise) return hiHatLoadPromise;
 
-function getHiHatBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  if (hiHatSampleRate !== sampleRate) {
-    hiHatBufferAccent = null;
-    hiHatBufferNormal = null;
-    hiHatSampleRate = sampleRate;
-  }
-  if (isAccent) {
-    if (!hiHatBufferAccent) hiHatBufferAccent = generateHiHatBuffer(sampleRate, true);
-    return hiHatBufferAccent;
-  } else {
-    if (!hiHatBufferNormal) hiHatBufferNormal = generateHiHatBuffer(sampleRate, false);
-    return hiHatBufferNormal;
-  }
+  hiHatLoadState = 'loading';
+  hiHatLoadPromise = Promise.all([
+    fetchAudioBuffer(HIHAT_URLS.normal, ctx),
+    fetchAudioBuffer(HIHAT_URLS.accent, ctx),
+  ])
+    .then(([normal, accent]) => {
+      hiHatSampleNormal = normal;
+      hiHatSampleAccent = accent;
+      hiHatLoadState = 'loaded';
+      console.log('[Metronome] Hi-hat samples loaded successfully');
+    })
+    .catch((err) => {
+      console.warn('[Metronome] Failed to load hi-hat samples, falling back to synthesis:', err);
+      hiHatLoadState = 'failed';
+      hiHatLoadPromise = null;
+    });
+
+  return hiHatLoadPromise;
 }
 
-/** Play a pre-rendered hi-hat sample */
+/**
+ * Fallback synthesis for hi-hat when samples fail to load.
+ * Simple highpass-filtered noise burst.
+ */
+function scheduleHiHatFallback(ctx: AudioContext, time: number, isAccent: boolean) {
+  const dur = isAccent ? 0.08 : 0.05;
+  const bufSize = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  let ns = 31337;
+  for (let i = 0; i < bufSize; i++) {
+    ns = (ns * 16807) % 2147483647;
+    const t = i / ctx.sampleRate;
+    data[i] = ((ns / 2147483647) * 2 - 1) * Math.exp(-80 * t);
+  }
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  // Highpass
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 6000;
+  hp.Q.value = 0.7;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(isAccent ? 0.5 : 0.3, time);
+  src.connect(hp);
+  hp.connect(g);
+  g.connect(ctx.destination);
+  src.start(time);
+}
+
+/** Play a real hi-hat sample, or fallback if not loaded */
 function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
-  const buf = getHiHatBuffer(ctx.sampleRate, isAccent);
+  const sample = isAccent ? hiHatSampleAccent : hiHatSampleNormal;
+  if (!sample) {
+    // Try loading in background for next time, use fallback now
+    if (hiHatLoadState !== 'loading') loadHiHatSamples(ctx);
+    scheduleHiHatFallback(ctx, time, isAccent);
+    return;
+  }
+
   const source = ctx.createBufferSource();
-  source.buffer = buf;
+  source.buffer = sample;
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.8, time);
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
   source.connect(gain);
   gain.connect(ctx.destination);
 
@@ -703,6 +668,9 @@ export function useMetronome(): MetronomeState {
 
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
+
+    // Pre-load hi-hat samples when starting (non-blocking)
+    loadHiHatSamples(ctx);
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;
