@@ -495,7 +495,7 @@ function scheduleVoice(
     const source = ctx.createBufferSource();
     source.buffer = sample;
     // Pitch down for a deeper male voice
-    source.playbackRate.value = 0.82;
+    source.playbackRate.value = 1.03;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
     source.connect(gain);
@@ -513,7 +513,7 @@ function scheduleVoice(
       speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(String(num));
       utterance.rate = 1.5;
-      utterance.pitch = 0.4;
+      utterance.pitch = 0.65;
       utterance.volume = isAccent ? 1.0 : 0.7;
       if (voiceRef.current) {
         utterance.voice = voiceRef.current;
