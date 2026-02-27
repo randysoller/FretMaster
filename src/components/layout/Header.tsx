@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool, ListMusic } from 'lucide-react';
-import VolumeControl from '@/components/features/VolumeControl';
 
 export default function Header() {
   const location = useLocation();
@@ -42,10 +41,7 @@ export default function Header() {
               </Link>
             );
           })}
-          <div className="hidden sm:block h-5 w-px bg-[hsl(var(--border-subtle))] mx-1" />
-          <div className="hidden sm:flex relative z-10">
-            <VolumeControl compact />
-          </div>
+
         </nav>
       </div>
     </header>
