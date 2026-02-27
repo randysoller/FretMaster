@@ -43,7 +43,7 @@ export default function Header() {
             );
           })}
           <div className="hidden sm:block h-5 w-px bg-[hsl(var(--border-subtle))] mx-1" />
-          <div className="hidden sm:flex">
+          <div className="hidden sm:flex relative z-10">
             <VolumeControl compact />
           </div>
         </nav>

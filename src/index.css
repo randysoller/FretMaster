@@ -159,18 +159,20 @@
   .volume-slider {
     -webkit-appearance: none;
     appearance: none;
-    height: 6px;
+    height: 22px;
     border-radius: 3px;
-    background: hsl(var(--border-default));
+    background: transparent;
     outline: none;
     cursor: pointer;
-    /* Ensure sufficient touch/click target area */
-    padding: 8px 0;
-    margin: -8px 0;
-    background-clip: content-box;
     touch-action: none;
     position: relative;
     z-index: 1;
+  }
+
+  .volume-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: hsl(var(--border-default));
   }
 
   .volume-slider::-webkit-slider-thumb {
@@ -209,6 +211,12 @@
     height: 6px;
     border-radius: 3px;
     background: hsl(var(--border-default));
+  }
+
+  .volume-slider::-moz-range-progress {
+    height: 6px;
+    border-radius: 3px;
+    background: hsl(var(--color-primary) / 0.4);
   }
 
   .countdown-progress {
