@@ -4,13 +4,14 @@ const BPM_KEY = 'fretmaster-metronome-bpm';
 const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
 
-export type MetronomeSoundType = 'click' | 'woodblock' | 'voice' | 'hihat';
+export type MetronomeSoundType = 'click' | 'woodblock' | 'voice' | 'hihat' | 'rimclick';
 
 export const SOUND_LABELS: Record<MetronomeSoundType, string> = {
   click: 'Click',
   woodblock: 'Wood Block',
   voice: 'Voice Count',
   hihat: 'Hi-Hat',
+  rimclick: 'Rim Click',
 };
 
 function getStoredBpm(): number {
@@ -38,7 +39,7 @@ function getStoredBeats(): number {
 function getStoredSound(): MetronomeSoundType {
   try {
     const v = localStorage.getItem(SOUND_KEY);
-    if (v && ['click', 'woodblock', 'voice', 'hihat'].includes(v)) return v as MetronomeSoundType;
+    if (v && ['click', 'woodblock', 'voice', 'hihat', 'rimclick'].includes(v)) return v as MetronomeSoundType;
   } catch {}
   return 'click';
 }
@@ -59,22 +60,54 @@ export interface MetronomeState {
 
 // ─── Sound Synthesis Functions ───────────────────────────
 
-/** Original sine-wave click */
+/**
+ * Improved click — layered transient with body.
+ * Punchy "tick" with a sharp attack impulse + tuned sine body + subtle noise snap.
+ */
 function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
+  // Layer 1: Primary tone — short sine ping
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.connect(g1);
+  g1.connect(ctx.destination);
+  osc1.frequency.value = isAccent ? 1500 : 1000;
+  osc1.type = 'sine';
+  const vol1 = isAccent ? 0.4 : 0.22;
+  g1.gain.setValueAtTime(vol1, time);
+  g1.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
+  osc1.start(time);
+  osc1.stop(time + 0.035);
 
-  osc.frequency.value = isAccent ? 1200 : 800;
-  osc.type = 'sine';
+  // Layer 2: High harmonic for "snap" presence
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.connect(g2);
+  g2.connect(ctx.destination);
+  osc2.frequency.value = isAccent ? 3200 : 2400;
+  osc2.type = 'triangle';
+  const vol2 = isAccent ? 0.18 : 0.1;
+  g2.gain.setValueAtTime(vol2, time);
+  g2.gain.exponentialRampToValueAtTime(0.001, time + 0.012);
+  osc2.start(time);
+  osc2.stop(time + 0.02);
 
-  const vol = isAccent ? 0.45 : 0.25;
-  gain.gain.setValueAtTime(vol, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
-
-  osc.start(time);
-  osc.stop(time + 0.05);
+  // Layer 3: Noise burst for stick attack texture
+  const bufSize = Math.floor(ctx.sampleRate * 0.008);
+  const noiseBuf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const noiseData = noiseBuf.getChannelData(0);
+  let ns = 12345;
+  for (let i = 0; i < bufSize; i++) {
+    ns = (ns * 16807) % 2147483647;
+    const env = Math.exp(-600 * (i / ctx.sampleRate));
+    noiseData[i] = ((ns / 2147483647) * 2 - 1) * env;
+  }
+  const noiseSrc = ctx.createBufferSource();
+  noiseSrc.buffer = noiseBuf;
+  const gn = ctx.createGain();
+  gn.gain.setValueAtTime(isAccent ? 0.15 : 0.08, time);
+  noiseSrc.connect(gn);
+  gn.connect(ctx.destination);
+  noiseSrc.start(time);
 }
 
 // ─── Wood Block Sample Buffer ────────────────────────────
@@ -353,9 +386,145 @@ function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
+// ─── Rim Click (Cross-Stick) Sample Buffer ───────────────
+
+/**
+ * Pre-render a rim click / cross-stick as an AudioBuffer.
+ *
+ * Characteristics of a real cross-stick:
+ * - Ultra-sharp attack: stick shaft hits the rim producing a bright transient
+ * - Very short sustain (~30-50ms total)
+ * - Narrow-band resonance in the 1.5–3 kHz range from the shell
+ * - Dry, no sustain or ringing — the snare head is dampened by the palm
+ * - Subtle low-end "thud" from the head contact
+ */
+function generateRimClickBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  const duration = 0.05;
+  const length = Math.floor(sampleRate * duration);
+  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
+  const data = buffer.getChannelData(0);
+
+  let noiseState = 77773;
+  function rand() {
+    noiseState = (noiseState * 16807) % 2147483647;
+    return (noiseState / 2147483647) * 2 - 1;
+  }
+
+  // Biquad bandpass helper
+  function makeBP(freq: number, q: number) {
+    const w = 2 * Math.PI * freq / sampleRate;
+    const a = Math.sin(w) / (2 * q);
+    const cosW = Math.cos(w);
+    const a0 = 1 + a;
+    return {
+      b0: a / a0, b2: -a / a0,
+      a1: -2 * cosW / a0, a2: (1 - a) / a0,
+      x1: 0, x2: 0, y1: 0, y2: 0,
+      process(x: number): number {
+        const y = this.b0 * x + 0 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+        this.x2 = this.x1; this.x1 = x;
+        this.y2 = this.y1; this.y1 = y;
+        return y;
+      },
+    };
+  }
+
+  // Shell resonance — narrow band at rim frequency
+  const rimBand = makeBP(isAccent ? 2800 : 2400, 3.5);
+  // Secondary shell overtone
+  const shellBand = makeBP(isAccent ? 4200 : 3800, 2.5);
+  // Stick brightness
+  const brightBand = makeBP(isAccent ? 6500 : 5800, 1.8);
+
+  for (let i = 0; i < length; i++) {
+    const t = i / sampleRate;
+    const n = rand();
+
+    // Ultra-fast attack envelope
+    const attackEnd = 0.0001;
+    const att = t < attackEnd ? t / attackEnd : 1.0;
+
+    // Rim resonance — tight, very fast decay
+    const rimEnv = att * Math.exp(-180 * Math.max(0, t - attackEnd));
+    const rim = rimBand.process(n * rimEnv) * 1.0;
+
+    // Shell overtone — slightly faster decay
+    const shellEnv = att * Math.exp(-250 * Math.max(0, t - attackEnd));
+    const shell = shellBand.process(n * shellEnv) * 0.5;
+
+    // High-freq stick brightness — extremely short
+    const brightEnv = att * Math.exp(-400 * Math.max(0, t - attackEnd));
+    const bright = brightBand.process(n * brightEnv) * 0.35;
+
+    // Initial transient impulse — sub-ms "crack"
+    const crackEnv = t < 0.0002 ? (1.0 - t / 0.0002) : 0;
+    const crack = n * crackEnv * 0.8;
+
+    // Head thud — very brief low content from dampened snare head
+    const thudFreq = isAccent ? 350 : 280;
+    const thudEnv = t < 0.005 ? Math.exp(-400 * t) : 0;
+    const thud = Math.sin(2 * Math.PI * thudFreq * t) * thudEnv * 0.12;
+
+    // Pitched "tick" — single cycle of tuned resonance for the distinctive rim pitch
+    const tickFreq = isAccent ? 1800 : 1500;
+    const tickEnv = Math.exp(-220 * t) * att;
+    const tick = Math.sin(2 * Math.PI * tickFreq * t) * tickEnv * 0.2;
+
+    const vol = isAccent ? 0.8 : 0.55;
+    data[i] = (rim + shell + bright + crack + thud + tick) * vol;
+  }
+
+  // Soft-clip + normalize
+  for (let i = 0; i < length; i++) {
+    data[i] = Math.tanh(data[i] * 1.6);
+  }
+  let peak = 0;
+  for (let i = 0; i < length; i++) { const a = Math.abs(data[i]); if (a > peak) peak = a; }
+  if (peak > 0.01) {
+    const target = isAccent ? 0.85 : 0.6;
+    const scale = target / peak;
+    for (let i = 0; i < length; i++) data[i] *= scale;
+  }
+
+  return buffer;
+}
+
+let rimClickBufferAccent: AudioBuffer | null = null;
+let rimClickBufferNormal: AudioBuffer | null = null;
+let rimClickSampleRate = 0;
+
+function getRimClickBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
+  if (rimClickSampleRate !== sampleRate) {
+    rimClickBufferAccent = null;
+    rimClickBufferNormal = null;
+    rimClickSampleRate = sampleRate;
+  }
+  if (isAccent) {
+    if (!rimClickBufferAccent) rimClickBufferAccent = generateRimClickBuffer(sampleRate, true);
+    return rimClickBufferAccent;
+  } else {
+    if (!rimClickBufferNormal) rimClickBufferNormal = generateRimClickBuffer(sampleRate, false);
+    return rimClickBufferNormal;
+  }
+}
+
+/** Play a pre-rendered rim click sample */
+function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
+  const buf = getRimClickBuffer(ctx.sampleRate, isAccent);
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.75, time);
+  source.connect(gain);
+  gain.connect(ctx.destination);
+
+  source.start(time);
+}
+
 /**
  * Voice count — uses SpeechSynthesis API to speak beat numbers aloud.
- * Falls back to a tonal "blip" if speech synthesis is unavailable.
+ * Warm reference tick with two tonal layers for body, plus speech.
  */
 function scheduleVoice(
   ctx: AudioContext,
@@ -366,29 +535,39 @@ function scheduleVoice(
 ) {
   const delay = Math.max(0, (time - ctx.currentTime) * 1000);
 
-  // Also play a very subtle reference tick so there's always audio feedback
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.frequency.value = isAccent ? 600 : 500;
-  osc.type = 'sine';
-  gain.gain.setValueAtTime(isAccent ? 0.06 : 0.03, time);
-  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
-  osc.start(time);
-  osc.stop(time + 0.03);
+  // Warm reference tick — low sine + higher triangle for audible anchor
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.connect(g1);
+  g1.connect(ctx.destination);
+  osc1.frequency.value = isAccent ? 440 : 380;
+  osc1.type = 'sine';
+  g1.gain.setValueAtTime(isAccent ? 0.1 : 0.05, time);
+  g1.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  osc1.start(time);
+  osc1.stop(time + 0.05);
+
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.connect(g2);
+  g2.connect(ctx.destination);
+  osc2.frequency.value = isAccent ? 880 : 760;
+  osc2.type = 'triangle';
+  g2.gain.setValueAtTime(isAccent ? 0.04 : 0.02, time);
+  g2.gain.exponentialRampToValueAtTime(0.001, time + 0.025);
+  osc2.start(time);
+  osc2.stop(time + 0.035);
 
   // Schedule speech
   if (typeof speechSynthesis !== 'undefined') {
     setTimeout(() => {
-      // Cancel any still-pending utterance to prevent overlap at fast tempos
       speechSynthesis.cancel();
 
-      const num = beatNumber + 1; // 1-indexed for humans
+      const num = beatNumber + 1;
       const utterance = new SpeechSynthesisUtterance(String(num));
-      utterance.rate = 1.6;
-      utterance.pitch = 0.75; // lower pitch for calm male voice
-      utterance.volume = isAccent ? 1.0 : 0.75;
+      utterance.rate = 1.5;
+      utterance.pitch = 0.65; // deeper calm voice
+      utterance.volume = isAccent ? 1.0 : 0.7;
 
       if (voiceRef.current) {
         utterance.voice = voiceRef.current;
@@ -485,6 +664,9 @@ export function useMetronome(): MetronomeState {
         break;
       case 'hihat':
         scheduleHiHat(ctx, time, isAccent);
+        break;
+      case 'rimclick':
+        scheduleRimClick(ctx, time, isAccent);
         break;
       case 'voice':
         scheduleVoice(ctx, time, isAccent, beat, voiceRef);

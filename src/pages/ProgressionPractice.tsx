@@ -177,7 +177,7 @@ function MetronomeBar({
 }) {
   const tempoMarking = getTempoMarking(bpm);
   const [soundOpen, setSoundOpen] = useState(false);
-  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat'];
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat', 'rimclick'];
 
   return (
     <div
@@ -320,7 +320,7 @@ function MetronomeSetup({
   onSoundChange: (s: MetronomeSoundType) => void;
   onToggle: () => void;
 }) {
-  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat'];
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat', 'rimclick'];
   const timeSigOptions = [
     { value: 2, label: '2/4' },
     { value: 3, label: '3/4' },
@@ -398,7 +398,7 @@ function MetronomeSetup({
       {/* Sound type */}
       <div className="space-y-2">
         <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Sound</span>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {soundTypes.map((s) => (
             <button
               key={s}
