@@ -81,77 +81,100 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
 
 /**
  * Pre-render a realistic wood block hit as an AudioBuffer.
- * Models the physical resonance of a struck wood block:
- * - Sharp mallet transient (broadband noise, <2ms)
- * - Multiple slightly inharmonic resonant modes (characteristic of wood)
- * - Fast exponential decay with higher partials decaying faster
+ *
+ * Real wood blocks produce almost NO tonal ringing. The sound is:
+ * - A sharp "tok/clack" dominated by broadband noise (the stick hitting wood)
+ * - Very brief bandpass-filtered noise body (~1.5–4 kHz) that decays in <30ms
+ * - Virtually zero sustained pitch — unlike bells which ring with sinusoids
+ * - Total sound duration ~40–60ms
+ *
+ * This uses noise-based synthesis with aggressive bandpass filtering
+ * and ultra-fast envelopes — NOT sinusoidal modes (which produce bell sounds).
  */
 function generateWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBuffer {
-  // Use OfflineAudioContext if available, otherwise we build raw samples
-  const duration = 0.18;
+  const duration = 0.08; // very short — real wood blocks are ~40-60ms
   const length = Math.floor(sampleRate * duration);
-  // We'll build the buffer manually for maximum control
-  const ctx = new OfflineAudioContext(1, length, sampleRate);
-  const buffer = ctx.createBuffer(1, length, sampleRate);
+  const buffer = new (window.OfflineAudioContext || window.AudioContext)(1, length, sampleRate).createBuffer(1, length, sampleRate);
   const data = buffer.getChannelData(0);
 
-  // Resonant frequencies — wood blocks have characteristic tuned modes
-  const f1 = isAccent ? 830 : 690;    // fundamental
-  const f2 = f1 * 2.13;               // second mode (slightly inharmonic, key to "wood" character)
-  const f3 = f1 * 3.47;               // third mode
-  const f4 = f1 * 5.12;               // fourth mode (weak, adds brightness)
-  const f5 = f1 * 6.83;               // fifth mode (very weak shimmer)
-
-  // Amplitudes
-  const a1 = 1.0;
-  const a2 = 0.52;
-  const a3 = 0.22;
-  const a4 = 0.07;
-  const a5 = 0.025;
-
-  // Decay rates (1/seconds) — higher modes decay faster, like real wood
-  const d1 = 38;
-  const d2 = 62;
-  const d3 = 95;
-  const d4 = 140;
-  const d5 = 200;
-
-  // Use a seeded-ish noise for the transient so it's consistent
-  let noiseState = 12345;
-  function pseudoRandom() {
-    noiseState = (noiseState * 16807 + 0) % 2147483647;
+  // Seeded PRNG for consistent noise
+  let noiseState = 48271;
+  function rand() {
+    noiseState = (noiseState * 16807) % 2147483647;
     return (noiseState / 2147483647) * 2 - 1;
   }
 
+  // ─── Parameters tuned to real wood block recordings ───
+  const centerFreq = isAccent ? 2400 : 2000;  // bandpass center (wood body resonance)
+  const bandwidth = 1800;                      // wide — wood is noisy, not tonal
+  const attackMs = 0.3;                        // stick contact (<1ms)
+  const bodyDecayRate = isAccent ? 120 : 150;  // very fast exponential decay
+  const clickDecayRate = 600;                  // transient click dies almost instantly
+
+  // Two-pole bandpass filter state (resonant noise shaping)
+  const Q = centerFreq / bandwidth;
+  const omega = 2 * Math.PI * centerFreq / sampleRate;
+  const alpha = Math.sin(omega) / (2 * Q);
+  const b0 = alpha;
+  const b1 = 0;
+  const b2 = -alpha;
+  const a0 = 1 + alpha;
+  const a1 = -2 * Math.cos(omega);
+  const a2 = 1 - alpha;
+  // Normalize
+  const nb0 = b0 / a0, nb1 = b1 / a0, nb2 = b2 / a0;
+  const na1 = a1 / a0, na2 = a2 / a0;
+
+  // Second bandpass at higher freq for the "click" layer
+  const clickCenter = isAccent ? 4500 : 3800;
+  const clickQ = 1.2;
+  const cOmega = 2 * Math.PI * clickCenter / sampleRate;
+  const cAlpha = Math.sin(cOmega) / (2 * clickQ);
+  const cb0 = cAlpha / (1 + cAlpha);
+  const cb2 = -cAlpha / (1 + cAlpha);
+  const ca1 = -2 * Math.cos(cOmega) / (1 + cAlpha);
+  const ca2 = (1 - cAlpha) / (1 + cAlpha);
+
+  // Filter states
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;     // body bandpass
+  let cx1 = 0, cx2 = 0, cy1 = 0, cy2 = 0;  // click bandpass
+
+  const attackSamples = attackMs * 0.001 * sampleRate;
+
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    const twoPi = 2 * Math.PI;
+    const noise = rand();
 
-    // Resonant body — sum of decaying sinusoidal modes
-    let sample =
-      a1 * Math.sin(twoPi * f1 * t) * Math.exp(-d1 * t) +
-      a2 * Math.sin(twoPi * f2 * t) * Math.exp(-d2 * t) +
-      a3 * Math.sin(twoPi * f3 * t) * Math.exp(-d3 * t) +
-      a4 * Math.sin(twoPi * f4 * t) * Math.exp(-d4 * t) +
-      a5 * Math.sin(twoPi * f5 * t) * Math.exp(-d5 * t);
-
-    // Mallet impact transient — broadband noise burst (<2ms)
-    // This gives the initial "click/tok" before the wood resonance rings
-    if (t < 0.0025) {
-      const env = 1.0 - t / 0.0025; // linear fade
-      sample += pseudoRandom() * 0.65 * env * env; // squared envelope for sharper cutoff
+    // ── Body layer: bandpass-filtered noise with fast decay ──
+    // Attack envelope: ramps up in <0.3ms then decays exponentially
+    let bodyEnv: number;
+    if (i < attackSamples) {
+      bodyEnv = i / attackSamples; // linear ramp up
+    } else {
+      bodyEnv = Math.exp(-bodyDecayRate * (t - attackMs * 0.001));
     }
 
-    // Secondary shell noise (very short, band-limited feel, 2–6ms)
-    // Simulates the brief broadband vibration of the wood surface
-    if (t >= 0.001 && t < 0.007) {
-      const env = Math.exp(-500 * (t - 0.001));
-      sample += pseudoRandom() * 0.15 * env;
-    }
+    // Apply bandpass filter to noise
+    const bodyIn = noise * bodyEnv;
+    const bodyOut = nb0 * bodyIn + nb1 * x1 + nb2 * x2 - na1 * y1 - na2 * y2;
+    x2 = x1; x1 = bodyIn;
+    y2 = y1; y1 = bodyOut;
 
-    // Overall amplitude
-    const vol = isAccent ? 0.48 : 0.30;
-    data[i] = sample * vol;
+    // ── Click layer: higher-freq transient for the stick "tick" ──
+    const clickEnv = t < 0.002 ? Math.exp(-clickDecayRate * t) : 0;
+    const clickIn = noise * clickEnv * 1.5;
+    const clickOut = cb0 * clickIn + 0 * cx1 + cb2 * cx2 - ca1 * cy1 - ca2 * cy2;
+    cx2 = cx1; cx1 = clickIn;
+    cy2 = cy1; cy1 = clickOut;
+
+    // ── Raw transient impulse (first ~0.5ms) ──
+    // Adds the percussive "snap" of stick-on-wood contact
+    const impulseEnv = t < 0.0005 ? (1.0 - t / 0.0005) : 0;
+    const impulse = noise * impulseEnv * 0.8;
+
+    // Mix layers
+    const vol = isAccent ? 0.65 : 0.42;
+    data[i] = (bodyOut * 0.7 + clickOut * 0.5 + impulse) * vol;
   }
 
   // Normalize to prevent clipping
@@ -160,8 +183,8 @@ function generateWoodBlockBuffer(sampleRate: number, isAccent: boolean): AudioBu
     const abs = Math.abs(data[i]);
     if (abs > peak) peak = abs;
   }
-  if (peak > 0.95) {
-    const scale = 0.92 / peak;
+  if (peak > 0.92) {
+    const scale = 0.88 / peak;
     for (let i = 0; i < length; i++) data[i] *= scale;
   }
 
