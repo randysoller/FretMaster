@@ -494,11 +494,18 @@ function scheduleVoice(
   if (sample) {
     const source = ctx.createBufferSource();
     source.buffer = sample;
-    // Pitch down for a deeper male voice
     source.playbackRate.value = 1.03;
+
+    // Gentle low-pass to tame harsh high frequencies
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 3200;
+    lp.Q.value = 0.7;
+
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
-    source.connect(gain);
+    source.connect(lp);
+    lp.connect(gain);
     gain.connect(ctx.destination);
     source.start(time);
     return;
