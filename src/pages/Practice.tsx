@@ -36,7 +36,7 @@ function DetectionFeedback({ result }: { result: DetectionResult }) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.7 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 z-20 flex items-start justify-center pt-4 pointer-events-none"
+          className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
         >
           <div
             className={`
