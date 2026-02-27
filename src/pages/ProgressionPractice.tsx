@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type ProgressionTimerDuration } from '@/stores/progressionStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
@@ -772,7 +772,9 @@ function ProgressionTimeline({
 
 export default function ProgressionPractice() {
   const navigate = useNavigate();
+  const location = useLocation();
   const store = useProgressionStore();
+  const prevLocationKeyRef = useRef(location.key);
   const {
     selectedKey, selectedScale, selectedPreset, customDegrees, useCustom,
     timerPerChord, isPracticing, progressionChords, currentChordIndex,
@@ -830,6 +832,16 @@ export default function ProgressionPractice() {
       start();
     }
   }, [isPracticing, isRevealed, currentChordIndex, start, timerPerChord]);
+
+  // Reset to setup view when navigating to this page via nav link
+  useEffect(() => {
+    if (prevLocationKeyRef.current !== location.key && isPracticing) {
+      stopListening();
+      metronome.stop();
+      stopProgression();
+    }
+    prevLocationKeyRef.current = location.key;
+  }, [location.key]);
 
   // Stop mic + metronome when leaving practice
   useEffect(() => {
