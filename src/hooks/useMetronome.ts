@@ -572,8 +572,15 @@ function detectOnset(buffer: AudioBuffer, threshold = 0.02): number {
 }
 
 /**
- * Trim silence from the start and end of an AudioBuffer.
- * Returns a new buffer with leading/trailing silence below threshold removed.
+ * Trim silence from the start and end of an AudioBuffer, then bake a
+ * smooth fade-out into the last 40ms of audio data.
+ *
+ * Baking the fade directly into the sample data is the most reliable way to
+ * prevent clicks when the BufferSourceNode reaches the end of its buffer.
+ * Unlike gain-node-based fades, this approach:
+ *   - Has zero timing dependency (no scheduled automation to align)
+ *   - Works at any playback rate (fade scales proportionally)
+ *   - Guarantees the final sample is exactly 0.0
  */
 function trimBuffer(ctx: AudioContext, buffer: AudioBuffer, threshold = 0.01): AudioBuffer {
   const data = buffer.getChannelData(0);
@@ -583,14 +590,34 @@ function trimBuffer(ctx: AudioContext, buffer: AudioBuffer, threshold = 0.01): A
   while (start < data.length && Math.abs(data[start]) < threshold) start++;
   // Find last sample above threshold
   while (end > start && Math.abs(data[end]) < threshold) end--;
-  // Add small safety margins (512 samples ≈ 10ms at 48kHz)
+  // Add small safety margin at the start only (no trailing margin — we'll fade to zero)
   start = Math.max(0, start - 256);
-  end = Math.min(data.length - 1, end + 512);
+  // Tight trim at the end — no extra padding
+  end = Math.min(data.length - 1, end + 64);
   const length = end - start + 1;
   const trimmed = ctx.createBuffer(buffer.numberOfChannels, length, buffer.sampleRate);
   for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
     trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(start, end + 1));
   }
+
+  // ── Bake fade-out into the buffer data ──
+  // Apply a 40ms raised-cosine (Hann) fade to each channel's last N samples.
+  // Raised cosine is smoother than linear and avoids the slight "bump" that
+  // linear fades can produce at the midpoint.
+  const fadeOutSamples = Math.min(Math.floor(0.040 * buffer.sampleRate), length);
+  for (let ch = 0; ch < trimmed.numberOfChannels; ch++) {
+    const chData = trimmed.getChannelData(ch);
+    const fadeStart = chData.length - fadeOutSamples;
+    for (let i = 0; i < fadeOutSamples; i++) {
+      // Hann window: 0.5 * (1 + cos(π * i / N)) goes from 1 → 0
+      const t = i / fadeOutSamples;
+      const envelope = 0.5 * (1 + Math.cos(Math.PI * t));
+      chData[fadeStart + i] *= envelope;
+    }
+    // Guarantee the absolute last sample is zero
+    chData[chData.length - 1] = 0;
+  }
+
   return trimmed;
 }
 
@@ -711,49 +738,37 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   // so perceived loudness is higher at the same peak gain even with lower gain values.
   // We compensate with:
   //   1. Lower peak gains (0.55/0.38)
-  //   2. A tempo-adaptive transient-shaping envelope on mainGain
-  //   3. A SEPARATE fadeGain node for anti-click that uses linearRampToValueAtTime(0)
-  //      — linear ramps actually reach zero, unlike exponential which asymptotes.
-  //      Keeping them on separate nodes prevents automation event conflicts.
+  //   2. A tempo-adaptive transient-shaping envelope on the gain node
+  //   3. A baked-in fade-out in the buffer data itself (applied during loading in
+  //      trimBuffer) — this is the most reliable anti-click method because it has
+  //      zero timing dependency: the audio data literally ends at zero amplitude.
+  //      No gain node scheduling, no linearRamp timing, no source.stop() needed.
 
-  // ── Main gain: transient shaping ──
-  const mainGain = ctx.createGain();
+  const gain = ctx.createGain();
   const vol = isAccent ? 0.55 : 0.38;
 
-  const decayTime = Math.min(0.30, Math.max(0.08, secondsPerBeat * 0.45));
-  const decayRatio = secondsPerBeat > 0.5 ? 0.55 : secondsPerBeat > 0.35 ? 0.45 : 0.35;
-
-  mainGain.gain.setValueAtTime(vol, time);
-  mainGain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), time + decayTime);
-
-  // ── Fade gain: anti-click envelope (separate node, no automation conflicts) ──
-  // Stays at 1.0 for the entire word, then ramps to exactly 0.0 using linearRamp
-  // just before the buffer source node naturally stops. This eliminates the
-  // click caused by any non-zero gain at the instant the source signal disappears.
-  const fadeGain = ctx.createGain();
   const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
   const startTime = Math.max(ctx.currentTime, time - onsetOffset);
-  const effectiveDuration = buffer.duration / source.playbackRate.value;
-  const bufferEndTime = startTime + effectiveDuration;
-  const fadeOutDuration = 0.030; // 30ms linear fade — smooth and inaudible
 
-  fadeGain.gain.setValueAtTime(1.0, startTime);
-  // Hold at 1.0 until the fade-out window begins
-  fadeGain.gain.setValueAtTime(1.0, Math.max(startTime, bufferEndTime - fadeOutDuration));
-  // Linear ramp to true zero — unlike exponentialRamp, this reaches exactly 0
-  fadeGain.gain.linearRampToValueAtTime(0, bufferEndTime);
+  // Set gain to vol at the onset-compensated start time (not beat time)
+  // so there's no gap where gain is at the default 1.0 before our scheduled value
+  gain.gain.setValueAtTime(vol, startTime);
+
+  // Transient shaping: gentle decay after initial consonant attack
+  const decayTime = Math.min(0.30, Math.max(0.08, secondsPerBeat * 0.45));
+  const decayRatio = secondsPerBeat > 0.5 ? 0.55 : secondsPerBeat > 0.35 ? 0.45 : 0.35;
+  gain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), startTime + decayTime);
 
   source.connect(highpass);
   highpass.connect(presence);
   presence.connect(deEss);
-  deEss.connect(mainGain);
-  mainGain.connect(fadeGain);
-  fadeGain.connect(getOutput(ctx));
+  deEss.connect(gain);
+  gain.connect(getOutput(ctx));
 
-  // Start playback early by the onset offset so perceived sound lands on beat
+  // Start playback early by the onset offset so perceived sound lands on beat.
+  // No source.stop() needed — the buffer has a baked-in fade-out to zero,
+  // so it ends silently on its own with no click artifacts.
   source.start(startTime);
-  // Explicitly stop source slightly after gain reaches 0 to guarantee clean cutoff
-  source.stop(bufferEndTime + 0.005);
 }
 
 // ─── Preload All Samples on First Interaction ───────────
