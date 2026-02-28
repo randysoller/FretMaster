@@ -489,7 +489,7 @@ function scheduleVoice(
   //   Plosives like "two","three" are snappier (~30ms)
   const DIGIT_ONSET: Record<number, number> = {
     0: 0.035, 1: 0.030, 2: 0.030, 3: 0.030,
-    4: 0.040, 5: 0.055, 6: 0.080, 7: 0.055,
+    4: 0.040, 5: 0.055, 6: 1.000, 7: 0.055,
     8: 0.035, 9: 0.035,
   };
   const onset = DIGIT_ONSET[num] ?? 0.035;
