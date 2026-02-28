@@ -408,13 +408,7 @@ export default function Practice() {
                         <ChordDiagram chord={chord} size="lg" />
                       )}
                     </div>
-                    <button
-                      onClick={() => { pauseDetection(2000); playChord(chord); }}
-                      className="hidden sm:flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                    >
-                      <Volume2 className="size-4" />
-                      Play Again
-                    </button>
+
                   </motion.div>
                 )}
               </AnimatePresence>
