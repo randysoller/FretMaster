@@ -531,18 +531,23 @@ const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
  * At 120 BPM (500ms/beat), a 50ms offset is 10% of the beat — perceptually tight.
  */
 const VOICE_ONSET_OFFSETS: Record<number, number> = {
-  1: 0.050,  // "one" /w/ — glide builds gradually
-  2: 0.042,  // "two" /t/ — sharp plosive burst, moderate VOT
-  3: 0.062,  // "three" /θr/ — voiceless dental fricative + liquid cluster, gradual onset
-  4: 0.052,  // "four" /f/ — voiceless labiodental fricative, quiet airflow
-  5: 0.052,  // "five" /f/ — same /f/ onset as "four"
-  6: 0.032,  // "six" /s/ — sibilant is loud & percussive, near-instant
-  7: 0.042,  // "seven" /s/ — sibilant onset, 2 syllables
-  8: 0.015,  // "eight" /eɪ/ — vowel-initial, near-instant glottal onset
-  9: 0.040,  // "nine" /n/ — voiced alveolar nasal
-  10: 0.042, // "ten" /t/ — voiceless alveolar plosive
-  11: 0.018, // "eleven" /ɪ/ — vowel-initial
-  12: 0.048, // "twelve" /tw/ — plosive + glide cluster
+  1: 0.058,  // "one" /w/ — voiced glide, gradual buildup in dictionary-style speech
+  2: 0.048,  // "two" /t/ — aspirated plosive, VOT + aspiration gap before vowel
+  3: 0.088,  // "three" /θr/ — voiceless dental fricative + liquid cluster; dictionary speech
+              //   elongates the nearly-silent /θ/ (~60ms) before the /r/ even begins;
+              //   detectOnset may skip /θ/ entirely (below 0.02), so manual offset must
+              //   cover the full perceptual gap from fricative noise to vowel peak ★
+  4: 0.058,  // "four" /f/ — voiceless labiodental fricative, quiet airflow ~50ms
+  5: 0.058,  // "five" /f/ — same /f/ onset profile as "four"
+  6: 0.068,  // "six" /s/ — sibilant IS loud (detectOnset finds it early, autoOnset ≈ 0)
+              //   but the perceived "hit" is the /ɪ/ vowel, not the /s/ noise;
+              //   dictionary speech draws out /s/ to 70-100ms before voicing begins ★
+  7: 0.052,  // "seven" /s/ — sibilant onset like "six" but shorter /s/ before /ɛ/
+  8: 0.012,  // "eight" /eɪ/ — vowel-initial, near-instant glottal onset
+  9: 0.045,  // "nine" /n/ — voiced nasal, quick onset but not percussive
+  10: 0.048, // "ten" /t/ — aspirated plosive like "two"
+  11: 0.015, // "eleven" /ɪ/ — vowel-initial, near-instant
+  12: 0.055, // "twelve" /tw/ — plosive + glide cluster, deliberate articulation
 };
 
 /** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
