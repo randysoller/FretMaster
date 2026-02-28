@@ -217,7 +217,7 @@ function MetronomeBar({
 }) {
   const tempoMarking = getTempoMarking(bpm);
   const [soundOpen, setSoundOpen] = useState(false);
-  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat', 'rimclick'];
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'hihat', 'rimclick'];
 
   return (
     <div
@@ -370,7 +370,7 @@ function MetronomeSetup({
   onToggle: () => void;
   onTap: () => void;
 }) {
-  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'voice', 'hihat', 'rimclick'];
+  const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'hihat', 'rimclick'];
   const timeSigOptions = [
     { value: 2, label: '2/4' },
     { value: 3, label: '3/4' },

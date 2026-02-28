@@ -4,12 +4,11 @@ const BPM_KEY = 'fretmaster-metronome-bpm';
 const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
 
-export type MetronomeSoundType = 'click' | 'woodblock' | 'voice' | 'hihat' | 'rimclick';
+export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'rimclick';
 
 export const SOUND_LABELS: Record<MetronomeSoundType, string> = {
   click: 'Click',
   woodblock: 'Wood Block',
-  voice: 'Voice Count',
   hihat: 'Hi-Hat',
   rimclick: 'Rim Click',
 };
@@ -39,7 +38,7 @@ function getStoredBeats(): number {
 function getStoredSound(): MetronomeSoundType {
   try {
     const v = localStorage.getItem(SOUND_KEY);
-    if (v && ['click', 'woodblock', 'voice', 'hihat', 'rimclick'].includes(v)) return v as MetronomeSoundType;
+    if (v && ['click', 'woodblock', 'hihat', 'rimclick'].includes(v)) return v as MetronomeSoundType;
   } catch {}
   return 'click';
 }
@@ -396,172 +395,7 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
-// ─── Voice Count Real Sample Loader ──────────────────────
 
-/**
- * Load real spoken digit samples from the Free Spoken Digit Dataset (FSDD).
- * CC-BY-SA 4.0 licensed, hosted on GitHub. Uses "jackson" speaker (clear male voice).
- * Files are 8kHz WAV — Web Audio API automatically resamples on decode.
- * Loads digits 1–9 as real samples; 10–12 fall back to SpeechSynthesis.
- */
-
-const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
-
-// Best sample indices per digit for the "jackson" speaker (selected for clarity)
-// Includes 0 so we can compose 10, 11, 12 from two single-digit samples
-const VOICE_SAMPLE_MAP: Record<number, string> = {
-  0: `${FSDD_BASE}/0_jackson_0.wav`,
-  1: `${FSDD_BASE}/1_jackson_0.wav`,
-  2: `${FSDD_BASE}/2_jackson_0.wav`,
-  3: `${FSDD_BASE}/3_jackson_0.wav`,
-  4: `${FSDD_BASE}/4_jackson_0.wav`,
-  5: `${FSDD_BASE}/5_jackson_0.wav`,
-  6: `${FSDD_BASE}/6_jackson_0.wav`,
-  7: `${FSDD_BASE}/7_jackson_0.wav`,
-  8: `${FSDD_BASE}/8_jackson_0.wav`,
-  9: `${FSDD_BASE}/9_jackson_0.wav`,
-};
-
-const voiceSamples: Map<number, AudioBuffer> = new Map();
-let voiceLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
-let voiceLoadPromise: Promise<void> | null = null;
-
-function loadVoiceSamples(ctx: AudioContext): Promise<void> {
-  if (voiceLoadState === 'loaded') return Promise.resolve();
-  if (voiceLoadPromise) return voiceLoadPromise;
-
-  voiceLoadState = 'loading';
-  const entries = Object.entries(VOICE_SAMPLE_MAP).map(([digit, url]) => ({
-    digit: Number(digit),
-    url,
-  }));
-
-  voiceLoadPromise = Promise.all(
-    entries.map(({ digit, url }) =>
-      fetchAudioBuffer(url, ctx)
-        .then((buf) => ({ digit, buf }))
-        .catch((err) => {
-          console.warn(`[Metronome] Failed to load voice sample for digit ${digit}:`, err);
-          return null;
-        })
-    )
-  )
-    .then((results) => {
-      let loaded = 0;
-      for (const r of results) {
-        if (r) {
-          voiceSamples.set(r.digit, r.buf);
-          loaded++;
-        }
-      }
-      voiceLoadState = loaded > 0 ? 'loaded' : 'failed';
-      console.log(`[Metronome] Voice samples loaded: ${loaded}/10`);
-    })
-    .catch(() => {
-      voiceLoadState = 'failed';
-      voiceLoadPromise = null;
-    });
-
-  return voiceLoadPromise;
-}
-
-/**
- * Voice count — plays real spoken digit samples from FSDD for beats 1–9.
- * Falls back to SpeechSynthesis for beats 10–12 and if samples fail to load.
- * Includes a subtle reference tick for rhythmic precision.
- */
-function scheduleVoice(
-  ctx: AudioContext,
-  time: number,
-  isAccent: boolean,
-  beatNumber: number,
-  voiceRef: React.MutableRefObject<SpeechSynthesisVoice | null>,
-  beatsPerMeasure: number = 4,
-  bpm: number = 100,
-) {
-  // Always count straight through: 1,2,3...N
-  const num = beatNumber + 1;
-
-  // Schedule voice exactly on the beat — no onset compensation
-  const voiceTime = Math.max(ctx.currentTime, time);
-
-  // Subtle reference tick stays exactly on beat for rhythmic anchor
-  const osc1 = ctx.createOscillator();
-  const g1 = ctx.createGain();
-  osc1.connect(g1);
-  g1.connect(ctx.destination);
-  osc1.frequency.value = isAccent ? 340 : 290;
-  osc1.type = 'sine';
-  g1.gain.setValueAtTime(isAccent ? 0.08 : 0.04, time);
-  g1.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
-  osc1.start(time);
-  osc1.stop(time + 0.045);
-
-  // Helper to play a single FSDD digit sample through the shared voice chain
-  const playDigitSample = (digit: number, startTime: number, vol: number) => {
-    const buf = voiceSamples.get(digit);
-    if (!buf) return false;
-    const safeStart = Math.max(ctx.currentTime, startTime);
-    const source = ctx.createBufferSource();
-    source.buffer = buf;
-    source.playbackRate.value = 0.975;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 2200;
-    lp.Q.value = 0.7;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(vol, safeStart);
-    source.connect(lp);
-    lp.connect(gain);
-    gain.connect(ctx.destination);
-    source.start(safeStart);
-    return true;
-  };
-
-  const vol = isAccent ? 1.0 : 0.7;
-
-  // For digits 1–9, play the single sample directly
-  if (num <= 9) {
-    if (playDigitSample(num, voiceTime, vol)) return;
-  } else {
-    // For 10–12, compose from two single-digit FSDD samples (same voice)
-    // e.g. 10 → "1" + "0", 11 → "1" + "1", 12 → "1" + "2"
-    const tens = Math.floor(num / 10); // always 1 for 10–12
-    const ones = num % 10;
-    // Tempo-aware gap: shorter at faster tempos to stay within the beat
-    const secondsPerBeat = 60 / bpm;
-    const gap = Math.min(0.15, Math.max(0.08, secondsPerBeat * 0.25));
-    const played1 = playDigitSample(tens, voiceTime, vol);
-    const played2 = playDigitSample(ones, voiceTime + gap, vol);
-    if (played1 || played2) return;
-  }
-
-  // Last resort fallback: try loading samples for next time
-  if (voiceLoadState !== 'loading') loadVoiceSamples(ctx);
-}
-
-// ─── Voice Selection Helper (fallback for SpeechSynthesis) ───
-
-function selectMaleVoice(): SpeechSynthesisVoice | null {
-  if (typeof speechSynthesis === 'undefined') return null;
-
-  const voices = speechSynthesis.getVoices();
-  if (!voices.length) return null;
-
-  const preferred = [
-    'google us english', 'daniel', 'james', 'david', 'alex',
-    'tom', 'male', 'en-us', 'en-gb',
-  ];
-
-  for (const keyword of preferred) {
-    const match = voices.find(
-      (v) => v.name.toLowerCase().includes(keyword) && v.lang.startsWith('en')
-    );
-    if (match) return match;
-  }
-
-  return voices.find((v) => v.lang.startsWith('en')) || null;
-}
 
 // ─── Hook ────────────────────────────────────────────────
 
@@ -580,24 +414,11 @@ export function useMetronome(): MetronomeState {
   const soundTypeRef = useRef(soundType);
   const isPlayingRef = useRef(false);
   const nextNoteTimeRef = useRef(0);
-  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   // Keep refs synced
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { beatsRef.current = beatsPerMeasure; }, [beatsPerMeasure]);
   useEffect(() => { soundTypeRef.current = soundType; }, [soundType]);
-
-  // Load speech synthesis voices (they can load asynchronously)
-  useEffect(() => {
-    const loadVoices = () => {
-      voiceRef.current = selectMaleVoice();
-    };
-    loadVoices();
-    if (typeof speechSynthesis !== 'undefined') {
-      speechSynthesis.addEventListener('voiceschanged', loadVoices);
-      return () => speechSynthesis.removeEventListener('voiceschanged', loadVoices);
-    }
-  }, []);
 
   const setBpm = useCallback((v: number) => {
     const clamped = Math.max(30, Math.min(260, v));
@@ -627,9 +448,6 @@ export function useMetronome(): MetronomeState {
         break;
       case 'rimclick':
         scheduleRimClick(ctx, time, isAccent);
-        break;
-      case 'voice':
-        scheduleVoice(ctx, time, isAccent, beat, voiceRef, beatsRef.current, bpmRef.current);
         break;
       case 'click':
       default:
@@ -671,7 +489,7 @@ export function useMetronome(): MetronomeState {
     loadHiHatSamples(ctx);
     loadWoodBlockSamples(ctx);
     loadRimClickSamples(ctx);
-    loadVoiceSamples(ctx);
+
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;
@@ -696,10 +514,7 @@ export function useMetronome(): MetronomeState {
       audioCtxRef.current = null;
     }
 
-    // Cancel any pending voice utterances
-    if (typeof speechSynthesis !== 'undefined') {
-      speechSynthesis.cancel();
-    }
+
   }, []);
 
   const toggle = useCallback(() => {
