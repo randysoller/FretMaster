@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 const BPM_KEY = 'fretmaster-metronome-bpm';
 const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
+const VOLUME_KEY = 'fretmaster-metronome-volume';
 
 export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'rimclick';
 
@@ -43,18 +44,39 @@ function getStoredSound(): MetronomeSoundType {
   return 'click';
 }
 
+function getStoredVolume(): number {
+  try {
+    const v = localStorage.getItem(VOLUME_KEY);
+    if (v) {
+      const n = Number(v);
+      if (n >= 0 && n <= 1) return n;
+    }
+  } catch {}
+  return 0.75;
+}
+
 export interface MetronomeState {
   isPlaying: boolean;
   bpm: number;
   beatsPerMeasure: number;
   currentBeat: number;
   soundType: MetronomeSoundType;
+  volume: number;
   setBpm: (bpm: number) => void;
   setBeatsPerMeasure: (beats: number) => void;
   setSoundType: (sound: MetronomeSoundType) => void;
+  setVolume: (volume: number) => void;
   toggle: () => void;
   start: () => void;
   stop: () => void;
+}
+
+// ─── Master Output Node ─────────────────────────────────
+
+let metronomeOutput: AudioNode | null = null;
+
+function getOutput(ctx: AudioContext): AudioNode {
+  return metronomeOutput || ctx.destination;
 }
 
 // ─── Sound Synthesis Functions ───────────────────────────
@@ -68,7 +90,7 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
   const osc1 = ctx.createOscillator();
   const g1 = ctx.createGain();
   osc1.connect(g1);
-  g1.connect(ctx.destination);
+  g1.connect(getOutput(ctx));
   osc1.frequency.value = isAccent ? 1500 : 1000;
   osc1.type = 'sine';
   const vol1 = isAccent ? 0.4 : 0.22;
@@ -81,7 +103,7 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
   const osc2 = ctx.createOscillator();
   const g2 = ctx.createGain();
   osc2.connect(g2);
-  g2.connect(ctx.destination);
+  g2.connect(getOutput(ctx));
   osc2.frequency.value = isAccent ? 3200 : 2400;
   osc2.type = 'triangle';
   const vol2 = isAccent ? 0.18 : 0.1;
@@ -105,7 +127,7 @@ function scheduleClick(ctx: AudioContext, time: number, isAccent: boolean) {
   const gn = ctx.createGain();
   gn.gain.setValueAtTime(isAccent ? 0.15 : 0.08, time);
   noiseSrc.connect(gn);
-  gn.connect(ctx.destination);
+  gn.connect(getOutput(ctx));
   noiseSrc.start(time);
 }
 
@@ -174,7 +196,7 @@ function scheduleWoodBlockFallback(ctx: AudioContext, time: number, isAccent: bo
   g.gain.setValueAtTime(isAccent ? 0.6 : 0.4, time);
   src.connect(bp);
   bp.connect(g);
-  g.connect(ctx.destination);
+  g.connect(getOutput(ctx));
   src.start(time);
 }
 
@@ -193,7 +215,7 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getOutput(ctx));
 
   source.start(time);
 }
@@ -281,7 +303,7 @@ function scheduleHiHatFallback(ctx: AudioContext, time: number, isAccent: boolea
   g.gain.setValueAtTime(isAccent ? 0.5 : 0.3, time);
   src.connect(hp);
   hp.connect(g);
-  g.connect(ctx.destination);
+  g.connect(getOutput(ctx));
   src.start(time);
 }
 
@@ -302,7 +324,7 @@ function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.7 : 1.35, time);
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getOutput(ctx));
 
   source.start(time);
 }
@@ -372,7 +394,7 @@ function scheduleRimClickFallback(ctx: AudioContext, time: number, isAccent: boo
   g.gain.setValueAtTime(isAccent ? 0.7 : 0.45, time);
   src.connect(bp);
   bp.connect(g);
-  g.connect(ctx.destination);
+  g.connect(getOutput(ctx));
   src.start(time);
 }
 
@@ -391,7 +413,7 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(getOutput(ctx));
 
   source.start(time);
 }
@@ -406,13 +428,16 @@ export function useMetronome(): MetronomeState {
   const [beatsPerMeasure, setBeatsState] = useState(getStoredBeats);
   const [currentBeat, setCurrentBeat] = useState(0);
   const [soundType, setSoundTypeState] = useState<MetronomeSoundType>(getStoredSound);
+  const [volume, setVolumeState] = useState(getStoredVolume);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
   const timerRef = useRef<number>(0);
   const beatRef = useRef(0);
   const bpmRef = useRef(bpm);
   const beatsRef = useRef(beatsPerMeasure);
   const soundTypeRef = useRef(soundType);
+  const volumeRef = useRef(volume);
   const isPlayingRef = useRef(false);
   const nextNoteTimeRef = useRef(0);
 
@@ -420,6 +445,12 @@ export function useMetronome(): MetronomeState {
   useEffect(() => { bpmRef.current = bpm; }, [bpm]);
   useEffect(() => { beatsRef.current = beatsPerMeasure; }, [beatsPerMeasure]);
   useEffect(() => { soundTypeRef.current = soundType; }, [soundType]);
+  useEffect(() => {
+    volumeRef.current = volume;
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.setValueAtTime(volume, masterGainRef.current.context.currentTime);
+    }
+  }, [volume]);
 
   const setBpm = useCallback((v: number) => {
     const clamped = Math.max(30, Math.min(260, v));
@@ -436,6 +467,12 @@ export function useMetronome(): MetronomeState {
     setSoundTypeState(v);
     soundTypeRef.current = v;
     try { localStorage.setItem(SOUND_KEY, v); } catch {}
+  }, []);
+
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    setVolumeState(clamped);
+    try { localStorage.setItem(VOLUME_KEY, String(clamped)); } catch {}
   }, []);
 
   /** Schedule a single beat sound */
@@ -486,11 +523,17 @@ export function useMetronome(): MetronomeState {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
 
+    // Create master gain node for metronome volume
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(volumeRef.current, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+    masterGainRef.current = masterGain;
+    metronomeOutput = masterGain;
+
     // Pre-load all real samples when starting (non-blocking)
     loadHiHatSamples(ctx);
     loadWoodBlockSamples(ctx);
     loadRimClickSamples(ctx);
-
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;
@@ -514,8 +557,8 @@ export function useMetronome(): MetronomeState {
       audioCtxRef.current.close();
       audioCtxRef.current = null;
     }
-
-
+    masterGainRef.current = null;
+    metronomeOutput = null;
   }, []);
 
   const toggle = useCallback(() => {
@@ -534,9 +577,11 @@ export function useMetronome(): MetronomeState {
     beatsPerMeasure,
     currentBeat,
     soundType,
+    volume,
     setBpm,
     setBeatsPerMeasure,
     setSoundType,
+    setVolume,
     toggle,
     start,
     stop,

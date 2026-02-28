@@ -34,6 +34,8 @@ import {
   Minus,
   Gauge,
   ChevronUp,
+  Volume1,
+  VolumeX,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
@@ -200,9 +202,11 @@ function MetronomeBar({
   beatsPerMeasure,
   currentBeat,
   soundType,
+  volume,
   onToggle,
   onBpmChange,
   onSoundChange,
+  onVolumeChange,
   onTap,
 }: {
   isPlaying: boolean;
@@ -210,14 +214,18 @@ function MetronomeBar({
   beatsPerMeasure: number;
   currentBeat: number;
   soundType: MetronomeSoundType;
+  volume: number;
   onToggle: () => void;
   onBpmChange: (v: number) => void;
   onSoundChange: (s: MetronomeSoundType) => void;
+  onVolumeChange: (v: number) => void;
   onTap: () => void;
 }) {
   const tempoMarking = getTempoMarking(bpm);
   const [soundOpen, setSoundOpen] = useState(false);
+  const [volumeOpen, setVolumeOpen] = useState(false);
   const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'hihat', 'rimclick'];
+  const BarVolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
 
   return (
     <div
@@ -270,6 +278,38 @@ function MetronomeBar({
                 {SOUND_LABELS[s]}
               </button>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Volume toggle + slider */}
+      <div className="relative flex items-center gap-1.5">
+        <button
+          onClick={() => setVolumeOpen(!volumeOpen)}
+          className={`
+            flex items-center justify-center size-7 rounded-md border transition-all duration-150
+            ${volumeOpen
+              ? 'border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
+              : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+            }
+          `}
+        >
+          <BarVolumeIcon className="size-3.5" />
+        </button>
+        {volumeOpen && (
+          <div className="flex items-center gap-1.5 rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-2.5 py-1">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => onVolumeChange(Number(e.target.value))}
+              className="volume-slider w-[70px]"
+            />
+            <span className="text-[10px] font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-7 text-center">
+              {Math.round(volume * 100)}
+            </span>
           </div>
         )}
       </div>
@@ -353,9 +393,11 @@ function MetronomeSetup({
   isPlaying,
   currentBeat,
   soundType,
+  volume,
   onBpmChange,
   onBeatsChange,
   onSoundChange,
+  onVolumeChange,
   onToggle,
   onTap,
 }: {
@@ -364,13 +406,16 @@ function MetronomeSetup({
   isPlaying: boolean;
   currentBeat: number;
   soundType: MetronomeSoundType;
+  volume: number;
   onBpmChange: (v: number) => void;
   onBeatsChange: (v: number) => void;
   onSoundChange: (s: MetronomeSoundType) => void;
+  onVolumeChange: (v: number) => void;
   onToggle: () => void;
   onTap: () => void;
 }) {
   const soundTypes: MetronomeSoundType[] = ['click', 'woodblock', 'hihat', 'rimclick'];
+  const SetupVolumeIcon = volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const timeSigOptions = [
     { value: 2, label: '2/4' },
     { value: 3, label: '3/4' },
@@ -471,6 +516,43 @@ function MetronomeSetup({
               {SOUND_LABELS[s]}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Volume */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Volume</span>
+          <span className="text-sm font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
+            {Math.round(volume * 100)}%
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => onVolumeChange(0)}
+            className={`size-8 flex items-center justify-center rounded-lg border transition-colors ${
+              volume === 0
+                ? 'border-[hsl(var(--semantic-error)/0.4)] bg-[hsl(var(--semantic-error)/0.1)] text-[hsl(var(--semantic-error))]'
+                : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+            }`}
+          >
+            <VolumeX className="size-3.5" />
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+            className="volume-slider flex-1"
+          />
+          <button
+            onClick={() => onVolumeChange(1)}
+            className="size-8 flex items-center justify-center rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+          >
+            <SetupVolumeIcon className="size-3.5" />
+          </button>
         </div>
       </div>
 
@@ -1026,9 +1108,11 @@ export default function ProgressionPractice() {
           beatsPerMeasure={metronome.beatsPerMeasure}
           currentBeat={metronome.currentBeat}
           soundType={metronome.soundType}
+          volume={metronome.volume}
           onToggle={metronome.toggle}
           onBpmChange={metronome.setBpm}
           onSoundChange={metronome.setSoundType}
+          onVolumeChange={metronome.setVolume}
           onTap={tapTempo}
         />
 
@@ -1274,9 +1358,11 @@ export default function ProgressionPractice() {
                 isPlaying={metronome.isPlaying}
                 currentBeat={metronome.currentBeat}
                 soundType={metronome.soundType}
+                volume={metronome.volume}
                 onBpmChange={metronome.setBpm}
                 onBeatsChange={metronome.setBeatsPerMeasure}
                 onSoundChange={metronome.setSoundType}
+                onVolumeChange={metronome.setVolume}
                 onToggle={metronome.toggle}
                 onTap={tapTempo}
               />
