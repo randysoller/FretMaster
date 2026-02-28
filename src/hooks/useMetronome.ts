@@ -408,7 +408,9 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
 const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
 
 // Best sample indices per digit for the "jackson" speaker (selected for clarity)
+// Includes 0 so we can compose 10, 11, 12 from two single-digit samples
 const VOICE_SAMPLE_MAP: Record<number, string> = {
+  0: `${FSDD_BASE}/0_jackson_0.wav`,
   1: `${FSDD_BASE}/1_jackson_0.wav`,
   2: `${FSDD_BASE}/2_jackson_0.wav`,
   3: `${FSDD_BASE}/3_jackson_0.wav`,
@@ -453,7 +455,7 @@ function loadVoiceSamples(ctx: AudioContext): Promise<void> {
         }
       }
       voiceLoadState = loaded > 0 ? 'loaded' : 'failed';
-      console.log(`[Metronome] Voice samples loaded: ${loaded}/9`);
+      console.log(`[Metronome] Voice samples loaded: ${loaded}/10`);
     })
     .catch(() => {
       voiceLoadState = 'failed';
@@ -491,45 +493,44 @@ function scheduleVoice(
   osc1.start(time);
   osc1.stop(time + 0.045);
 
-  // Try real sample for digits 1–9
-  const sample = voiceSamples.get(num);
-  if (sample) {
+  // Helper to play a single FSDD digit sample through the shared voice chain
+  const playDigitSample = (digit: number, startTime: number, vol: number) => {
+    const buf = voiceSamples.get(digit);
+    if (!buf) return false;
     const source = ctx.createBufferSource();
-    source.buffer = sample;
+    source.buffer = buf;
     source.playbackRate.value = 0.975;
-
-    // Gentle low-pass to tame harsh high frequencies
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = 2200;
     lp.Q.value = 0.7;
-
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
+    gain.gain.setValueAtTime(vol, startTime);
     source.connect(lp);
     lp.connect(gain);
     gain.connect(ctx.destination);
-    source.start(time);
-    return;
+    source.start(startTime);
+    return true;
+  };
+
+  const vol = isAccent ? 1.0 : 0.7;
+
+  // For digits 1–9, play the single sample directly
+  if (num <= 9) {
+    if (playDigitSample(num, time, vol)) return;
+  } else {
+    // For 10–12, compose from two single-digit FSDD samples (same voice)
+    // e.g. 10 → "1" + "0", 11 → "1" + "1", 12 → "1" + "2"
+    const tens = Math.floor(num / 10); // always 1 for 10–12
+    const ones = num % 10;
+    const gap = 0.18; // slight gap between digits
+    const played1 = playDigitSample(tens, time, vol);
+    const played2 = playDigitSample(ones, time + gap, vol);
+    if (played1 || played2) return;
   }
 
-  // Fallback to SpeechSynthesis for 10–12 or if samples not loaded
+  // Last resort fallback: try loading samples for next time
   if (voiceLoadState !== 'loading') loadVoiceSamples(ctx);
-
-  const delay = Math.max(0, (time - ctx.currentTime) * 1000);
-  if (typeof speechSynthesis !== 'undefined') {
-    setTimeout(() => {
-      speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(String(num));
-      utterance.rate = 1.5;
-      utterance.pitch = 0.52;
-      utterance.volume = isAccent ? 1.0 : 0.7;
-      if (voiceRef.current) {
-        utterance.voice = voiceRef.current;
-      }
-      speechSynthesis.speak(utterance);
-    }, delay);
-  }
 }
 
 // ─── Voice Selection Helper (fallback for SpeechSynthesis) ───
