@@ -241,8 +241,9 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
 
 const HIHAT_URLS = {
   // Real closed hi-hat recordings from The Open Source Drum Kit by Real Music Media
-  normal: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh1.wav',
-  accent: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh10.wav',
+  // Using mid-velocity (chh5) for normal and high-velocity (chh14) for accent — better tonal balance
+  normal: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh5.wav',
+  accent: 'https://raw.githubusercontent.com/crabacus/the-open-source-drumkit/master/hihat/closed-hihat/chh14.wav',
 };
 
 let hiHatSampleNormal: AudioBuffer | null = null;
@@ -318,7 +319,7 @@ function scheduleHiHatFallback(ctx: AudioContext, time: number, isAccent: boolea
   src.start(time);
 }
 
-/** Play a real hi-hat sample, or fallback if not loaded */
+/** Play a real hi-hat sample with EQ shaping, or fallback if not loaded */
 function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
   const sample = isAccent ? hiHatSampleAccent : hiHatSampleNormal;
   if (!sample) {
@@ -331,10 +332,33 @@ function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
   const source = ctx.createBufferSource();
   source.buffer = sample;
 
-  // Boosted gain to match perceived loudness of wood block samples
+  // High-pass filter to remove low-end mud, keeping the hi-hat clean
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 300;
+  highpass.Q.value = 0.7;
+
+  // Presence boost around 5–6kHz for crisp "tick" attack
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'peaking';
+  presence.frequency.value = 5500;
+  presence.Q.value = 1.2;
+  presence.gain.value = isAccent ? 4 : 3;
+
+  // High-shelf boost for shimmer / air above 10kHz
+  const air = ctx.createBiquadFilter();
+  air.type = 'highshelf';
+  air.frequency.value = 10000;
+  air.gain.value = isAccent ? 3 : 2;
+
+  // Output gain — conservative to avoid clipping; EQ provides perceived loudness
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.7 : 1.35, time);
-  source.connect(gain);
+  gain.gain.setValueAtTime(isAccent ? 1.1 : 0.85, time);
+
+  source.connect(highpass);
+  highpass.connect(presence);
+  presence.connect(air);
+  air.connect(gain);
   gain.connect(getOutput(ctx));
 
   source.start(time);
