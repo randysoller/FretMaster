@@ -5,13 +5,13 @@ const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
 const VOLUME_KEY = 'fretmaster-metronome-volume';
 
-export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'rimclick';
+export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'sidestick';
 
 export const SOUND_LABELS: Record<MetronomeSoundType, string> = {
   click: 'Click',
   woodblock: 'Wood Block',
   hihat: 'Hi-Hat',
-  rimclick: 'Rim Click',
+  sidestick: 'Sidestick',
 };
 
 function getStoredBpm(): number {
@@ -39,7 +39,7 @@ function getStoredBeats(): number {
 function getStoredSound(): MetronomeSoundType {
   try {
     const v = localStorage.getItem(SOUND_KEY);
-    if (v && ['click', 'woodblock', 'hihat', 'rimclick'].includes(v)) return v as MetronomeSoundType;
+    if (v && ['click', 'woodblock', 'hihat', 'sidestick'].includes(v)) return v as MetronomeSoundType;
   } catch {}
   return 'click';
 }
@@ -484,7 +484,7 @@ export function useMetronome(): MetronomeState {
       case 'hihat':
         scheduleHiHat(ctx, time, isAccent);
         break;
-      case 'rimclick':
+      case 'sidestick':
         scheduleRimClick(ctx, time, isAccent);
         break;
       case 'click':
