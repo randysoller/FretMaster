@@ -82,12 +82,12 @@ function getOutput(ctx: AudioContext): AudioNode {
 /**
  * Convert a linear slider value (0–1) to an exponential audio gain (0–3).
  * Uses a power curve so the slider feels natural to human ears.
- * 0 → 0 (mute), 0.5 → ~0.42, 0.75 → ~1.0 (unity), 1.0 → 3.0 (boost).
+ * 0 → 0 (mute), 0.5 → ~1.06 (≈unity), 0.75 → ~1.95, 1.0 → 3.0 (boost).
+ * Flatter curve (v^1.5) ensures adequate volume on mobile speakers.
  */
 function sliderToGain(v: number): number {
   if (v <= 0) return 0;
-  // Exponential curve: 3^(v*2 - 1.5) scaled so 0→0, 0.75→~1, 1→3
-  return Math.pow(v, 2.5) * 3;
+  return Math.pow(v, 1.5) * 3;
 }
 
 // ─── Sound Synthesis Functions ───────────────────────────
