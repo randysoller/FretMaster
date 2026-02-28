@@ -1146,7 +1146,7 @@ export default function ProgressionPractice() {
         </div>
 
         {/* Main practice area */}
-        <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12">
+        <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
           {/* Detection result overlay */}
           <DetectionFeedback result={detectionResult} />
 
@@ -1248,51 +1248,104 @@ export default function ProgressionPractice() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Controls */}
-          <div className="mt-6 flex flex-col items-center gap-4">
-            {!isRevealed && (
-              <div>
-                {timerPerChord > 0 ? (
-                  <button
-                    onClick={() => { reset(); revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }}
-                    className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                  >
-                    <Eye className="size-4" />
-                    Reveal Now
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleReveal}
-                    className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-                  >
-                    <Eye className="size-5" />
-                    Reveal Chord
-                  </button>
-                )}
-              </div>
+          {/* Desktop controls — visible only on sm+ */}
+          <div className="hidden sm:flex mt-8 items-stretch gap-3">
+            {/* Prev */}
+            <button
+              onClick={handlePrev}
+              className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))] active:scale-95 transition-all"
+              title="Previous"
+            >
+              <SkipBack className="size-5" />
+            </button>
+
+            {/* Restart */}
+            <button
+              onClick={handleRestart}
+              className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))] active:scale-95 transition-all"
+              title="Restart"
+            >
+              <RotateCcw className="size-5" />
+            </button>
+
+            {/* Reveal / Play Again */}
+            {!isRevealed ? (
+              <button
+                onClick={() => { reset(); revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }}
+                className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all"
+              >
+                <Eye className="size-5" />
+                {timerPerChord > 0 ? 'Reveal Now' : 'Reveal Chord'}
+              </button>
+            ) : (
+              <button
+                onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }}
+                className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all"
+              >
+                <Volume2 className="size-5" />
+                Play Again
+              </button>
             )}
 
-            <div className="flex items-center gap-3">
+            {/* Next */}
+            <button
+              onClick={handleNext}
+              className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary hover:bg-[hsl(var(--color-brand))] active:scale-95 transition-all"
+            >
+              Next
+              <SkipForward className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile bottom toolbar — fixed at the bottom, sm+ hidden */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.95)] backdrop-blur-md safe-area-bottom">
+          <div className="flex items-stretch gap-2 px-3 py-3">
+            {/* Prev */}
+            <button
+              onClick={handlePrev}
+              className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] active:scale-95 transition-all"
+              title="Previous"
+            >
+              <SkipBack className="size-5" />
+            </button>
+
+            {/* Restart */}
+            <button
+              onClick={handleRestart}
+              className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] active:scale-95 transition-all"
+              title="Restart"
+            >
+              <RotateCcw className="size-5" />
+            </button>
+
+            {/* Reveal / Play Again */}
+            {!isRevealed ? (
               <button
-                onClick={handlePrev}
-                className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-4 py-3 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                onClick={() => { reset(); revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] active:scale-[0.97] transition-all"
               >
-                <SkipBack className="size-4" />
+                <Eye className="size-5" />
+                {timerPerChord > 0 ? 'Reveal Now' : 'Reveal Chord'}
               </button>
+            ) : (
               <button
-                onClick={handleRestart}
-                className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-4 py-3 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] active:scale-[0.97] transition-all"
               >
-                <RotateCcw className="size-4" />
+                <Volume2 className="size-5" />
+                Play Again
               </button>
-              <button
-                onClick={handleNext}
-                className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-3 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-              >
-                Next
-                <SkipForward className="size-4" />
-              </button>
-            </div>
+            )}
+
+            {/* Next */}
+            <button
+              onClick={handleNext}
+              className="flex items-center justify-center gap-1.5 rounded-xl min-h-[48px] px-5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary active:scale-95 transition-all"
+            >
+              Next
+              <SkipForward className="size-4" />
+            </button>
           </div>
         </div>
       </div>
