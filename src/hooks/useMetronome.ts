@@ -477,11 +477,17 @@ function scheduleVoice(
   beatNumber: number,
   voiceRef: React.MutableRefObject<SpeechSynthesisVoice | null>,
   beatsPerMeasure: number = 4,
+  bpm: number = 100,
 ) {
   // Always count straight through: 1,2,3...N
   const num = beatNumber + 1;
 
-  // Subtle reference tick for rhythmic anchor
+  // Voice onset compensation: schedule voice samples slightly early
+  // to align perceived onset with the beat (compensates for consonant
+  // articulation delay, especially fricatives like "six")
+  const voiceTime = Math.max(ctx.currentTime, time - 0.035);
+
+  // Subtle reference tick stays exactly on beat for rhythmic anchor
   const osc1 = ctx.createOscillator();
   const g1 = ctx.createGain();
   osc1.connect(g1);
@@ -497,6 +503,7 @@ function scheduleVoice(
   const playDigitSample = (digit: number, startTime: number, vol: number) => {
     const buf = voiceSamples.get(digit);
     if (!buf) return false;
+    const safeStart = Math.max(ctx.currentTime, startTime);
     const source = ctx.createBufferSource();
     source.buffer = buf;
     source.playbackRate.value = 0.975;
@@ -505,11 +512,11 @@ function scheduleVoice(
     lp.frequency.value = 2200;
     lp.Q.value = 0.7;
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(vol, startTime);
+    gain.gain.setValueAtTime(vol, safeStart);
     source.connect(lp);
     lp.connect(gain);
     gain.connect(ctx.destination);
-    source.start(startTime);
+    source.start(safeStart);
     return true;
   };
 
@@ -517,15 +524,17 @@ function scheduleVoice(
 
   // For digits 1–9, play the single sample directly
   if (num <= 9) {
-    if (playDigitSample(num, time, vol)) return;
+    if (playDigitSample(num, voiceTime, vol)) return;
   } else {
     // For 10–12, compose from two single-digit FSDD samples (same voice)
     // e.g. 10 → "1" + "0", 11 → "1" + "1", 12 → "1" + "2"
     const tens = Math.floor(num / 10); // always 1 for 10–12
     const ones = num % 10;
-    const gap = 0.18; // slight gap between digits
-    const played1 = playDigitSample(tens, time, vol);
-    const played2 = playDigitSample(ones, time + gap, vol);
+    // Tempo-aware gap: shorter at faster tempos to stay within the beat
+    const secondsPerBeat = 60 / bpm;
+    const gap = Math.min(0.15, Math.max(0.08, secondsPerBeat * 0.25));
+    const played1 = playDigitSample(tens, voiceTime, vol);
+    const played2 = playDigitSample(ones, voiceTime + gap, vol);
     if (played1 || played2) return;
   }
 
@@ -622,7 +631,7 @@ export function useMetronome(): MetronomeState {
         scheduleRimClick(ctx, time, isAccent);
         break;
       case 'voice':
-        scheduleVoice(ctx, time, isAccent, beat, voiceRef, beatsRef.current);
+        scheduleVoice(ctx, time, isAccent, beat, voiceRef, beatsRef.current, bpmRef.current);
         break;
       case 'click':
       default:
