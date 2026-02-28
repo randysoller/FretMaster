@@ -322,7 +322,7 @@ export default function Practice() {
       )}
 
       {/* Main Practice Area */}
-      <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-12">
+      <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
         {/* Detection result overlay */}
         <DetectionFeedback result={result} />
 
@@ -333,20 +333,20 @@ export default function Practice() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center gap-8"
+            className="flex flex-col items-center gap-4 sm:gap-8 w-full max-w-lg"
           >
             {/* Chord Name */}
             <div className="text-center">
-              <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold text-[hsl(var(--text-default))] leading-none">
+              <h2 className="font-display text-4xl sm:text-7xl md:text-8xl font-extrabold text-[hsl(var(--text-default))] leading-none">
                 {chord.symbol}
               </h2>
-              <p className="mt-3 font-body text-base sm:text-lg text-[hsl(var(--text-muted))]">
+              <p className="mt-1.5 sm:mt-3 font-body text-sm sm:text-lg text-[hsl(var(--text-muted))]">
                 {chord.name}
               </p>
             </div>
 
             {/* Countdown or Diagram */}
-            <div className="relative min-h-[260px] flex items-center justify-center mt-6">
+            <div className="relative min-h-[200px] sm:min-h-[260px] flex items-center justify-center mt-2 sm:mt-6 w-full">
               <AnimatePresence mode="wait">
                 {!isRevealed ? (
                   <motion.div
@@ -355,16 +355,23 @@ export default function Practice() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ duration: 0.25 }}
-                    className="flex flex-col items-center gap-6"
+                    className="flex flex-col items-center gap-4 sm:gap-6"
                   >
                     {timerDuration > 0 ? (
+                      <div className="scale-[0.85] sm:scale-100 origin-center">
                         <CountdownRing
                           progress={progress}
                           timeLeft={timeLeft}
                           size={180}
                         />
+                      </div>
                     ) : (
-                      <div className="min-h-[180px]" />
+                      <div className="min-h-[140px] sm:min-h-[180px] flex items-center justify-center">
+                        <div className="text-center text-[hsl(var(--text-muted))]">
+                          <Eye className="size-8 sm:size-10 mx-auto mb-2 opacity-30" />
+                          <p className="text-xs sm:text-sm font-body">Tap reveal to see the chord</p>
+                        </div>
+                      </div>
                     )}
                   </motion.div>
                 ) : (
@@ -373,9 +380,9 @@ export default function Practice() {
                     initial={{ opacity: 0, scale: 0.7 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex flex-col items-center gap-6"
+                    className="flex flex-col items-center gap-3 sm:gap-6 w-full"
                   >
-                    <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
+                    <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis w-fit mx-auto max-w-[90vw] sm:max-w-none">
                       {(chord as any).isCustom ? (
                         <CustomChordDiagram
                           key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`}
@@ -401,7 +408,7 @@ export default function Practice() {
                     </div>
                     <button
                       onClick={() => { pauseDetection(2000); playChord(chord); }}
-                      className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
+                      className="flex items-center gap-2 rounded-lg px-4 py-2.5 sm:rounded-md sm:px-4 sm:py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors min-h-[44px] sm:min-h-0"
                     >
                       <Volume2 className="size-4" />
                       Play Again
@@ -413,8 +420,8 @@ export default function Practice() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Controls group — reveal button + restart/next */}
-        <div className="mt-8 flex flex-col items-center gap-4">
+        {/* Desktop controls — visible only on sm+ */}
+        <div className="hidden sm:flex mt-8 flex-col items-center gap-4">
           {!isRevealed && (
             <div>
               {timerDuration > 0 ? (
@@ -453,6 +460,48 @@ export default function Practice() {
               <SkipForward className="size-4" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile bottom toolbar — fixed at the bottom, sm+ hidden */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.95)] backdrop-blur-md safe-area-bottom">
+        <div className="flex items-stretch gap-2 px-3 py-3">
+          {/* Restart */}
+          <button
+            onClick={handleRestart}
+            className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] active:scale-95 transition-all"
+            title="Restart"
+          >
+            <RotateCcw className="size-5" />
+          </button>
+
+          {/* Reveal / main CTA */}
+          {!isRevealed ? (
+            <button
+              onClick={timerDuration > 0 ? handleSkipReveal : handleReveal}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] active:scale-[0.97] transition-all"
+            >
+              <Eye className="size-5" />
+              {timerDuration > 0 ? 'Reveal Now' : 'Reveal Chord'}
+            </button>
+          ) : (
+            <button
+              onClick={() => { pauseDetection(2000); playChord(chord); }}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] active:scale-[0.97] transition-all"
+            >
+              <Volume2 className="size-5" />
+              Play Again
+            </button>
+          )}
+
+          {/* Next */}
+          <button
+            onClick={handleNext}
+            className="flex items-center justify-center gap-1.5 rounded-xl min-h-[48px] px-5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary active:scale-95 transition-all"
+          >
+            Next
+            <SkipForward className="size-4" />
+          </button>
         </div>
       </div>
     </div>
