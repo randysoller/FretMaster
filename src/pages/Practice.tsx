@@ -417,45 +417,43 @@ export default function Practice() {
         </AnimatePresence>
 
         {/* Desktop controls — visible only on sm+ */}
-        <div className="hidden sm:flex mt-8 flex-col items-center gap-4">
-          {!isRevealed && (
-            <div>
-              {timerDuration > 0 ? (
-                <button
-                  onClick={handleSkipReveal}
-                  className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                >
-                  <Eye className="size-4" />
-                  Reveal Now
-                </button>
-              ) : (
-                <button
-                  onClick={handleReveal}
-                  className="flex items-center gap-3 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-4 font-display text-base font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-                >
-                  <Eye className="size-5" />
-                  Reveal Chord
-                </button>
-              )}
-            </div>
+        <div className="hidden sm:flex mt-8 items-stretch gap-3">
+          {/* Restart */}
+          <button
+            onClick={handleRestart}
+            className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))] active:scale-95 transition-all"
+            title="Restart"
+          >
+            <RotateCcw className="size-5" />
+          </button>
+
+          {/* Reveal / Play Again */}
+          {!isRevealed ? (
+            <button
+              onClick={timerDuration > 0 ? handleSkipReveal : handleReveal}
+              className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all"
+            >
+              <Eye className="size-5" />
+              {timerDuration > 0 ? 'Reveal Now' : 'Reveal Chord'}
+            </button>
+          ) : (
+            <button
+              onClick={() => { pauseDetection(2000); playChord(chord); }}
+              className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all"
+            >
+              <Volume2 className="size-5" />
+              Play Again
+            </button>
           )}
 
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleRestart}
-              className="flex items-center gap-2 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-5 py-3 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-            >
-              <RotateCcw className="size-4" />
-              Restart
-            </button>
-            <button
-              onClick={handleNext}
-              className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary))] px-8 py-3 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] glow-primary active:scale-[0.98] transition-all duration-200"
-            >
-              Next Chord
-              <SkipForward className="size-4" />
-            </button>
-          </div>
+          {/* Next */}
+          <button
+            onClick={handleNext}
+            className="flex items-center justify-center gap-2 rounded-xl min-h-[48px] px-8 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary hover:bg-[hsl(var(--color-brand))] active:scale-95 transition-all"
+          >
+            Next
+            <SkipForward className="size-4" />
+          </button>
         </div>
       </div>
 
