@@ -482,10 +482,18 @@ function scheduleVoice(
   // Always count straight through: 1,2,3...N
   const num = beatNumber + 1;
 
-  // Voice onset compensation: schedule voice samples slightly early
-  // to align perceived onset with the beat (compensates for consonant
-  // articulation delay, especially fricatives like "six")
-  const voiceTime = Math.max(ctx.currentTime, time - 0.035);
+  // Per-digit voice onset compensation (seconds scheduled early).
+  // Each digit has a different consonant onset delay:
+  //   "six" (/s/ fricative) needs the most compensation (~80ms)
+  //   "seven" (/s/) and "five" (/f/) also need extra (~55ms)
+  //   Plosives like "two","three" are snappier (~30ms)
+  const DIGIT_ONSET: Record<number, number> = {
+    0: 0.035, 1: 0.030, 2: 0.030, 3: 0.030,
+    4: 0.040, 5: 0.055, 6: 0.080, 7: 0.055,
+    8: 0.035, 9: 0.035,
+  };
+  const onset = DIGIT_ONSET[num] ?? 0.035;
+  const voiceTime = Math.max(ctx.currentTime, time - onset);
 
   // Subtle reference tick stays exactly on beat for rhythmic anchor
   const osc1 = ctx.createOscillator();
