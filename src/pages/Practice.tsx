@@ -13,7 +13,6 @@ import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const LAST_PRACTICE_KEY = 'fretmaster-last-practice-route';
 const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
 
 function getStoredSensitivity(): number {
@@ -137,9 +136,6 @@ export default function Practice() {
 
   const chord = getCurrentChord();
   const { playChord } = useChordAudio();
-
-  // Track this as the last visited practice route
-  try { localStorage.setItem(LAST_PRACTICE_KEY, '/practice'); } catch {}
 
   // Sensitivity state with localStorage persistence
   const [sensitivity, setSensitivity] = useState(getStoredSensitivity);

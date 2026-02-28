@@ -1,22 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool, ListMusic } from 'lucide-react';
 
-const LAST_PRACTICE_KEY = 'fretmaster-last-practice-route';
-
-function getLastPracticeRoute(): string {
-  try {
-    const stored = localStorage.getItem(LAST_PRACTICE_KEY);
-    if (stored === '/' || stored === '/practice' || stored === '/progressions') return stored;
-  } catch {}
-  return '/';
-}
-
 export default function Header() {
   const location = useLocation();
-  const lastPracticeRoute = getLastPracticeRoute();
 
   const navLinks = [
-    { to: lastPracticeRoute, label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/practice', '/progressions'] },
+    { to: '/', label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/practice', '/progressions'] },
     { to: '/progressions', label: 'Progressions', icon: <ListMusic className="size-4" />, matchPaths: ['/progressions'] },
     { to: '/library', label: 'Library', icon: <BookOpen className="size-4" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-4" />, matchPaths: ['/editor'] },

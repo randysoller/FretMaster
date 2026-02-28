@@ -7,13 +7,8 @@ import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/c
 import { Play, Music, AlertCircle } from 'lucide-react';
 import heroImg from '@/assets/hero-guitar.jpg';
 
-const LAST_PRACTICE_KEY = 'fretmaster-last-practice-route';
-
 export default function Home() {
   const navigate = useNavigate();
-
-  // Track this as the last visited practice route
-  try { localStorage.setItem(LAST_PRACTICE_KEY, '/'); } catch {}
   const { startPractice, getAvailableCount, categories, chordTypes, barreRoots } = usePracticeStore();
   const availableCount = getAvailableCount();
 

@@ -42,8 +42,6 @@ import {
   Check,
 } from 'lucide-react';
 
-const LAST_PRACTICE_KEY = 'fretmaster-last-practice-route';
-
 // ─── Shared Detection UI ─────────────────────────────────
 
 const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
@@ -934,8 +932,6 @@ export default function ProgressionPractice() {
   const store = useProgressionStore();
   const prevLocationKeyRef = useRef(location.key);
 
-  // Track this as the last visited practice route
-  try { localStorage.setItem(LAST_PRACTICE_KEY, '/progressions'); } catch {}
   const {
     selectedKey, selectedScale, selectedPreset, customDegrees, useCustom,
     timerPerChord, isPracticing, progressionChords, currentChordIndex,
