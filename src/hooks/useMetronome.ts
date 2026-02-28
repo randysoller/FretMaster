@@ -660,7 +660,7 @@ function loadVoiceSamples(ctx: AudioContext): Promise<void> {
  * @param time The exact beat time in AudioContext time
  * @param isAccent Whether this is an accented beat (played slightly louder)
  */
-function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAccent: boolean) {
+function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAccent: boolean, secondsPerBeat = 0.5) {
   const buffer = voiceBuffers.get(beatNumber);
   if (!buffer) {
     // Fallback to click if voice not loaded
@@ -712,15 +712,39 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   // Key insight: a voice word lasting 300ms at gain 0.6 has ~4× the energy of a click
   // lasting 25ms at gain 0.4. We compensate with:
   //   1. Lower peak gains (0.55/0.38) to reduce overall energy
-  //   2. A gentle transient-shaping envelope that decays to 60% over 300ms,
+  //   2. A tempo-adaptive transient-shaping envelope that decays proportionally,
   //      mimicking the quick decay of percussive sounds so voice has similar
   //      "impact" weight as click, wood block, hi-hat, and sidestick
+  //   3. An anti-click fade-out ramp to silence before the buffer ends,
+  //      preventing the abrupt gain→0 discontinuity that causes audible clicks
   const gain = ctx.createGain();
   const vol = isAccent ? 0.55 : 0.38;
+
+  // Tempo-adaptive decay: use ~45% of beat duration, clamped to a usable range.
+  // At 60 BPM (1000ms/beat) → 300ms decay (comfortable).
+  // At 120 BPM (500ms/beat) → 225ms decay (tight but natural).
+  // At 180 BPM (333ms/beat) → 150ms decay (snappy, stays within beat).
+  // At 200+ BPM (≤300ms/beat) → 80ms minimum (percussive snap).
+  const decayTime = Math.min(0.30, Math.max(0.08, secondsPerBeat * 0.45));
+  // Decay ratio also adapts: faster tempos get a steeper drop for punchier feel
+  const decayRatio = secondsPerBeat > 0.5 ? 0.55 : secondsPerBeat > 0.35 ? 0.45 : 0.35;
+
   gain.gain.setValueAtTime(vol, time);
-  // Transient shaping: gentle decay after initial consonant attack
-  // This makes voice feel more like a rhythmic "hit" than a sustained word
-  gain.gain.exponentialRampToValueAtTime(vol * 0.6, time + 0.30);
+  // Transient shaping: tempo-adaptive decay after initial consonant attack
+  gain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), time + decayTime);
+
+  // Anti-click fade-out: ramp gain to near-zero before the buffer source ends.
+  // Without this, the gain holds at vol*decayRatio when the buffer abruptly stops,
+  // creating an audible click/pop from the instantaneous jump to silence.
+  const effectiveDuration = buffer.duration / source.playbackRate.value;
+  const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
+  const startTime = Math.max(ctx.currentTime, time - onsetOffset);
+  const bufferEndTime = startTime + effectiveDuration;
+  const fadeOutDuration = 0.018; // 18ms cosine-equivalent fade — long enough to avoid clicks, short enough to be inaudible
+  const fadeOutStart = Math.max(time + decayTime + 0.005, bufferEndTime - fadeOutDuration);
+  // Hold the decayed value, then ramp to silence
+  gain.gain.setValueAtTime(Math.max(vol * decayRatio, 0.001), fadeOutStart);
+  gain.gain.exponentialRampToValueAtTime(0.0001, bufferEndTime);
 
   source.connect(highpass);
   highpass.connect(presence);
@@ -728,9 +752,8 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   deEss.connect(gain);
   gain.connect(getOutput(ctx));
 
-  // Schedule playback early by the onset offset so perceived sound lands on beat
-  const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
-  const startTime = Math.max(ctx.currentTime, time - onsetOffset);
+  // Start playback early by the onset offset so perceived sound lands on beat
+  // (startTime and onsetOffset already computed above for the anti-click envelope)
   source.start(startTime);
 }
 
@@ -794,7 +817,7 @@ export function useMetronome(): MetronomeState {
   }, []);
 
   /** Schedule a single beat sound */
-  const scheduleBeat = useCallback((ctx: AudioContext, time: number, isAccent: boolean, beat: number) => {
+  const scheduleBeat = useCallback((ctx: AudioContext, time: number, isAccent: boolean, beat: number, secPerBeat: number) => {
     switch (soundTypeRef.current) {
       case 'woodblock':
         scheduleWoodBlock(ctx, time, isAccent);
@@ -808,7 +831,7 @@ export function useMetronome(): MetronomeState {
       case 'voice': {
         // beat is 0-indexed, voice counts are 1-indexed
         const beatNumber = beat + 1;
-        scheduleVoice(ctx, time, beatNumber, isAccent);
+        scheduleVoice(ctx, time, beatNumber, isAccent, secPerBeat);
         break;
       }
       case 'click':
@@ -828,14 +851,14 @@ export function useMetronome(): MetronomeState {
       const isAccent = beatRef.current === 0
         || (beatsRef.current === 6 && beatRef.current === 3)
         || (beatsRef.current === 12 && (beatRef.current === 3 || beatRef.current === 6 || beatRef.current === 9));
-      scheduleBeat(ctx, nextNoteTimeRef.current, isAccent, beatRef.current);
+      const secondsPerBeat = 60 / bpmRef.current;
+      scheduleBeat(ctx, nextNoteTimeRef.current, isAccent, beatRef.current, secondsPerBeat);
 
       const beatSnap = beatRef.current;
       setTimeout(() => {
         setCurrentBeat(beatSnap);
       }, Math.max(0, (nextNoteTimeRef.current - ctx.currentTime) * 1000));
 
-      const secondsPerBeat = 60 / bpmRef.current;
       nextNoteTimeRef.current += secondsPerBeat;
       beatRef.current = (beatRef.current + 1) % beatsRef.current;
     }
