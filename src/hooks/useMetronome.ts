@@ -246,6 +246,8 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
+  // Tight decay envelope to cut the reverb tail
+  gain.gain.exponentialRampToValueAtTime(0.01, time + (isAccent ? 0.18 : 0.14));
 
   source.connect(highpass);
   highpass.connect(presence);
