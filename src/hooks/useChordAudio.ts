@@ -16,6 +16,7 @@ function createPluck(
   startTime: number,
   duration: number,
   volume: number,
+  outputNode: AudioNode,
 ) {
   // Main tone — triangle gives a warm, muted guitar-like timbre
   const osc1 = ctx.createOscillator();
@@ -56,7 +57,7 @@ function createPluck(
   filter.frequency.exponentialRampToValueAtTime(Math.min(frequency * 2, 2000), startTime + duration * 0.4);
   filter.Q.setValueAtTime(1.2, startTime);
 
-  // Routing
+  // Routing — through filter to the provided output node (master gain)
   osc1.connect(mainGain);
   osc2.connect(harmonicGain);
   osc3.connect(subGain);
@@ -65,7 +66,7 @@ function createPluck(
   harmonicGain.connect(filter);
   subGain.connect(filter);
 
-  filter.connect(ctx.destination);
+  filter.connect(outputNode);
 
   osc1.start(startTime);
   osc2.start(startTime);
@@ -110,6 +111,14 @@ export function useChordAudio() {
 
       stopCurrent();
       const ctx = getContext();
+
+      // Master gain node: applies user volume with a boost curve for adequate
+      // loudness on mobile. v^1.2 * 6 gives ~4.1 at 75% and 6 at max.
+      const masterGain = ctx.createGain();
+      const gain = Math.pow(masterVol, 1.2) * 6;
+      masterGain.gain.value = gain;
+      masterGain.connect(ctx.destination);
+
       const now = ctx.currentTime + 0.05;
       const strumDelay = 0.035; // 35ms between strings — natural strum speed
       const noteDuration = 2.5; // ring out for 2.5 seconds
@@ -122,10 +131,10 @@ export function useChordAudio() {
         if (fret === -1) continue; // muted string — skip
 
         const freq = getNoteFrequency(i, fret);
-        // Slight volume variation: bass strings a tad louder, scaled by master volume
-        const vol = (0.3 - i * 0.015) * masterVol;
+        // Slight volume variation: bass strings a tad louder
+        const vol = 0.3 - i * 0.015;
         const startTime = now + strumIndex * strumDelay;
-        const oscs = createPluck(ctx, freq, startTime, noteDuration, vol);
+        const oscs = createPluck(ctx, freq, startTime, noteDuration, vol, masterGain);
         allOscs.push(...oscs);
         strumIndex++;
       }
