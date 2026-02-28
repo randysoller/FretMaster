@@ -681,26 +681,37 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   }
 
   // EQ chain for voice clarity in a metronome context
-  // High-pass to remove rumble
+  // High-pass to remove rumble and low-frequency room tone
   const highpass = ctx.createBiquadFilter();
   highpass.type = 'highpass';
-  highpass.frequency.value = 150;
+  highpass.frequency.value = 180;
   highpass.Q.value = 0.7;
 
-  // Presence boost for voice intelligibility
+  // Gentle presence boost for voice intelligibility without adding too much energy
   const presence = ctx.createBiquadFilter();
   presence.type = 'peaking';
   presence.frequency.value = 2800;
   presence.Q.value = 1.5;
-  presence.gain.value = isAccent ? 4 : 2;
+  presence.gain.value = isAccent ? 2.5 : 1.5;
 
+  // Slight high-shelf cut to tame sibilance and keep voice from sounding harsh
+  const deEss = ctx.createBiquadFilter();
+  deEss.type = 'highshelf';
+  deEss.frequency.value = 7000;
+  deEss.gain.value = -2;
+
+  // Voice samples have sustained energy (higher RMS) vs transient percussive sounds,
+  // so perceived loudness is higher at the same peak gain. Reduce gain to match
+  // the perceived loudness of click (~0.3 effective), wood block (0.7–1.0),
+  // hi-hat (0.85–1.1), and sidestick (0.5–0.75).
   const gain = ctx.createGain();
-  const vol = isAccent ? 1.4 : 1.0;
+  const vol = isAccent ? 0.85 : 0.6;
   gain.gain.setValueAtTime(vol, time);
 
   source.connect(highpass);
   highpass.connect(presence);
-  presence.connect(gain);
+  presence.connect(deEss);
+  deEss.connect(gain);
   gain.connect(getOutput(ctx));
 
   // Schedule playback early by the onset offset so perceived sound lands on beat
