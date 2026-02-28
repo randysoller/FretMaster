@@ -476,10 +476,8 @@ function scheduleVoice(
   voiceRef: React.MutableRefObject<SpeechSynthesisVoice | null>,
   beatsPerMeasure: number = 4,
 ) {
-  // Compound meters (6/8, 12/8): count in sub-groups of 3 → "1,2,3,1,2,3..."
-  // Simple meters (2/4, 3/4, 4/4): count straight through → "1,2,3,4"
-  const isCompound = beatsPerMeasure === 6 || beatsPerMeasure === 12;
-  const num = isCompound ? (beatNumber % 3) + 1 : beatNumber + 1;
+  // Always count straight through: 1,2,3...N
+  const num = beatNumber + 1;
 
   // Subtle reference tick for rhythmic anchor
   const osc1 = ctx.createOscillator();
