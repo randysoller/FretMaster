@@ -500,6 +500,13 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
 // FSDD speaker "jackson" — consistent male voice, clear articulation
 const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
 
+// Full-word recordings for 10, 11, 12 from Wikimedia Commons (public domain)
+const WORD_URLS: Record<number, string> = {
+  10: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/En-us-ten.ogg',
+  11: 'https://upload.wikimedia.org/wikipedia/commons/d/db/En-us-eleven.ogg',
+  12: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/En-us-twelve.ogg',
+};
+
 /**
  * Manual onset compensation offsets (seconds) per digit.
  * Positive = schedule earlier; these values account for the time between
@@ -594,56 +601,64 @@ function concatenateBuffers(
 }
 
 /**
- * Load voice count samples for digits 0–9 from FSDD, then build
- * compound samples for 10, 11, 12 by concatenating trimmed digit pairs.
+ * Per-word onset compensation for the Wikimedia "ten", "eleven", "twelve" recordings.
+ * These are different speakers than FSDD, so they need independent calibration.
+ * - "ten" /t/ — sharp plosive, similar characteristics to "two"
+ * - "eleven" /ɪ/ — vowel-initial, fast onset similar to "eight"
+ * - "twelve" /t/ — plosive onset like "ten"
+ */
+const WORD_ONSET_OFFSETS: Record<number, number> = {
+  10: 0.045, // "ten" — /t/ plosive
+  11: 0.020, // "eleven" — /ɪ/ vowel-initial
+  12: 0.045, // "twelve" — /t/ plosive
+};
+
+/**
+ * Load voice count samples:
+ * - Digits 0–9 from FSDD (speaker "jackson")
+ * - Words 10–12 from Wikimedia Commons ("ten", "eleven", "twelve")
  */
 function loadVoiceSamples(ctx: AudioContext): Promise<void> {
   if (voiceLoadState === 'loaded') return Promise.resolve();
   if (voiceLoadPromise) return voiceLoadPromise;
 
   voiceLoadState = 'loading';
+
   // Fetch digits 0–9 from FSDD, speaker "jackson", sample index 0
   const digitPromises = Array.from({ length: 10 }, (_, digit) =>
     fetchAudioBuffer(`${FSDD_BASE}/${digit}_jackson_0.wav`, ctx)
   );
 
-  voiceLoadPromise = Promise.all(digitPromises)
-    .then((rawBuffers) => {
-      // Trim and store digit buffers 0–9
-      const trimmed: AudioBuffer[] = rawBuffers.map((buf) => trimBuffer(ctx, buf));
+  // Fetch full-word recordings for 10, 11, 12 from Wikimedia Commons
+  const wordPromises = [10, 11, 12].map((num) =>
+    fetchAudioBuffer(WORD_URLS[num], ctx)
+  );
 
-      // Store single-digit voice buffers (1–9)
+  voiceLoadPromise = Promise.all([Promise.all(digitPromises), Promise.all(wordPromises)])
+    .then(([rawDigitBuffers, rawWordBuffers]) => {
+      // Trim and store digit buffers 0–9
+      const trimmed: AudioBuffer[] = rawDigitBuffers.map((buf) => trimBuffer(ctx, buf));
+
       for (let d = 0; d <= 9; d++) {
         voiceBuffers.set(d, trimmed[d]);
-        // Calculate onset: auto-detected + manual compensation
         const autoOnset = detectOnset(trimmed[d]);
         const manualOffset = VOICE_ONSET_OFFSETS[d] ?? 0.03;
         voiceOnsets.set(d, autoOnset + manualOffset);
       }
 
-      // Build compound samples for 10, 11, 12
-      // Speed up the component digits for tighter concatenation
-      const buildCompound = (tensDigit: number, onesDigit: number): AudioBuffer => {
-        const t = trimBuffer(ctx, trimmed[tensDigit], 0.015);
-        const o = trimBuffer(ctx, trimmed[onesDigit], 0.015);
-        return concatenateBuffers(ctx, t, o, 0.005);
-      };
-
-      // 10 = "one" + "zero", 11 = "one" + "one", 12 = "one" + "two"
-      voiceBuffers.set(10, buildCompound(1, 0));
-      voiceBuffers.set(11, buildCompound(1, 1));
-      voiceBuffers.set(12, buildCompound(1, 2));
-
-      // Onsets for compound numbers — the "one" (tens digit) drives perceived onset
-      // but concatenation adds a tiny gap, so slightly more compensation than digit 1 alone
-      for (const n of [10, 11, 12]) {
-        const buf = voiceBuffers.get(n)!;
-        const autoOnset = detectOnset(buf);
-        voiceOnsets.set(n, autoOnset + 0.05);
-      }
+      // Trim and store word buffers for 10, 11, 12
+      const wordNums = [10, 11, 12];
+      rawWordBuffers.forEach((buf, i) => {
+        const num = wordNums[i];
+        const trimmedBuf = trimBuffer(ctx, buf);
+        voiceBuffers.set(num, trimmedBuf);
+        const autoOnset = detectOnset(trimmedBuf);
+        const manualOffset = WORD_ONSET_OFFSETS[num] ?? 0.04;
+        voiceOnsets.set(num, autoOnset + manualOffset);
+      });
 
       voiceLoadState = 'loaded';
-      console.log('[Metronome] Voice count samples loaded successfully (1-12)');
+      console.log('[Metronome] Voice count samples loaded successfully (1-12, with real "ten"/"eleven"/"twelve")');
     })
     .catch((err) => {
       console.warn('[Metronome] Failed to load voice samples, falling back to click:', err);
@@ -673,10 +688,11 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   source.buffer = buffer;
 
   // Speed up playback for snappier rhythmic feel and better alignment at faster tempos
-  // Single digits: 1.2x tightens articulation without sounding unnatural
-  // Compound numbers (10–12): 1.6x compresses the two-digit concatenation to fit within a beat
+  // Single digits (1–9): 1.2x tightens articulation without sounding unnatural
+  // Full words (10–12): 1.3x — these are real word recordings so less compression needed
+  //   "eleven" is longest (3 syllables) so benefits from the slight speedup
   if (beatNumber >= 10) {
-    source.playbackRate.value = 1.6;
+    source.playbackRate.value = 1.3;
   } else {
     source.playbackRate.value = 1.2;
   }
