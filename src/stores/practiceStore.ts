@@ -55,6 +55,7 @@ interface PracticeState {
   stopPractice: () => void;
   revealChord: () => void;
   nextChord: () => void;
+  prevChord: () => void;
   getCurrentChord: () => ChordData | null;
   getAvailableCount: () => number;
 }
@@ -131,6 +132,13 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
         isRevealed: false,
         totalPracticed: get().totalPracticed + 1,
       });
+    }
+  },
+
+  prevChord: () => {
+    const { currentIndex } = get();
+    if (currentIndex > 0) {
+      set({ currentIndex: currentIndex - 1, isRevealed: false });
     }
   },
 
