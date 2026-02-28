@@ -79,6 +79,17 @@ function getOutput(ctx: AudioContext): AudioNode {
   return metronomeOutput || ctx.destination;
 }
 
+/**
+ * Convert a linear slider value (0–1) to an exponential audio gain (0–3).
+ * Uses a power curve so the slider feels natural to human ears.
+ * 0 → 0 (mute), 0.5 → ~0.42, 0.75 → ~1.0 (unity), 1.0 → 3.0 (boost).
+ */
+function sliderToGain(v: number): number {
+  if (v <= 0) return 0;
+  // Exponential curve: 3^(v*2 - 1.5) scaled so 0→0, 0.75→~1, 1→3
+  return Math.pow(v, 2.5) * 3;
+}
+
 // ─── Sound Synthesis Functions ───────────────────────────
 
 /**
@@ -448,7 +459,11 @@ export function useMetronome(): MetronomeState {
   useEffect(() => {
     volumeRef.current = volume;
     if (masterGainRef.current) {
-      masterGainRef.current.gain.setValueAtTime(volume, masterGainRef.current.context.currentTime);
+      const gain = sliderToGain(volume);
+      // Use cancelScheduledValues + direct value for reliable immediate update
+      masterGainRef.current.gain.cancelScheduledValues(0);
+      masterGainRef.current.gain.value = gain;
+      console.log(`[Metronome] Volume slider: ${Math.round(volume * 100)}% → gain: ${gain.toFixed(3)}`);
     }
   }, [volume]);
 
@@ -523,9 +538,11 @@ export function useMetronome(): MetronomeState {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
 
-    // Create master gain node for metronome volume
+    // Create master gain node for metronome volume (exponential curve)
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(volumeRef.current, ctx.currentTime);
+    const initialGain = sliderToGain(volumeRef.current);
+    masterGain.gain.value = initialGain;
+    console.log(`[Metronome] Start — initial volume: ${Math.round(volumeRef.current * 100)}% → gain: ${initialGain.toFixed(3)}`);
     masterGain.connect(ctx.destination);
     masterGainRef.current = masterGain;
     metronomeOutput = masterGain;
