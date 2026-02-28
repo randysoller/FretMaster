@@ -48,14 +48,15 @@ export default function PracticeLanding() {
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--color-brand))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-emphasis))] opacity-60 group-hover:opacity-100 transition-opacity" />
 
             <div className="flex flex-col flex-1 p-6 sm:p-8">
-              {/* Icon */}
-              <div className="flex items-center justify-center size-14 rounded-xl bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.2)] mb-5 group-hover:scale-110 group-hover:bg-[hsl(var(--color-primary)/0.18)] transition-all duration-300">
-                <Guitar className="size-7 text-[hsl(var(--color-primary))]" />
+              {/* Icon + Title */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center justify-center size-14 rounded-xl bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-primary)/0.18)] transition-all duration-300">
+                  <Guitar className="size-7 text-[hsl(var(--color-primary))]" />
+                </div>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
+                  Chord Practice
+                </h2>
               </div>
-
-              <h2 className="font-display text-xl sm:text-2xl font-bold text-[hsl(var(--text-default))] mb-2">
-                Chord Practice
-              </h2>
 
               <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-6 flex-1">
                 Study individual chords with timed reveals, audio playback, and real-time microphone detection. Filter by category, type, and root string.
@@ -90,14 +91,15 @@ export default function PracticeLanding() {
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--color-emphasis))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-brand))] opacity-60 group-hover:opacity-100 transition-opacity" />
 
             <div className="flex flex-col flex-1 p-6 sm:p-8">
-              {/* Icon */}
-              <div className="flex items-center justify-center size-14 rounded-xl bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.2)] mb-5 group-hover:scale-110 group-hover:bg-[hsl(var(--color-emphasis)/0.18)] transition-all duration-300">
-                <ListMusic className="size-7 text-[hsl(var(--color-emphasis))]" />
+              {/* Icon + Title */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center justify-center size-14 rounded-xl bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-emphasis)/0.18)] transition-all duration-300">
+                  <ListMusic className="size-7 text-[hsl(var(--color-emphasis))]" />
+                </div>
+                <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
+                  Progression Practice
+                </h2>
               </div>
-
-              <h2 className="font-display text-xl sm:text-2xl font-bold text-[hsl(var(--text-default))] mb-2">
-                Progression Practice
-              </h2>
 
               <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-6 flex-1">
                 Practice chord transitions in any key and scale. Choose from common progressions or build your own, with a built-in metronome and tap-tempo.
