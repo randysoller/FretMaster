@@ -71,6 +71,36 @@ function findChordInLibrary(chordSymbol: string, quality: string): ChordData | n
   return match || null;
 }
 
+// ─── Saved Progressions ─────────────────────────────────
+
+const SAVED_PROGRESSIONS_KEY = 'fretmaster-saved-progressions';
+
+export interface SavedProgression {
+  id: string;
+  name: string;
+  key: NoteName;
+  scaleId: string;
+  degrees: number[];
+  createdAt: number;
+}
+
+function loadSavedProgressions(): SavedProgression[] {
+  try {
+    const raw = localStorage.getItem(SAVED_PROGRESSIONS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function persistSavedProgressions(items: SavedProgression[]) {
+  try {
+    localStorage.setItem(SAVED_PROGRESSIONS_KEY, JSON.stringify(items));
+  } catch {}
+}
+
 export interface ProgressionChordInfo {
   roman: string;
   chordSymbol: string;
@@ -91,6 +121,9 @@ interface ProgressionState {
   useCustom: boolean;
   timerPerChord: ProgressionTimerDuration;
 
+  // Saved progressions
+  savedProgressions: SavedProgression[];
+
   // Practice
   isPracticing: boolean;
   progressionChords: ProgressionChordInfo[];
@@ -106,6 +139,9 @@ interface ProgressionState {
   toggleCustomDegree: (degreeIdx: number) => void;
   setUseCustom: (val: boolean) => void;
   setTimerPerChord: (dur: ProgressionTimerDuration) => void;
+  saveProgression: (name: string) => void;
+  deleteSavedProgression: (id: string) => void;
+  loadSavedProgression: (prog: SavedProgression) => void;
   startProgression: () => void;
   stopProgression: () => void;
   revealChord: () => void;
@@ -122,6 +158,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   customDegrees: [],
   useCustom: false,
   timerPerChord: 4,
+  savedProgressions: loadSavedProgressions(),
   isPracticing: false,
   progressionChords: [],
   currentChordIndex: 0,
@@ -138,6 +175,40 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   }),
   setUseCustom: (val) => set({ useCustom: val }),
   setTimerPerChord: (dur) => set({ timerPerChord: dur }),
+
+  saveProgression: (name) => {
+    const { selectedKey, selectedScale, customDegrees, useCustom, selectedPreset, savedProgressions } = get();
+    const degrees = useCustom ? customDegrees : (selectedPreset?.degrees ?? []);
+    if (degrees.length === 0) return;
+    const newProg: SavedProgression = {
+      id: `sp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim() || 'Untitled',
+      key: selectedKey,
+      scaleId: selectedScale.id,
+      degrees: [...degrees],
+      createdAt: Date.now(),
+    };
+    const updated = [newProg, ...savedProgressions];
+    persistSavedProgressions(updated);
+    set({ savedProgressions: updated });
+  },
+
+  deleteSavedProgression: (id) => {
+    const updated = get().savedProgressions.filter((p) => p.id !== id);
+    persistSavedProgressions(updated);
+    set({ savedProgressions: updated });
+  },
+
+  loadSavedProgression: (prog) => {
+    const scale = SCALES.find((s) => s.id === prog.scaleId) ?? SCALES[0];
+    set({
+      selectedKey: prog.key,
+      selectedScale: scale,
+      customDegrees: [...prog.degrees],
+      useCustom: true,
+      selectedPreset: null,
+    });
+  },
 
   getResolvedChords: () => {
     const { selectedKey, selectedScale, selectedPreset, customDegrees, useCustom } = get();

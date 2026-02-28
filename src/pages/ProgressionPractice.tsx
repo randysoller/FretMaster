@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useProgressionStore, type ProgressionTimerDuration } from '@/stores/progressionStore';
+import { useProgressionStore, type ProgressionTimerDuration, type SavedProgression } from '@/stores/progressionStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
@@ -36,6 +36,10 @@ import {
   ChevronUp,
   Volume1,
   VolumeX,
+  Save,
+  FolderOpen,
+  Upload,
+  Check,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
@@ -925,11 +929,18 @@ export default function ProgressionPractice() {
   const {
     selectedKey, selectedScale, selectedPreset, customDegrees, useCustom,
     timerPerChord, isPracticing, progressionChords, currentChordIndex,
-    isRevealed, loopCount,
+    isRevealed, loopCount, savedProgressions,
     setKey, setScale, setPreset, setCustomDegrees, toggleCustomDegree, setUseCustom,
-    setTimerPerChord, startProgression, stopProgression, revealChord, nextChord, prevChord,
+    setTimerPerChord, saveProgression, deleteSavedProgression, loadSavedProgression,
+    startProgression, stopProgression, revealChord, nextChord, prevChord,
     getCurrentChord, getResolvedChords,
   } = store;
+
+  // Save dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [justSaved, setJustSaved] = useState(false);
+  const [showSavedList, setShowSavedList] = useState(false);
 
   const { playChord } = useChordAudio();
   const metronome = useMetronome();
@@ -1336,6 +1347,152 @@ export default function ProgressionPractice() {
                 onToggleDegree={toggleCustomDegree}
                 onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }}
               />
+            </div>
+
+            {/* Save / Load Progressions */}
+            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FolderOpen className="size-4 text-[hsl(var(--color-primary))]" />
+                  <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+                    My Progressions
+                  </h3>
+                  {savedProgressions.length > 0 && (
+                    <span className="text-[10px] font-display font-bold text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface))] rounded-full px-2 py-0.5">
+                      {savedProgressions.length}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Save current */}
+                  {hasChords && (
+                    <div className="relative">
+                      {!showSaveDialog ? (
+                        <button
+                          onClick={() => { setShowSaveDialog(true); setSaveName(''); setJustSaved(false); }}
+                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-display font-bold bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.22)] transition-all duration-150"
+                        >
+                          <Save className="size-3.5" />
+                          Save Current
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            autoFocus
+                            type="text"
+                            placeholder="Progression name..."
+                            value={saveName}
+                            onChange={(e) => setSaveName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && saveName.trim()) {
+                                saveProgression(saveName);
+                                setJustSaved(true);
+                                setTimeout(() => { setShowSaveDialog(false); setJustSaved(false); }, 1200);
+                              }
+                              if (e.key === 'Escape') setShowSaveDialog(false);
+                            }}
+                            className="w-[160px] rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-2.5 py-1.5 text-xs font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary)/0.6)]"
+                          />
+                          {justSaved ? (
+                            <span className="flex items-center gap-1 text-xs font-body font-medium text-[hsl(var(--semantic-success))]">
+                              <Check className="size-3.5" /> Saved
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => {
+                                  if (saveName.trim()) {
+                                    saveProgression(saveName);
+                                    setJustSaved(true);
+                                    setTimeout(() => { setShowSaveDialog(false); setJustSaved(false); }, 1200);
+                                  }
+                                }}
+                                disabled={!saveName.trim()}
+                                className="flex items-center justify-center size-7 rounded-md bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] hover:bg-[hsl(var(--color-brand))] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <Check className="size-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setShowSaveDialog(false)}
+                                className="flex items-center justify-center size-7 rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {savedProgressions.length > 0 && (
+                    <button
+                      onClick={() => setShowSavedList(!showSavedList)}
+                      className={`
+                        flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-display font-bold border transition-all duration-150
+                        ${showSavedList
+                          ? 'bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border-[hsl(var(--color-emphasis)/0.3)]'
+                          : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] border-[hsl(var(--border-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+                        }
+                      `}
+                    >
+                      <ChevronDown className={`size-3 transition-transform ${showSavedList ? 'rotate-180' : ''}`} />
+                      {showSavedList ? 'Hide' : 'Browse'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Saved progressions list */}
+              {showSavedList && savedProgressions.length > 0 && (
+                <div className="space-y-2">
+                  {savedProgressions.map((sp) => {
+                    const scale = SCALES.find((s) => s.id === sp.scaleId);
+                    const scaleName = scale ? scale.name.replace(' Scale', '') : sp.scaleId;
+                    const scaleChords = scale ? resolveScaleChords(sp.key, scale) : [];
+                    const chordNames = sp.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' \u2013 ');
+                    return (
+                      <div
+                        key={sp.id}
+                        className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-4 py-3 group hover:border-[hsl(var(--color-primary)/0.3)] transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-display font-bold text-[hsl(var(--text-default))] truncate">
+                            {sp.name}
+                          </p>
+                          <p className="text-xs font-body text-[hsl(var(--text-muted))] truncate mt-0.5">
+                            <span className="text-[hsl(var(--color-primary))] font-medium">{sp.key} {scaleName}</span>
+                            <span className="mx-1.5">\u00b7</span>
+                            {chordNames}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => { loadSavedProgression(sp); setShowSavedList(false); }}
+                          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-display font-bold bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.2)] transition-colors"
+                        >
+                          <Upload className="size-3" />
+                          Load
+                        </button>
+                        <button
+                          onClick={() => deleteSavedProgression(sp.id)}
+                          className="flex items-center justify-center size-7 rounded-md text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:bg-[hsl(var(--semantic-error)/0.1)] opacity-0 group-hover:opacity-100 transition-all duration-150"
+                          title="Delete saved progression"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {savedProgressions.length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-xs font-body text-[hsl(var(--text-muted))]">
+                    No saved progressions yet. Build or select a progression above, then save it here.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Timer */}
