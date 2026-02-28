@@ -446,7 +446,7 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
   source.buffer = sample;
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
+  gain.gain.setValueAtTime(isAccent ? 0.75 : 0.5, time);
   source.connect(gain);
   gain.connect(getOutput(ctx));
 
