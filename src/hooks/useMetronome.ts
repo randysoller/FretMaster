@@ -52,7 +52,7 @@ function getStoredVolume(): number {
       if (n >= 0 && n <= 1) return n;
     }
   } catch {}
-  return 0.65;
+  return 0.75;
 }
 
 export interface MetronomeState {
@@ -82,12 +82,12 @@ function getOutput(ctx: AudioContext): AudioNode {
 /**
  * Convert a linear slider value (0–1) to an exponential audio gain (0–5).
  * Uses a gentle power curve so the slider feels natural to human ears.
- * 0 → 0 (mute), 0.5 → ~2.18, 0.65 → ~3.0 (default), 1.0 → 5.0 (max boost).
+ * 0 → 0 (mute), 0.5 → ~3.27, 0.75 → ~5.02 (default), 1.0 → 7.0 (max boost).
  * Shallow exponent (v^1.2) and high multiplier ensure adequate loudness on mobile.
  */
 function sliderToGain(v: number): number {
   if (v <= 0) return 0;
-  return Math.pow(v, 1.2) * 5;
+  return Math.pow(v, 1.2) * 7;
 }
 
 // ─── Sound Synthesis Functions ───────────────────────────
