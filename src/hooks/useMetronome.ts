@@ -600,16 +600,32 @@ function trimBuffer(ctx: AudioContext, buffer: AudioBuffer, threshold = 0.01): A
     trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(start, end + 1));
   }
 
-  // ── Bake fade-out into the buffer data ──
-  // Apply a 40ms raised-cosine (Hann) fade to each channel's last N samples.
-  // Raised cosine is smoother than linear and avoids the slight "bump" that
-  // linear fades can produce at the midpoint.
-  const fadeOutSamples = Math.min(Math.floor(0.040 * buffer.sampleRate), length);
+  // ── Bake fade-in AND fade-out into the buffer data ──
+  // Fade-in:  5ms raised-cosine at the start — prevents a click when the
+  //           BufferSourceNode begins playback at a non-zero sample value.
+  //           5ms is short enough to be imperceptible but eliminates the
+  //           transient that especially affects "one" (whose /w/ glide can
+  //           have an abrupt waveform edge right after the silence trim).
+  // Fade-out: 50ms raised-cosine at the end — ensures the buffer ends at
+  //           exactly zero amplitude so there is no click when the source
+  //           node finishes, regardless of playback rate or scheduling.
+  const fadeInSamples = Math.min(Math.floor(0.005 * buffer.sampleRate), length);
+  const fadeOutSamples = Math.min(Math.floor(0.050 * buffer.sampleRate), length);
   for (let ch = 0; ch < trimmed.numberOfChannels; ch++) {
     const chData = trimmed.getChannelData(ch);
+
+    // Fade-in: Hann 0 → 1
+    for (let i = 0; i < fadeInSamples; i++) {
+      const t = i / fadeInSamples;
+      const envelope = 0.5 * (1 - Math.cos(Math.PI * t));
+      chData[i] *= envelope;
+    }
+    // Guarantee the absolute first sample is zero
+    chData[0] = 0;
+
+    // Fade-out: Hann 1 → 0
     const fadeStart = chData.length - fadeOutSamples;
     for (let i = 0; i < fadeOutSamples; i++) {
-      // Hann window: 0.5 * (1 + cos(π * i / N)) goes from 1 → 0
       const t = i / fadeOutSamples;
       const envelope = 0.5 * (1 + Math.cos(Math.PI * t));
       chData[fadeStart + i] *= envelope;
