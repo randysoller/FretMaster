@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 
+const PracticeLanding = lazy(() => import('@/pages/PracticeLanding'));
 const Home = lazy(() => import('@/pages/Home'));
 const Practice = lazy(() => import('@/pages/Practice'));
 const ChordLibrary = lazy(() => import('@/pages/ChordLibrary'));
@@ -25,7 +26,8 @@ export default function App() {
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<PracticeLanding />} />
+            <Route path="/chord-practice" element={<Home />} />
             <Route path="/practice" element={<Practice />} />
             <Route path="/library" element={<ChordLibrary />} />
             <Route path="/editor" element={<ChordEditor />} />

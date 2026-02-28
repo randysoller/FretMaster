@@ -178,7 +178,7 @@ export default function Practice() {
 
   useEffect(() => {
     if (!isPracticing) {
-      navigate('/');
+      navigate('/chord-practice');
     }
   }, [isPracticing, navigate]);
 
@@ -213,7 +213,7 @@ export default function Practice() {
   const handleBack = () => {
     stopListening();
     stopPractice();
-    navigate('/');
+    navigate('/chord-practice');
   };
 
   const handleRestart = () => {

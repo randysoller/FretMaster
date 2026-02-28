@@ -5,7 +5,7 @@ export default function Header() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/', label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/practice', '/progressions'] },
+    { to: '/', label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
     { to: '/progressions', label: 'Progressions', icon: <ListMusic className="size-4" />, matchPaths: ['/progressions'] },
     { to: '/library', label: 'Library', icon: <BookOpen className="size-4" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-4" />, matchPaths: ['/editor'] },

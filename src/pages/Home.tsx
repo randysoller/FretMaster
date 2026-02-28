@@ -16,6 +16,7 @@ export default function Home() {
     if (availableCount === 0) return;
     startPractice();
     navigate('/practice');
+    // Note: This page is now at /chord-practice
   };
 
   return (
