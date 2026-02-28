@@ -709,52 +709,51 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
 
   // Voice samples have sustained energy (higher RMS) vs transient percussive sounds,
   // so perceived loudness is higher at the same peak gain even with lower gain values.
-  // Key insight: a voice word lasting 300ms at gain 0.6 has ~4× the energy of a click
-  // lasting 25ms at gain 0.4. We compensate with:
-  //   1. Lower peak gains (0.55/0.38) to reduce overall energy
-  //   2. A tempo-adaptive transient-shaping envelope that decays proportionally,
-  //      mimicking the quick decay of percussive sounds so voice has similar
-  //      "impact" weight as click, wood block, hi-hat, and sidestick
-  //   3. An anti-click fade-out ramp to silence before the buffer ends,
-  //      preventing the abrupt gain→0 discontinuity that causes audible clicks
-  const gain = ctx.createGain();
+  // We compensate with:
+  //   1. Lower peak gains (0.55/0.38)
+  //   2. A tempo-adaptive transient-shaping envelope on mainGain
+  //   3. A SEPARATE fadeGain node for anti-click that uses linearRampToValueAtTime(0)
+  //      — linear ramps actually reach zero, unlike exponential which asymptotes.
+  //      Keeping them on separate nodes prevents automation event conflicts.
+
+  // ── Main gain: transient shaping ──
+  const mainGain = ctx.createGain();
   const vol = isAccent ? 0.55 : 0.38;
 
-  // Tempo-adaptive decay: use ~45% of beat duration, clamped to a usable range.
-  // At 60 BPM (1000ms/beat) → 300ms decay (comfortable).
-  // At 120 BPM (500ms/beat) → 225ms decay (tight but natural).
-  // At 180 BPM (333ms/beat) → 150ms decay (snappy, stays within beat).
-  // At 200+ BPM (≤300ms/beat) → 80ms minimum (percussive snap).
   const decayTime = Math.min(0.30, Math.max(0.08, secondsPerBeat * 0.45));
-  // Decay ratio also adapts: faster tempos get a steeper drop for punchier feel
   const decayRatio = secondsPerBeat > 0.5 ? 0.55 : secondsPerBeat > 0.35 ? 0.45 : 0.35;
 
-  gain.gain.setValueAtTime(vol, time);
-  // Transient shaping: tempo-adaptive decay after initial consonant attack
-  gain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), time + decayTime);
+  mainGain.gain.setValueAtTime(vol, time);
+  mainGain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), time + decayTime);
 
-  // Anti-click fade-out: ramp gain to near-zero before the buffer source ends.
-  // Without this, the gain holds at vol*decayRatio when the buffer abruptly stops,
-  // creating an audible click/pop from the instantaneous jump to silence.
-  const effectiveDuration = buffer.duration / source.playbackRate.value;
+  // ── Fade gain: anti-click envelope (separate node, no automation conflicts) ──
+  // Stays at 1.0 for the entire word, then ramps to exactly 0.0 using linearRamp
+  // just before the buffer source node naturally stops. This eliminates the
+  // click caused by any non-zero gain at the instant the source signal disappears.
+  const fadeGain = ctx.createGain();
   const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
   const startTime = Math.max(ctx.currentTime, time - onsetOffset);
+  const effectiveDuration = buffer.duration / source.playbackRate.value;
   const bufferEndTime = startTime + effectiveDuration;
-  const fadeOutDuration = 0.018; // 18ms cosine-equivalent fade — long enough to avoid clicks, short enough to be inaudible
-  const fadeOutStart = Math.max(time + decayTime + 0.005, bufferEndTime - fadeOutDuration);
-  // Hold the decayed value, then ramp to silence
-  gain.gain.setValueAtTime(Math.max(vol * decayRatio, 0.001), fadeOutStart);
-  gain.gain.exponentialRampToValueAtTime(0.0001, bufferEndTime);
+  const fadeOutDuration = 0.030; // 30ms linear fade — smooth and inaudible
+
+  fadeGain.gain.setValueAtTime(1.0, startTime);
+  // Hold at 1.0 until the fade-out window begins
+  fadeGain.gain.setValueAtTime(1.0, Math.max(startTime, bufferEndTime - fadeOutDuration));
+  // Linear ramp to true zero — unlike exponentialRamp, this reaches exactly 0
+  fadeGain.gain.linearRampToValueAtTime(0, bufferEndTime);
 
   source.connect(highpass);
   highpass.connect(presence);
   presence.connect(deEss);
-  deEss.connect(gain);
-  gain.connect(getOutput(ctx));
+  deEss.connect(mainGain);
+  mainGain.connect(fadeGain);
+  fadeGain.connect(getOutput(ctx));
 
   // Start playback early by the onset offset so perceived sound lands on beat
-  // (startTime and onsetOffset already computed above for the anti-click envelope)
   source.start(startTime);
+  // Explicitly stop source slightly after gain reaches 0 to guarantee clean cutoff
+  source.stop(bufferEndTime + 0.005);
 }
 
 // ─── Preload All Samples on First Interaction ───────────
