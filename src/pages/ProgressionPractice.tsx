@@ -234,107 +234,110 @@ function MetronomeBar({
   return (
     <div
       className={`
-        mx-4 sm:mx-6 mb-2 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-5 rounded-lg px-4 py-2 border transition-colors duration-200
+        mx-3 sm:mx-6 mb-2 flex flex-col rounded-lg px-3 sm:px-4 py-2.5 sm:py-2 border transition-colors duration-200 gap-2.5 sm:gap-0
         ${isPlaying
           ? 'bg-[hsl(var(--color-primary)/0.06)] border-[hsl(var(--color-primary)/0.2)]'
           : 'bg-[hsl(var(--bg-elevated)/0.5)] border-[hsl(var(--border-subtle)/0.5)]'
         }
       `}
     >
-      {/* Toggle */}
-      <button
-        onClick={onToggle}
-        className={`
-          flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-body font-medium transition-all duration-200
-          ${isPlaying
-            ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.25)]'
-            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
-          }
-        `}
-      >
-        <Gauge className="size-3.5" />
-        {isPlaying ? 'Stop' : 'Metronome'}
-      </button>
-
-      {/* Sound type compact selector */}
-      <div className="relative">
+      {/* Row 1: Toggle + Sound + Volume + Tap (always horizontal) */}
+      <div className="flex items-center justify-between sm:justify-center gap-2 sm:gap-5">
+        {/* Toggle */}
         <button
-          onClick={() => setSoundOpen(!soundOpen)}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[10px] font-body font-medium bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors border border-[hsl(var(--border-subtle))]"
-        >
-          <span>{SOUND_LABELS[soundType]}</span>
-          <ChevronUp className={`size-3 transition-transform ${soundOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {soundOpen && (
-          <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-30 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden min-w-[120px]">
-            {soundTypes.map((s) => (
-              <button
-                key={s}
-                onClick={() => { onSoundChange(s); setSoundOpen(false); }}
-                className={`
-                  w-full text-left px-3 py-2 text-xs font-body transition-colors
-                  ${s === soundType
-                    ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
-                    : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
-                  }
-                `}
-              >
-                {SOUND_LABELS[s]}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Volume toggle + slider */}
-      <div className="relative flex items-center gap-1.5">
-        <button
-          onClick={() => setVolumeOpen(!volumeOpen)}
+          onClick={onToggle}
           className={`
-            flex items-center justify-center size-7 rounded-md border transition-all duration-150
-            ${volumeOpen
-              ? 'border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
-              : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+            flex items-center gap-2 rounded-lg px-4 py-2.5 sm:px-3 sm:py-1.5 text-xs font-body font-medium transition-all duration-200 min-h-[44px] sm:min-h-0
+            ${isPlaying
+              ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.25)]'
+              : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
             }
           `}
         >
-          <BarVolumeIcon className="size-3.5" />
+          <Gauge className="size-4 sm:size-3.5" />
+          {isPlaying ? 'Stop' : 'Metronome'}
         </button>
-        {volumeOpen && (
-          <div className="flex items-center gap-1.5 rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-2.5 py-1">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => onVolumeChange(Number(e.target.value))}
-              className="volume-slider w-[70px]"
-            />
-            <span className="text-[10px] font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-7 text-center">
-              {Math.round(volume * 100)}
-            </span>
-          </div>
-        )}
+
+        {/* Sound type compact selector */}
+        <div className="relative">
+          <button
+            onClick={() => setSoundOpen(!soundOpen)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2.5 sm:px-2.5 sm:py-1.5 text-xs sm:text-[10px] font-body font-medium bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors border border-[hsl(var(--border-subtle))] min-h-[44px] sm:min-h-0"
+          >
+            <span>{SOUND_LABELS[soundType]}</span>
+            <ChevronUp className={`size-3.5 sm:size-3 transition-transform ${soundOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {soundOpen && (
+            <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 z-30 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden min-w-[130px]">
+              {soundTypes.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => { onSoundChange(s); setSoundOpen(false); }}
+                  className={`
+                    w-full text-left px-4 py-3 sm:px-3 sm:py-2 text-sm sm:text-xs font-body transition-colors min-h-[44px] sm:min-h-0
+                    ${s === soundType
+                      ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
+                      : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                    }
+                  `}
+                >
+                  {SOUND_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Volume toggle + slider */}
+        <div className="relative flex items-center gap-1.5">
+          <button
+            onClick={() => setVolumeOpen(!volumeOpen)}
+            className={`
+              flex items-center justify-center size-11 sm:size-7 rounded-lg sm:rounded-md border transition-all duration-150
+              ${volumeOpen
+                ? 'border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
+                : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+              }
+            `}
+          >
+            <BarVolumeIcon className="size-4 sm:size-3.5" />
+          </button>
+          {volumeOpen && (
+            <div className="absolute bottom-full mb-2 sm:relative sm:bottom-auto sm:mb-0 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 flex items-center gap-1.5 rounded-lg sm:rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-3 sm:px-2.5 py-2.5 sm:py-1 shadow-lg sm:shadow-none z-30">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={volume}
+                onChange={(e) => onVolumeChange(Number(e.target.value))}
+                className="volume-slider w-[100px] sm:w-[70px]"
+              />
+              <span className="text-xs sm:text-[10px] font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-7 text-center">
+                {Math.round(volume * 100)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Tap tempo */}
+        <button
+          onClick={onTap}
+          className="rounded-lg sm:rounded-md px-4 py-2.5 sm:px-2.5 sm:py-1.5 text-xs sm:text-[10px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.1)] border border-[hsl(var(--border-subtle))] transition-all duration-150 active:scale-90 min-h-[44px] sm:min-h-0"
+        >
+          TAP
+        </button>
       </div>
 
-      {/* Tap tempo */}
-      <button
-        onClick={onTap}
-        className="rounded-md px-2.5 py-1.5 text-[10px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.1)] border border-[hsl(var(--border-subtle))] transition-all duration-150 active:scale-90"
-      >
-        TAP
-      </button>
-
-      {/* BPM control */}
-      <div className="flex items-center gap-2">
+      {/* Row 2: BPM control + tempo marking */}
+      <div className="flex items-center justify-center gap-2 sm:gap-3">
         <button
           onClick={() => onBpmChange(bpm - 5)}
-          className="size-6 flex items-center justify-center rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+          className="size-10 sm:size-6 flex items-center justify-center rounded-lg sm:rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors border border-[hsl(var(--border-subtle))] sm:border-0"
         >
-          <Minus className="size-3" />
+          <Minus className="size-4 sm:size-3" />
         </button>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 sm:gap-1.5 flex-1 max-w-[260px] sm:max-w-none sm:flex-none">
           <input
             type="range"
             min={30}
@@ -342,29 +345,27 @@ function MetronomeBar({
             step={1}
             value={bpm}
             onChange={(e) => onBpmChange(Number(e.target.value))}
-            className="volume-slider w-[80px] sm:w-[100px]"
+            className="volume-slider flex-1 sm:flex-none sm:w-[100px]"
           />
-          <span className="text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-8 text-center">
+          <span className="text-sm sm:text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums w-8 text-center">
             {bpm}
           </span>
-          <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">bpm</span>
+          <span className="text-xs sm:text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">bpm</span>
         </div>
         <button
           onClick={() => onBpmChange(bpm + 5)}
-          className="size-6 flex items-center justify-center rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+          className="size-10 sm:size-6 flex items-center justify-center rounded-lg sm:rounded bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors border border-[hsl(var(--border-subtle))] sm:border-0"
         >
-          <Plus className="size-3" />
+          <Plus className="size-4 sm:size-3" />
         </button>
+        <span className="text-xs sm:text-[10px] font-body italic text-[hsl(var(--text-subtle))] min-w-[60px] sm:min-w-[70px] text-center hidden sm:inline">
+          {tempoMarking}
+        </span>
       </div>
 
-      {/* Tempo marking */}
-      <span className="text-[10px] sm:text-xs font-body italic text-[hsl(var(--text-subtle))] min-w-[70px] text-center">
-        {tempoMarking}
-      </span>
-
-      {/* Beat indicators */}
+      {/* Row 3: Beat indicators + tempo marking on mobile */}
       {isPlaying && (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-1">
           {Array.from({ length: beatsPerMeasure }, (_, i) => {
             const isActive = i === currentBeat;
             const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3) || (beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
@@ -373,7 +374,7 @@ function MetronomeBar({
                 key={i}
                 className={`
                   font-display font-bold tabular-nums transition-all duration-100 select-none
-                  ${beatsPerMeasure === 12 ? 'text-[10px] min-w-[14px]' : 'text-xs min-w-[16px]'}
+                  ${beatsPerMeasure === 12 ? 'text-sm sm:text-[10px] min-w-[18px] sm:min-w-[14px]' : 'text-base sm:text-xs min-w-[22px] sm:min-w-[16px]'}
                   text-center
                   ${isActive
                     ? isAccentBeat
@@ -387,6 +388,10 @@ function MetronomeBar({
               </span>
             );
           })}
+          {/* Tempo marking inline on mobile */}
+          <span className="text-xs font-body italic text-[hsl(var(--text-subtle))] ml-2 sm:hidden">
+            {tempoMarking}
+          </span>
         </div>
       )}
     </div>
