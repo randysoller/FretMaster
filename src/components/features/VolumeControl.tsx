@@ -35,7 +35,7 @@ export default function VolumeControl({ compact = false }: VolumeControlProps) {
           step={0.01}
           value={muted ? 0 : volume}
           onChange={(e) => setVolume(parseFloat(e.target.value))}
-          className={`volume-slider ${compact ? 'w-20' : 'w-28'}`}
+          className={`volume-slider ${compact ? 'w-28 sm:w-24' : 'w-28'}`}
           aria-label="Volume"
         />
       </div>

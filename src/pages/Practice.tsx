@@ -267,10 +267,6 @@ export default function Practice() {
           </button>
 
           <VolumeControl compact />
-          <div className="text-sm font-body text-[hsl(var(--text-subtle))]">
-            <span className="text-[hsl(var(--color-primary))] font-display font-bold">{totalPracticed + 1}</span>
-            <span className="text-[hsl(var(--text-muted))]"> / {practiceChords.length}</span>
-          </div>
         </div>
       </div>
 
