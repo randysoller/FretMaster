@@ -5,13 +5,14 @@ const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
 const VOLUME_KEY = 'fretmaster-metronome-volume';
 
-export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'sidestick';
+export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'sidestick' | 'voice';
 
 export const SOUND_LABELS: Record<MetronomeSoundType, string> = {
   click: 'Click',
   woodblock: 'Wood Block',
   hihat: 'Hi-Hat',
   sidestick: 'Sidestick',
+  voice: 'Voice Count',
 };
 
 function getStoredBpm(): number {
@@ -39,7 +40,7 @@ function getStoredBeats(): number {
 function getStoredSound(): MetronomeSoundType {
   try {
     const v = localStorage.getItem(SOUND_KEY);
-    if (v && ['click', 'woodblock', 'hihat', 'sidestick'].includes(v)) return v as MetronomeSoundType;
+    if (v && ['click', 'woodblock', 'hihat', 'sidestick', 'voice'].includes(v)) return v as MetronomeSoundType;
   } catch {}
   return 'click';
 }
@@ -480,7 +481,222 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
   source.start(time);
 }
 
+// ─── Voice Count Sample Loader ───────────────────────────
 
+/**
+ * Voice counting (1–12) using the Free Spoken Digit Dataset (FSDD) for digits 1–9,
+ * and compound sample concatenation for 10–12.
+ *
+ * Key challenge: different spoken numbers have different perceptual onset times.
+ * We pre-analyze each sample to find the amplitude onset point and schedule
+ * playback early by that offset so the perceived sound lands exactly on the beat.
+ *
+ * Additional per-digit manual offsets account for consonant characteristics:
+ * - Plosives ("two", "three") have a brief silence before the voice activates
+ * - Fricatives ("five", "six", "seven") have noise onset before pitched voice
+ * - Vowels ("one", "eight") have near-instant perceived onset
+ */
+
+// FSDD speaker "jackson" — consistent male voice, clear articulation
+const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
+
+/**
+ * Manual onset compensation offsets (seconds) per digit.
+ * Positive = schedule earlier; these values account for the time between
+ * the sample start and when the listener perceives the "attack" of the word.
+ * Calibrated by analyzing the FSDD waveforms for speaker "jackson".
+ */
+const VOICE_ONSET_OFFSETS: Record<number, number> = {
+  0: 0.04,  // "zero" — fricative z onset
+  1: 0.03,  // "one" — glide w, fairly quick
+  2: 0.035, // "two" — plosive t, brief VOT
+  3: 0.04,  // "three" — fricative th, slower onset
+  4: 0.035, // "four" — fricative f, moderate
+  5: 0.04,  // "five" — fricative f, moderate
+  6: 0.03,  // "six" — fricative s, quick
+  7: 0.04,  // "seven" — fricative s, moderate
+  8: 0.02,  // "eight" — vowel onset, nearly instant
+  9: 0.035, // "nine" — nasal n, moderate
+};
+
+/** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
+const voiceBuffers: Map<number, AudioBuffer> = new Map();
+/** Detected onset offsets (seconds) for each loaded buffer */
+const voiceOnsets: Map<number, number> = new Map();
+let voiceLoadState: 'idle' | 'loading' | 'loaded' | 'failed' = 'idle';
+let voiceLoadPromise: Promise<void> | null = null;
+
+/**
+ * Analyze an AudioBuffer to find the onset point — the first sample
+ * where the amplitude exceeds a threshold. Returns time in seconds.
+ */
+function detectOnset(buffer: AudioBuffer, threshold = 0.02): number {
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    if (Math.abs(data[i]) > threshold) {
+      return i / buffer.sampleRate;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Trim silence from the start and end of an AudioBuffer.
+ * Returns a new buffer with leading/trailing silence below threshold removed.
+ */
+function trimBuffer(ctx: AudioContext, buffer: AudioBuffer, threshold = 0.01): AudioBuffer {
+  const data = buffer.getChannelData(0);
+  let start = 0;
+  let end = data.length - 1;
+  // Find first sample above threshold
+  while (start < data.length && Math.abs(data[start]) < threshold) start++;
+  // Find last sample above threshold
+  while (end > start && Math.abs(data[end]) < threshold) end--;
+  // Add small safety margins (512 samples ≈ 10ms at 48kHz)
+  start = Math.max(0, start - 256);
+  end = Math.min(data.length - 1, end + 512);
+  const length = end - start + 1;
+  const trimmed = ctx.createBuffer(buffer.numberOfChannels, length, buffer.sampleRate);
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    trimmed.getChannelData(ch).set(buffer.getChannelData(ch).subarray(start, end + 1));
+  }
+  return trimmed;
+}
+
+/**
+ * Concatenate two AudioBuffers with a small overlap/gap into a single buffer.
+ * Used for building "ten" (1+0), "eleven" (1+1), "twelve" (1+2) from digit samples.
+ */
+function concatenateBuffers(
+  ctx: AudioContext,
+  buf1: AudioBuffer,
+  buf2: AudioBuffer,
+  gapSeconds = 0.01
+): AudioBuffer {
+  const gapSamples = Math.floor(gapSeconds * ctx.sampleRate);
+  const totalLength = buf1.length + gapSamples + buf2.length;
+  const result = ctx.createBuffer(1, totalLength, ctx.sampleRate);
+  const out = result.getChannelData(0);
+  const d1 = buf1.getChannelData(0);
+  const d2 = buf2.getChannelData(0);
+  out.set(d1, 0);
+  out.set(d2, buf1.length + gapSamples);
+  return result;
+}
+
+/**
+ * Load voice count samples for digits 0–9 from FSDD, then build
+ * compound samples for 10, 11, 12 by concatenating trimmed digit pairs.
+ */
+function loadVoiceSamples(ctx: AudioContext): Promise<void> {
+  if (voiceLoadState === 'loaded') return Promise.resolve();
+  if (voiceLoadPromise) return voiceLoadPromise;
+
+  voiceLoadState = 'loading';
+  // Fetch digits 0–9 from FSDD, speaker "jackson", sample index 0
+  const digitPromises = Array.from({ length: 10 }, (_, digit) =>
+    fetchAudioBuffer(`${FSDD_BASE}/${digit}_jackson_0.wav`, ctx)
+  );
+
+  voiceLoadPromise = Promise.all(digitPromises)
+    .then((rawBuffers) => {
+      // Trim and store digit buffers 0–9
+      const trimmed: AudioBuffer[] = rawBuffers.map((buf) => trimBuffer(ctx, buf));
+
+      // Store single-digit voice buffers (1–9)
+      for (let d = 0; d <= 9; d++) {
+        voiceBuffers.set(d, trimmed[d]);
+        // Calculate onset: auto-detected + manual compensation
+        const autoOnset = detectOnset(trimmed[d]);
+        const manualOffset = VOICE_ONSET_OFFSETS[d] ?? 0.03;
+        voiceOnsets.set(d, autoOnset + manualOffset);
+      }
+
+      // Build compound samples for 10, 11, 12
+      // Speed up the component digits for tighter concatenation
+      const buildCompound = (tensDigit: number, onesDigit: number): AudioBuffer => {
+        const t = trimBuffer(ctx, trimmed[tensDigit], 0.015);
+        const o = trimBuffer(ctx, trimmed[onesDigit], 0.015);
+        return concatenateBuffers(ctx, t, o, 0.005);
+      };
+
+      // 10 = "one" + "zero", 11 = "one" + "one", 12 = "one" + "two"
+      voiceBuffers.set(10, buildCompound(1, 0));
+      voiceBuffers.set(11, buildCompound(1, 1));
+      voiceBuffers.set(12, buildCompound(1, 2));
+
+      // Onsets for compound numbers (primarily driven by the tens digit)
+      for (const n of [10, 11, 12]) {
+        const buf = voiceBuffers.get(n)!;
+        const autoOnset = detectOnset(buf);
+        voiceOnsets.set(n, autoOnset + 0.03);
+      }
+
+      voiceLoadState = 'loaded';
+      console.log('[Metronome] Voice count samples loaded successfully (1-12)');
+    })
+    .catch((err) => {
+      console.warn('[Metronome] Failed to load voice samples, falling back to click:', err);
+      voiceLoadState = 'failed';
+      voiceLoadPromise = null;
+    });
+
+  return voiceLoadPromise;
+}
+
+/**
+ * Schedule a voice count for a specific beat number.
+ * @param beatNumber 1-based beat number (1–12)
+ * @param time The exact beat time in AudioContext time
+ * @param isAccent Whether this is an accented beat (played slightly louder)
+ */
+function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAccent: boolean) {
+  const buffer = voiceBuffers.get(beatNumber);
+  if (!buffer) {
+    // Fallback to click if voice not loaded
+    if (voiceLoadState !== 'loading') loadVoiceSamples(ctx);
+    scheduleClick(ctx, time, isAccent);
+    return;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+
+  // For compound numbers (10-12), speed up playback slightly so they fit in a beat
+  if (beatNumber >= 10) {
+    source.playbackRate.value = 1.6;
+  } else {
+    source.playbackRate.value = 1.15; // Slightly faster for snappier rhythmic feel
+  }
+
+  // EQ chain for voice clarity in a metronome context
+  // High-pass to remove rumble
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 150;
+  highpass.Q.value = 0.7;
+
+  // Presence boost for voice intelligibility
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'peaking';
+  presence.frequency.value = 2800;
+  presence.Q.value = 1.5;
+  presence.gain.value = isAccent ? 4 : 2;
+
+  const gain = ctx.createGain();
+  const vol = isAccent ? 1.4 : 1.0;
+  gain.gain.setValueAtTime(vol, time);
+
+  source.connect(highpass);
+  highpass.connect(presence);
+  presence.connect(gain);
+  gain.connect(getOutput(ctx));
+
+  // Schedule playback early by the onset offset so perceived sound lands on beat
+  const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
+  const startTime = Math.max(ctx.currentTime, time - onsetOffset);
+  source.start(startTime);
+}
 
 // ─── Hook ────────────────────────────────────────────────
 
@@ -553,6 +769,12 @@ export function useMetronome(): MetronomeState {
       case 'sidestick':
         scheduleRimClick(ctx, time, isAccent);
         break;
+      case 'voice': {
+        // beat is 0-indexed, voice counts are 1-indexed
+        const beatNumber = beat + 1;
+        scheduleVoice(ctx, time, beatNumber, isAccent);
+        break;
+      }
       case 'click':
       default:
         scheduleClick(ctx, time, isAccent);
@@ -602,6 +824,7 @@ export function useMetronome(): MetronomeState {
     loadHiHatSamples(ctx);
     loadWoodBlockSamples(ctx);
     loadRimClickSamples(ctx);
+    loadVoiceSamples(ctx);
 
     beatRef.current = 0;
     nextNoteTimeRef.current = ctx.currentTime + 0.05;
