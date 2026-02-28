@@ -360,23 +360,27 @@ function MetronomeBar({
 
       {/* Beat indicators */}
       {isPlaying && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           {Array.from({ length: beatsPerMeasure }, (_, i) => {
             const isActive = i === currentBeat;
             const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3) || (beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
             return (
-              <div
+              <span
                 key={i}
                 className={`
-                  rounded-full transition-all duration-100
+                  font-display font-bold tabular-nums transition-all duration-100 select-none
+                  ${beatsPerMeasure === 12 ? 'text-[10px] min-w-[14px]' : 'text-xs min-w-[16px]'}
+                  text-center
                   ${isActive
                     ? isAccentBeat
-                      ? 'size-3.5 bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.6)]'
-                      : 'size-3 bg-[hsl(var(--color-primary))] shadow-[0_0_6px_hsl(var(--color-primary)/0.5)]'
-                    : 'size-2 bg-[hsl(var(--border-default))]'
+                      ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_6px_hsl(var(--color-emphasis)/0.7)]'
+                      : 'text-[hsl(var(--color-primary))] scale-110 drop-shadow-[0_0_4px_hsl(var(--color-primary)/0.6)]'
+                    : 'text-[hsl(var(--text-muted)/0.4)]'
                   }
                 `}
-              />
+              >
+                {i + 1}
+              </span>
             );
           })}
         </div>
@@ -582,25 +586,29 @@ function MetronomeSetup({
       <div className="flex items-center justify-between rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface)/0.5)] px-4 py-3">
         <div className="flex items-center gap-3">
           {/* Beat dots */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {Array.from({ length: beatsPerMeasure }, (_, i) => {
               const isActive = isPlaying && i === currentBeat;
               const isAccentBeat = i === 0 || (beatsPerMeasure === 6 && i === 3) || (beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
               return (
-                <div
+                <span
                   key={i}
                   className={`
-                    rounded-full transition-all duration-100
+                    font-display font-bold tabular-nums transition-all duration-100 select-none
+                    ${beatsPerMeasure === 12 ? 'text-xs min-w-[16px]' : 'text-sm min-w-[20px]'}
+                    text-center
                     ${isActive
                       ? isAccentBeat
-                        ? 'size-4 bg-[hsl(var(--color-emphasis))] shadow-[0_0_10px_hsl(var(--color-emphasis)/0.6)]'
-                        : 'size-3.5 bg-[hsl(var(--color-primary))] shadow-[0_0_8px_hsl(var(--color-primary)/0.5)]'
+                        ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_8px_hsl(var(--color-emphasis)/0.7)]'
+                        : 'text-[hsl(var(--color-primary))] scale-110 drop-shadow-[0_0_6px_hsl(var(--color-primary)/0.6)]'
                       : isAccentBeat
-                        ? 'size-3 bg-[hsl(var(--border-default))] border border-[hsl(var(--text-muted)/0.3)]'
-                        : 'size-2 bg-[hsl(var(--border-default))]'
+                        ? 'text-[hsl(var(--text-muted)/0.6)]'
+                        : 'text-[hsl(var(--text-muted)/0.3)]'
                     }
                   `}
-                />
+                >
+                  {i + 1}
+                </span>
               );
             })}
           </div>
