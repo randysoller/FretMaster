@@ -504,19 +504,28 @@ const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digi
  * Manual onset compensation offsets (seconds) per digit.
  * Positive = schedule earlier; these values account for the time between
  * the sample start and when the listener perceives the "attack" of the word.
- * Calibrated by analyzing the FSDD waveforms for speaker "jackson".
+ *
+ * Calibrated for FSDD speaker "jackson" after phonetic analysis:
+ * - Voiceless fricatives (/θ/, /f/) have the most gradual, quiet onset → largest offsets
+ * - Plosives (/t/) have a sharp burst transient but Voice Onset Time delays the vowel
+ * - Sibilants (/s/, /z/) are loud and percussive → moderate offsets
+ * - Vowel-initial words (/eɪ/) have near-instant perceived onset → minimal offset
+ * - Glides (/w/) and nasals (/n/) fall in between
+ *
+ * These offsets are absolute (not tempo-relative), tuned for the 60–180 BPM sweet spot.
+ * At 120 BPM (500ms/beat), a 50ms offset is 10% of the beat — perceptually tight.
  */
 const VOICE_ONSET_OFFSETS: Record<number, number> = {
-  0: 0.04,  // "zero" — fricative z onset
-  1: 0.03,  // "one" — glide w, fairly quick
-  2: 0.035, // "two" — plosive t, brief VOT
-  3: 0.04,  // "three" — fricative th, slower onset
-  4: 0.035, // "four" — fricative f, moderate
-  5: 0.04,  // "five" — fricative f, moderate
-  6: 0.03,  // "six" — fricative s, quick
-  7: 0.04,  // "seven" — fricative s, moderate
-  8: 0.02,  // "eight" — vowel onset, nearly instant
-  9: 0.035, // "nine" — nasal n, moderate
+  0: 0.035, // "zero" /z/ — voiced fricative, moderate onset
+  1: 0.048, // "one" /w/ — glide has gradual buildup before vowel "uh" lands
+  2: 0.042, // "two" /t/ — plosive burst is sharp but VOT gap before vowel
+  3: 0.058, // "three" /θ/ — voiceless dental fricative, very gradual & quiet onset
+  4: 0.052, // "four" /f/ — voiceless labiodental fricative, quiet breathy start
+  5: 0.052, // "five" /f/ — same /f/ onset characteristics as "four"
+  6: 0.035, // "six" /s/ — sibilant is loud & percussive, quick perceived attack
+  7: 0.045, // "seven" /s/ — sibilant onset like "six" but 2 syllables spread energy
+  8: 0.015, // "eight" /eɪ/ — vowel-initial, near-instant perceived onset
+  9: 0.042, // "nine" /n/ — voiced nasal, quick but slightly softer initial onset
 };
 
 /** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
@@ -625,11 +634,12 @@ function loadVoiceSamples(ctx: AudioContext): Promise<void> {
       voiceBuffers.set(11, buildCompound(1, 1));
       voiceBuffers.set(12, buildCompound(1, 2));
 
-      // Onsets for compound numbers (primarily driven by the tens digit)
+      // Onsets for compound numbers — the "one" (tens digit) drives perceived onset
+      // but concatenation adds a tiny gap, so slightly more compensation than digit 1 alone
       for (const n of [10, 11, 12]) {
         const buf = voiceBuffers.get(n)!;
         const autoOnset = detectOnset(buf);
-        voiceOnsets.set(n, autoOnset + 0.03);
+        voiceOnsets.set(n, autoOnset + 0.05);
       }
 
       voiceLoadState = 'loaded';
@@ -662,11 +672,13 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   const source = ctx.createBufferSource();
   source.buffer = buffer;
 
-  // For compound numbers (10-12), speed up playback slightly so they fit in a beat
+  // Speed up playback for snappier rhythmic feel and better alignment at faster tempos
+  // Single digits: 1.2x tightens articulation without sounding unnatural
+  // Compound numbers (10–12): 1.6x compresses the two-digit concatenation to fit within a beat
   if (beatNumber >= 10) {
     source.playbackRate.value = 1.6;
   } else {
-    source.playbackRate.value = 1.15; // Slightly faster for snappier rhythmic feel
+    source.playbackRate.value = 1.2;
   }
 
   // EQ chain for voice clarity in a metronome context
