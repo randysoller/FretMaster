@@ -1229,13 +1229,7 @@ export default function ProgressionPractice() {
                               <ChordDiagram chord={chord} size="lg" />
                             )}
                           </div>
-                          <button
-                            onClick={() => { pauseDetection(2000); playChord(chord); }}
-                            className="flex items-center gap-2 rounded-md px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.08)] transition-colors"
-                          >
-                            <Volume2 className="size-4" />
-                            Play Again
-                          </button>
+
                         </>
                       ) : (
                         <div className="rounded-xl border border-[hsl(var(--semantic-warning)/0.3)] bg-[hsl(var(--semantic-warning)/0.05)] p-8 text-center">
