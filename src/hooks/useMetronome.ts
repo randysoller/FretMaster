@@ -474,8 +474,12 @@ function scheduleVoice(
   isAccent: boolean,
   beatNumber: number,
   voiceRef: React.MutableRefObject<SpeechSynthesisVoice | null>,
+  beatsPerMeasure: number = 4,
 ) {
-  const num = beatNumber + 1; // 1-indexed beat number
+  // Compound meters (6/8, 12/8): count in sub-groups of 3 → "1,2,3,1,2,3..."
+  // Simple meters (2/4, 3/4, 4/4): count straight through → "1,2,3,4"
+  const isCompound = beatsPerMeasure === 6 || beatsPerMeasure === 12;
+  const num = isCompound ? (beatNumber % 3) + 1 : beatNumber + 1;
 
   // Subtle reference tick for rhythmic anchor
   const osc1 = ctx.createOscillator();
@@ -619,7 +623,7 @@ export function useMetronome(): MetronomeState {
         scheduleRimClick(ctx, time, isAccent);
         break;
       case 'voice':
-        scheduleVoice(ctx, time, isAccent, beat, voiceRef);
+        scheduleVoice(ctx, time, isAccent, beat, voiceRef, beatsRef.current);
         break;
       case 'click':
       default:
