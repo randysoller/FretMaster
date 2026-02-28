@@ -731,7 +731,7 @@ function ScaleChordsPreview({ selectedKey, selectedScale }: { selectedKey: NoteN
             key={i}
             className="flex flex-col items-center rounded-md bg-[hsl(var(--bg-surface))] px-3 py-2 min-w-[52px]"
           >
-            <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
+            <span className="text-xs font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
             <span className="text-sm font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
           </div>
         ))}
@@ -789,7 +789,7 @@ function ProgressionPresetSelector({
                   }
                 `}
               >
-                <p className={`text-xs font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
+                <p className={`text-sm font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
                   {preset.romanDisplay}
                 </p>
                 <p className={`text-sm font-display font-bold ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>
@@ -832,7 +832,7 @@ function ProgressionPresetSelector({
               className="flex flex-col items-center gap-0.5 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-3 py-2 hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--color-primary)/0.4)] transition-all duration-150 active:scale-95"
             >
               <Plus className="size-3 text-[hsl(var(--color-primary))]" />
-              <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
+              <span className="text-xs font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
               <span className="text-xs font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
             </button>
           ))}
@@ -898,7 +898,7 @@ function ProgressionTimeline({
                 }
               `}
             >
-              <span className={`text-[9px] font-body ${isCurrent ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
+              <span className={`text-[11px] font-body ${isCurrent ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>
                 {c.roman}
               </span>
               <span className={`text-xs font-display font-bold ${isCurrent ? 'text-[hsl(var(--color-primary))]' : isPast ? 'text-[hsl(var(--semantic-success))]' : 'text-[hsl(var(--text-subtle))]'}`}>
@@ -1145,7 +1145,7 @@ export default function ProgressionPractice() {
             >
               {/* Roman + Name */}
               <div className="text-center">
-                <p className="font-body text-sm text-[hsl(var(--color-primary))] uppercase tracking-wider mb-1">
+                <p className="font-body text-base text-[hsl(var(--color-primary))] uppercase tracking-wider mb-1">
                   {currentInfo.roman}
                 </p>
                 <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold text-[hsl(var(--text-default))] leading-none">
