@@ -766,14 +766,36 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   const onsetOffset = voiceOnsets.get(beatNumber) ?? 0.03;
   const startTime = Math.max(ctx.currentTime, time - onsetOffset);
 
-  // Set gain to vol at the onset-compensated start time (not beat time)
-  // so there's no gap where gain is at the default 1.0 before our scheduled value
-  gain.gain.setValueAtTime(vol, startTime);
+  // ── Anti-click: initialize gain to ZERO immediately ──
+  // GainNode defaults to 1.0. If the source starts even a microsecond before
+  // the scheduled setValueAtTime, audio leaks at full gain → audible click.
+  // Beat 1 (always accented, gain 0.55) is especially affected because the
+  // higher gain amplifies any transient artifact.
+  // Setting .value = 0 ensures silence until the scheduled ramp begins.
+  gain.gain.value = 0;
+  gain.gain.setValueAtTime(0, Math.max(0, startTime - 0.002)); // hold at zero
+  gain.gain.linearRampToValueAtTime(vol, startTime); // smooth 2ms ramp up to vol
 
   // Transient shaping: gentle decay after initial consonant attack
-  const decayTime = Math.min(0.30, Math.max(0.08, secondsPerBeat * 0.45));
-  const decayRatio = secondsPerBeat > 0.5 ? 0.55 : secondsPerBeat > 0.35 ? 0.45 : 0.35;
-  gain.gain.exponentialRampToValueAtTime(Math.max(vol * decayRatio, 0.001), startTime + decayTime);
+  // For voice, use a softer decay than percussive sounds so the accent
+  // doesn't create an audible "pump" that sounds like a click.
+  const decayTime = Math.min(0.30, Math.max(0.10, secondsPerBeat * 0.50));
+  const decayRatio = secondsPerBeat > 0.5 ? 0.65 : secondsPerBeat > 0.35 ? 0.55 : 0.45;
+  const decayTarget = Math.max(vol * decayRatio, 0.001);
+  gain.gain.exponentialRampToValueAtTime(decayTarget, startTime + decayTime);
+
+  // ── Anti-click: ramp gain to zero before buffer ends ──
+  // Belt-and-suspenders with the baked-in fade-out in the buffer data.
+  // The buffer fade ensures audio data reaches zero, and this gain ramp
+  // ensures the gain node is also at zero — so even if there's any
+  // residual energy from biquad filter ringing, it gets silenced.
+  const effectiveDuration = buffer.duration / source.playbackRate.value;
+  const bufferEndTime = startTime + effectiveDuration;
+  const gainFadeStart = Math.max(startTime + decayTime + 0.005, bufferEndTime - 0.06);
+  if (gainFadeStart < bufferEndTime) {
+    gain.gain.setValueAtTime(decayTarget, gainFadeStart);
+    gain.gain.linearRampToValueAtTime(0, bufferEndTime);
+  }
 
   source.connect(highpass);
   highpass.connect(presence);
@@ -782,9 +804,9 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   gain.connect(getOutput(ctx));
 
   // Start playback early by the onset offset so perceived sound lands on beat.
-  // No source.stop() needed — the buffer has a baked-in fade-out to zero,
-  // so it ends silently on its own with no click artifacts.
   source.start(startTime);
+  // Stop slightly after buffer ends to guarantee clean disconnection
+  source.stop(bufferEndTime + 0.01);
 }
 
 // ─── Preload All Samples on First Interaction ───────────
