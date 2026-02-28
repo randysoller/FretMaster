@@ -484,55 +484,64 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
 // ─── Voice Count Sample Loader ───────────────────────────
 
 /**
- * Voice counting (1–12) using the Free Spoken Digit Dataset (FSDD) for digits 1–9,
- * and compound sample concatenation for 10–12.
+ * Voice counting (1–12) using Wikimedia Commons "En-us-" pronunciation recordings.
+ * All numbers use the same speaker / recording series for tonal consistency.
  *
  * Key challenge: different spoken numbers have different perceptual onset times.
  * We pre-analyze each sample to find the amplitude onset point and schedule
  * playback early by that offset so the perceived sound lands exactly on the beat.
  *
- * Additional per-digit manual offsets account for consonant characteristics:
- * - Plosives ("two", "three") have a brief silence before the voice activates
+ * Additional per-word manual offsets account for consonant characteristics:
+ * - Plosives ("two", "ten", "twelve") have a brief silence before the voice activates
  * - Fricatives ("five", "six", "seven") have noise onset before pitched voice
- * - Vowels ("one", "eight") have near-instant perceived onset
+ * - Vowels ("one", "eight", "eleven") have near-instant perceived onset
  */
 
-// FSDD speaker "jackson" — consistent male voice, clear articulation
-const FSDD_BASE = 'https://raw.githubusercontent.com/Jakobovski/free-spoken-digit-dataset/master/recordings';
-
-// Full-word recordings for 10, 11, 12 from Wikimedia Commons (public domain)
-const WORD_URLS: Record<number, string> = {
+// Wikimedia Commons "En-us-" pronunciation recordings (public domain)
+// Same speaker series as "ten", "eleven", "twelve" for voice consistency
+const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
+  1: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/En-us-One.ogg',
+  2: 'https://upload.wikimedia.org/wikipedia/commons/b/be/En-us-Two.ogg',
+  3: 'https://upload.wikimedia.org/wikipedia/commons/7/76/En-us-Three.ogg',
+  4: 'https://upload.wikimedia.org/wikipedia/commons/7/75/En-us-Four.ogg',
+  5: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/En-us-Five.ogg',
+  6: 'https://upload.wikimedia.org/wikipedia/commons/3/34/En-us-Six.ogg',
+  7: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/En-us-Seven.ogg',
+  8: 'https://upload.wikimedia.org/wikipedia/commons/1/1a/En-us-Eight.ogg',
+  9: 'https://upload.wikimedia.org/wikipedia/commons/9/9c/En-us-Nine.ogg',
   10: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/En-us-ten.ogg',
   11: 'https://upload.wikimedia.org/wikipedia/commons/d/db/En-us-eleven.ogg',
   12: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/En-us-twelve.ogg',
 };
 
 /**
- * Manual onset compensation offsets (seconds) per digit.
+ * Manual onset compensation offsets (seconds) per number.
  * Positive = schedule earlier; these values account for the time between
  * the sample start and when the listener perceives the "attack" of the word.
  *
- * Calibrated for FSDD speaker "jackson" after phonetic analysis:
+ * Calibrated for Wikimedia Commons "En-us-" recordings after phonetic analysis:
  * - Voiceless fricatives (/θ/, /f/) have the most gradual, quiet onset → largest offsets
  * - Plosives (/t/) have a sharp burst transient but Voice Onset Time delays the vowel
- * - Sibilants (/s/, /z/) are loud and percussive → moderate offsets
- * - Vowel-initial words (/eɪ/) have near-instant perceived onset → minimal offset
+ * - Sibilants (/s/) are loud and percussive → moderate offsets
+ * - Vowel-initial words (/eɪ/, /ɪ/) have near-instant perceived onset → minimal offset
  * - Glides (/w/) and nasals (/n/) fall in between
  *
  * These offsets are absolute (not tempo-relative), tuned for the 60–180 BPM sweet spot.
  * At 120 BPM (500ms/beat), a 50ms offset is 10% of the beat — perceptually tight.
  */
 const VOICE_ONSET_OFFSETS: Record<number, number> = {
-  0: 0.035, // "zero" /z/ — voiced fricative, moderate onset
-  1: 0.048, // "one" /w/ — glide has gradual buildup before vowel "uh" lands
-  2: 0.042, // "two" /t/ — plosive burst is sharp but VOT gap before vowel
-  3: 0.058, // "three" /θ/ — voiceless dental fricative, very gradual & quiet onset
-  4: 0.052, // "four" /f/ — voiceless labiodental fricative, quiet breathy start
-  5: 0.052, // "five" /f/ — same /f/ onset characteristics as "four"
-  6: 0.035, // "six" /s/ — sibilant is loud & percussive, quick perceived attack
-  7: 0.045, // "seven" /s/ — sibilant onset like "six" but 2 syllables spread energy
-  8: 0.015, // "eight" /eɪ/ — vowel-initial, near-instant perceived onset
-  9: 0.042, // "nine" /n/ — voiced nasal, quick but slightly softer initial onset
+  1: 0.048,  // "one" /w/ — glide has gradual buildup before vowel "uh" lands
+  2: 0.042,  // "two" /t/ — plosive burst is sharp but VOT gap before vowel
+  3: 0.058,  // "three" /θ/ — voiceless dental fricative, very gradual & quiet onset
+  4: 0.052,  // "four" /f/ — voiceless labiodental fricative, quiet breathy start
+  5: 0.052,  // "five" /f/ — same /f/ onset characteristics as "four"
+  6: 0.035,  // "six" /s/ — sibilant is loud & percussive, quick perceived attack
+  7: 0.045,  // "seven" /s/ — sibilant onset like "six" but 2 syllables spread energy
+  8: 0.015,  // "eight" /eɪ/ — vowel-initial, near-instant perceived onset
+  9: 0.042,  // "nine" /n/ — voiced nasal, quick but slightly softer initial onset
+  10: 0.045, // "ten" /t/ — sharp plosive, similar to "two"
+  11: 0.020, // "eleven" /ɪ/ — vowel-initial, fast onset similar to "eight"
+  12: 0.045, // "twelve" /t/ — plosive onset like "ten"
 };
 
 /** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
@@ -601,22 +610,9 @@ function concatenateBuffers(
 }
 
 /**
- * Per-word onset compensation for the Wikimedia "ten", "eleven", "twelve" recordings.
- * These are different speakers than FSDD, so they need independent calibration.
- * - "ten" /t/ — sharp plosive, similar characteristics to "two"
- * - "eleven" /ɪ/ — vowel-initial, fast onset similar to "eight"
- * - "twelve" /t/ — plosive onset like "ten"
- */
-const WORD_ONSET_OFFSETS: Record<number, number> = {
-  10: 0.045, // "ten" — /t/ plosive
-  11: 0.020, // "eleven" — /ɪ/ vowel-initial
-  12: 0.045, // "twelve" — /t/ plosive
-};
-
-/**
  * Load voice count samples:
- * - Digits 0–9 from FSDD (speaker "jackson")
- * - Words 10–12 from Wikimedia Commons ("ten", "eleven", "twelve")
+ * - All numbers 1–12 from Wikimedia Commons "En-us-" recordings
+ * - Same speaker series for consistent voice across all time signatures
  */
 function loadVoiceSamples(ctx: AudioContext): Promise<void> {
   if (voiceLoadState === 'loaded') return Promise.resolve();
@@ -624,41 +620,24 @@ function loadVoiceSamples(ctx: AudioContext): Promise<void> {
 
   voiceLoadState = 'loading';
 
-  // Fetch digits 0–9 from FSDD, speaker "jackson", sample index 0
-  const digitPromises = Array.from({ length: 10 }, (_, digit) =>
-    fetchAudioBuffer(`${FSDD_BASE}/${digit}_jackson_0.wav`, ctx)
+  // Fetch all 12 number recordings from Wikimedia Commons
+  const nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const promises = nums.map((num) =>
+    fetchAudioBuffer(WIKIMEDIA_VOICE_URLS[num], ctx).then((buf) => ({ num, buf }))
   );
 
-  // Fetch full-word recordings for 10, 11, 12 from Wikimedia Commons
-  const wordPromises = [10, 11, 12].map((num) =>
-    fetchAudioBuffer(WORD_URLS[num], ctx)
-  );
-
-  voiceLoadPromise = Promise.all([Promise.all(digitPromises), Promise.all(wordPromises)])
-    .then(([rawDigitBuffers, rawWordBuffers]) => {
-      // Trim and store digit buffers 0–9
-      const trimmed: AudioBuffer[] = rawDigitBuffers.map((buf) => trimBuffer(ctx, buf));
-
-      for (let d = 0; d <= 9; d++) {
-        voiceBuffers.set(d, trimmed[d]);
-        const autoOnset = detectOnset(trimmed[d]);
-        const manualOffset = VOICE_ONSET_OFFSETS[d] ?? 0.03;
-        voiceOnsets.set(d, autoOnset + manualOffset);
-      }
-
-      // Trim and store word buffers for 10, 11, 12
-      const wordNums = [10, 11, 12];
-      rawWordBuffers.forEach((buf, i) => {
-        const num = wordNums[i];
+  voiceLoadPromise = Promise.all(promises)
+    .then((results) => {
+      for (const { num, buf } of results) {
         const trimmedBuf = trimBuffer(ctx, buf);
         voiceBuffers.set(num, trimmedBuf);
         const autoOnset = detectOnset(trimmedBuf);
-        const manualOffset = WORD_ONSET_OFFSETS[num] ?? 0.04;
+        const manualOffset = VOICE_ONSET_OFFSETS[num] ?? 0.04;
         voiceOnsets.set(num, autoOnset + manualOffset);
-      });
+      }
 
       voiceLoadState = 'loaded';
-      console.log('[Metronome] Voice count samples loaded successfully (1-12, with real "ten"/"eleven"/"twelve")');
+      console.log('[Metronome] Voice count samples loaded successfully (1-12, all Wikimedia Commons)');
     })
     .catch((err) => {
       console.warn('[Metronome] Failed to load voice samples, falling back to click:', err);
@@ -688,13 +667,15 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   source.buffer = buffer;
 
   // Speed up playback for snappier rhythmic feel and better alignment at faster tempos
-  // Single digits (1–9): 1.2x tightens articulation without sounding unnatural
-  // Full words (10–12): 1.3x — these are real word recordings so less compression needed
-  //   "eleven" is longest (3 syllables) so benefits from the slight speedup
-  if (beatNumber >= 10) {
-    source.playbackRate.value = 1.3;
+  // All samples are from the same Wikimedia series; multi-syllable words get slightly
+  // more compression to keep them tight within the beat window.
+  // "seven" (2 syllables) and "eleven" (3 syllables) benefit from extra speedup.
+  if (beatNumber === 11) {
+    source.playbackRate.value = 1.35; // 3 syllables — needs most compression
+  } else if (beatNumber === 7 || beatNumber === 12) {
+    source.playbackRate.value = 1.25; // 2 syllables
   } else {
-    source.playbackRate.value = 1.2;
+    source.playbackRate.value = 1.15; // single syllable — gentle speedup
   }
 
   // EQ chain for voice clarity in a metronome context
