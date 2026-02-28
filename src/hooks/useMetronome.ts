@@ -52,7 +52,7 @@ function getStoredVolume(): number {
       if (n >= 0 && n <= 1) return n;
     }
   } catch {}
-  return 0.75;
+  return 0.50;
 }
 
 export interface MetronomeState {
@@ -225,9 +225,32 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
   // Pitch down one whole step (2 semitones)
   source.playbackRate.value = Math.pow(2, -2 / 12);
 
+  // High-pass to remove low-end mud introduced by pitch shift
+  const highpass = ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 250;
+  highpass.Q.value = 0.7;
+
+  // Presence boost around 2.5kHz for the woody "knock" attack
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'peaking';
+  presence.frequency.value = 2500;
+  presence.Q.value = 1.5;
+  presence.gain.value = isAccent ? 4 : 3;
+
+  // High-shelf for clarity / top-end definition
+  const air = ctx.createBiquadFilter();
+  air.type = 'highshelf';
+  air.frequency.value = 6000;
+  air.gain.value = isAccent ? 2 : 1.5;
+
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
-  source.connect(gain);
+
+  source.connect(highpass);
+  highpass.connect(presence);
+  presence.connect(air);
+  air.connect(gain);
   gain.connect(getOutput(ctx));
 
   source.start(time);
