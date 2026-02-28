@@ -115,7 +115,7 @@ export function useChordAudio() {
       // Master gain node: applies user volume with a boost curve for adequate
       // loudness on mobile. v^1.2 * 6 gives ~4.1 at 75% and 6 at max.
       const masterGain = ctx.createGain();
-      const gain = Math.pow(masterVol, 1.2) * 6;
+      const gain = Math.pow(masterVol, 1.2) * 5;
       masterGain.gain.value = gain;
       masterGain.connect(ctx.destination);
 
