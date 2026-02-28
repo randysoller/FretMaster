@@ -530,18 +530,18 @@ const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
  * At 120 BPM (500ms/beat), a 50ms offset is 10% of the beat — perceptually tight.
  */
 const VOICE_ONSET_OFFSETS: Record<number, number> = {
-  1: 0.048,  // "one" /w/ — glide has gradual buildup before vowel "uh" lands
-  2: 0.042,  // "two" /t/ — plosive burst is sharp but VOT gap before vowel
-  3: 0.058,  // "three" /θ/ — voiceless dental fricative, very gradual & quiet onset
-  4: 0.052,  // "four" /f/ — voiceless labiodental fricative, quiet breathy start
-  5: 0.052,  // "five" /f/ — same /f/ onset characteristics as "four"
-  6: 0.035,  // "six" /s/ — sibilant is loud & percussive, quick perceived attack
-  7: 0.045,  // "seven" /s/ — sibilant onset like "six" but 2 syllables spread energy
-  8: 0.015,  // "eight" /eɪ/ — vowel-initial, near-instant perceived onset
-  9: 0.042,  // "nine" /n/ — voiced nasal, quick but slightly softer initial onset
-  10: 0.045, // "ten" /t/ — sharp plosive, similar to "two"
-  11: 0.020, // "eleven" /ɪ/ — vowel-initial, fast onset similar to "eight"
-  12: 0.045, // "twelve" /t/ — plosive onset like "ten"
+  1: 0.055,  // "one" /w/ — glide builds gradually; Wikimedia recording has breathy lead-in
+  2: 0.046,  // "two" /t/ — sharp plosive burst but VOT gap delays perceived vowel attack
+  3: 0.068,  // "three" /θr/ — voiceless dental fricative + liquid cluster, very gradual & quiet
+  4: 0.056,  // "four" /f/ — voiceless labiodental fricative, quiet breathy airflow before vowel
+  5: 0.056,  // "five" /f/ — same /f/ onset as "four", diphthong doesn't change initial attack
+  6: 0.036,  // "six" /s/ — sibilant is loud & percussive, near-instant high-frequency energy
+  7: 0.050,  // "seven" /s/ — sibilant onset like "six" but 2 syllables need slightly more lead
+  8: 0.016,  // "eight" /eɪ/ — vowel-initial, near-instant glottal onset, minimal compensation
+  9: 0.044,  // "nine" /n/ — voiced alveolar nasal, quick but softer perceived attack than sibilants
+  10: 0.046, // "ten" /t/ — voiceless alveolar plosive, matches "two" onset characteristics
+  11: 0.020, // "eleven" /ɪ/ — vowel-initial like "eight", slightly longer due to unstressed syllable
+  12: 0.054, // "twelve" /tw/ — plosive + glide cluster delays vowel more than plain /t/
 };
 
 /** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
@@ -666,16 +666,18 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   const source = ctx.createBufferSource();
   source.buffer = buffer;
 
-  // Speed up playback for snappier rhythmic feel and better alignment at faster tempos
-  // All samples are from the same Wikimedia series; multi-syllable words get slightly
-  // more compression to keep them tight within the beat window.
-  // "seven" (2 syllables) and "eleven" (3 syllables) benefit from extra speedup.
+  // Speed up playback for snappier rhythmic feel and better alignment at faster tempos.
+  // All samples are from the same Wikimedia series; multi-syllable words get more
+  // compression to keep them tight within the beat window.
+  // Rates tuned so each word finishes well before the next beat at 180 BPM (~333ms).
   if (beatNumber === 11) {
-    source.playbackRate.value = 1.35; // 3 syllables — needs most compression
-  } else if (beatNumber === 7 || beatNumber === 12) {
-    source.playbackRate.value = 1.25; // 2 syllables
+    source.playbackRate.value = 1.40; // "eleven" — 3 syllables, needs most compression
+  } else if (beatNumber === 7) {
+    source.playbackRate.value = 1.30; // "seven" — 2 syllables, moderate compression
+  } else if (beatNumber === 12) {
+    source.playbackRate.value = 1.25; // "twelve" — 1 syllable but long /lv/ coda
   } else {
-    source.playbackRate.value = 1.15; // single syllable — gentle speedup
+    source.playbackRate.value = 1.18; // single-syllable words — gentle speedup for tightness
   }
 
   // EQ chain for voice clarity in a metronome context
