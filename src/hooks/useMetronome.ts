@@ -333,7 +333,7 @@ function scheduleHiHat(ctx: AudioContext, time: number, isAccent: boolean) {
 
   // Boosted gain to match perceived loudness of wood block samples
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(isAccent ? 1.8 : 1.50, time);
+  gain.gain.setValueAtTime(isAccent ? 1.7 : 1.35, time);
   source.connect(gain);
   gain.connect(getOutput(ctx));
 
