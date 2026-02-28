@@ -497,21 +497,22 @@ function scheduleRimClick(ctx: AudioContext, time: number, isAccent: boolean) {
  * - Vowels ("one", "eight", "eleven") have near-instant perceived onset
  */
 
-// Wikimedia Commons "En-us-" pronunciation recordings (public domain)
-// Same speaker series as "ten", "eleven", "twelve" for voice consistency
+// Lingua Libre recordings from Wikimedia Commons — all by the same speaker ("Back ache")
+// Using a single speaker ensures consistent voice across all 12 beat numbers.
+// WAV format for highest quality; CC-BY-SA license.
 const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
-  1: 'https://upload.wikimedia.org/wikipedia/commons/7/7c/En-us-One.ogg',
-  2: 'https://upload.wikimedia.org/wikipedia/commons/b/be/En-us-Two.ogg',
-  3: 'https://upload.wikimedia.org/wikipedia/commons/7/76/En-us-Three.ogg',
-  4: 'https://upload.wikimedia.org/wikipedia/commons/7/75/En-us-Four.ogg',
-  5: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/En-us-Five.ogg',
-  6: 'https://upload.wikimedia.org/wikipedia/commons/3/34/En-us-Six.ogg',
-  7: 'https://upload.wikimedia.org/wikipedia/commons/0/0f/En-us-Seven.ogg',
-  8: 'https://upload.wikimedia.org/wikipedia/commons/1/1a/En-us-Eight.ogg',
-  9: 'https://upload.wikimedia.org/wikipedia/commons/9/9c/En-us-Nine.ogg',
-  10: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/En-us-ten.ogg',
-  11: 'https://upload.wikimedia.org/wikipedia/commons/d/db/En-us-eleven.ogg',
-  12: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/En-us-twelve.ogg',
+  1: 'https://upload.wikimedia.org/wikipedia/commons/7/71/LL-Q1860_%28eng%29-Back_ache-one.wav',
+  2: 'https://upload.wikimedia.org/wikipedia/commons/f/f3/LL-Q1860_%28eng%29-Back_ache-two.wav',
+  3: 'https://upload.wikimedia.org/wikipedia/commons/9/99/LL-Q1860_%28eng%29-Back_ache-three.wav',
+  4: 'https://upload.wikimedia.org/wikipedia/commons/0/0b/LL-Q1860_%28eng%29-Back_ache-four.wav',
+  5: 'https://upload.wikimedia.org/wikipedia/commons/9/96/LL-Q1860_%28eng%29-Back_ache-five.wav',
+  6: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/LL-Q1860_%28eng%29-Back_ache-six.wav',
+  7: 'https://upload.wikimedia.org/wikipedia/commons/c/cd/LL-Q1860_%28eng%29-Back_ache-seven.wav',
+  8: 'https://upload.wikimedia.org/wikipedia/commons/4/49/LL-Q1860_%28eng%29-Back_ache-eight.wav',
+  9: 'https://upload.wikimedia.org/wikipedia/commons/3/33/LL-Q1860_%28eng%29-Back_ache-nine.wav',
+  10: 'https://upload.wikimedia.org/wikipedia/commons/c/c4/LL-Q1860_%28eng%29-Back_ache-ten.wav',
+  11: 'https://upload.wikimedia.org/wikipedia/commons/6/6c/LL-Q1860_%28eng%29-Back_ache-eleven.wav',
+  12: 'https://upload.wikimedia.org/wikipedia/commons/2/26/LL-Q1860_%28eng%29-Back_ache-twelve.wav',
 };
 
 /**
@@ -519,7 +520,7 @@ const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
  * Positive = schedule earlier; these values account for the time between
  * the sample start and when the listener perceives the "attack" of the word.
  *
- * Calibrated for Wikimedia Commons "En-us-" recordings after phonetic analysis:
+ * Calibrated for Lingua Libre "Back ache" recordings after phonetic analysis:
  * - Voiceless fricatives (/θ/, /f/) have the most gradual, quiet onset → largest offsets
  * - Plosives (/t/) have a sharp burst transient but Voice Onset Time delays the vowel
  * - Sibilants (/s/) are loud and percussive → moderate offsets
@@ -530,18 +531,18 @@ const WIKIMEDIA_VOICE_URLS: Record<number, string> = {
  * At 120 BPM (500ms/beat), a 50ms offset is 10% of the beat — perceptually tight.
  */
 const VOICE_ONSET_OFFSETS: Record<number, number> = {
-  1: 0.055,  // "one" /w/ — glide builds gradually; Wikimedia recording has breathy lead-in
-  2: 0.046,  // "two" /t/ — sharp plosive burst but VOT gap delays perceived vowel attack
-  3: 0.068,  // "three" /θr/ — voiceless dental fricative + liquid cluster, very gradual & quiet
-  4: 0.056,  // "four" /f/ — voiceless labiodental fricative, quiet breathy airflow before vowel
-  5: 0.056,  // "five" /f/ — same /f/ onset as "four", diphthong doesn't change initial attack
-  6: 0.036,  // "six" /s/ — sibilant is loud & percussive, near-instant high-frequency energy
-  7: 0.050,  // "seven" /s/ — sibilant onset like "six" but 2 syllables need slightly more lead
-  8: 0.016,  // "eight" /eɪ/ — vowel-initial, near-instant glottal onset, minimal compensation
-  9: 0.044,  // "nine" /n/ — voiced alveolar nasal, quick but softer perceived attack than sibilants
-  10: 0.046, // "ten" /t/ — voiceless alveolar plosive, matches "two" onset characteristics
-  11: 0.020, // "eleven" /ɪ/ — vowel-initial like "eight", slightly longer due to unstressed syllable
-  12: 0.054, // "twelve" /tw/ — plosive + glide cluster delays vowel more than plain /t/
+  1: 0.050,  // "one" /w/ — glide builds gradually
+  2: 0.042,  // "two" /t/ — sharp plosive burst, moderate VOT
+  3: 0.062,  // "three" /θr/ — voiceless dental fricative + liquid cluster, gradual onset
+  4: 0.052,  // "four" /f/ — voiceless labiodental fricative, quiet airflow
+  5: 0.052,  // "five" /f/ — same /f/ onset as "four"
+  6: 0.032,  // "six" /s/ — sibilant is loud & percussive, near-instant
+  7: 0.042,  // "seven" /s/ — sibilant onset, 2 syllables
+  8: 0.015,  // "eight" /eɪ/ — vowel-initial, near-instant glottal onset
+  9: 0.040,  // "nine" /n/ — voiced alveolar nasal
+  10: 0.042, // "ten" /t/ — voiceless alveolar plosive
+  11: 0.018, // "eleven" /ɪ/ — vowel-initial
+  12: 0.048, // "twelve" /tw/ — plosive + glide cluster
 };
 
 /** Stored loaded voice AudioBuffers: index 1–9 from FSDD, 10–12 synthesized */
@@ -637,7 +638,7 @@ function loadVoiceSamples(ctx: AudioContext): Promise<void> {
       }
 
       voiceLoadState = 'loaded';
-      console.log('[Metronome] Voice count samples loaded successfully (1-12, all Wikimedia Commons)');
+      console.log('[Metronome] Voice count samples loaded successfully (1-12, Lingua Libre "Back ache" speaker)');
     })
     .catch((err) => {
       console.warn('[Metronome] Failed to load voice samples, falling back to click:', err);
