@@ -693,12 +693,13 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   highpass.frequency.value = 180;
   highpass.Q.value = 0.7;
 
-  // Gentle presence boost for voice intelligibility without adding too much energy
+  // Moderate presence boost for voice intelligibility — kept conservative
+  // to avoid adding perceived loudness in the ear's most sensitive range (2–4kHz)
   const presence = ctx.createBiquadFilter();
   presence.type = 'peaking';
   presence.frequency.value = 2800;
   presence.Q.value = 1.5;
-  presence.gain.value = isAccent ? 2.5 : 1.5;
+  presence.gain.value = isAccent ? 2.0 : 1.2;
 
   // Slight high-shelf cut to tame sibilance and keep voice from sounding harsh
   const deEss = ctx.createBiquadFilter();
@@ -707,12 +708,19 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   deEss.gain.value = -2;
 
   // Voice samples have sustained energy (higher RMS) vs transient percussive sounds,
-  // so perceived loudness is higher at the same peak gain. Reduce gain to match
-  // the perceived loudness of click (~0.3 effective), wood block (0.7–1.0),
-  // hi-hat (0.85–1.1), and sidestick (0.5–0.75).
+  // so perceived loudness is higher at the same peak gain even with lower gain values.
+  // Key insight: a voice word lasting 300ms at gain 0.6 has ~4× the energy of a click
+  // lasting 25ms at gain 0.4. We compensate with:
+  //   1. Lower peak gains (0.55/0.38) to reduce overall energy
+  //   2. A gentle transient-shaping envelope that decays to 60% over 300ms,
+  //      mimicking the quick decay of percussive sounds so voice has similar
+  //      "impact" weight as click, wood block, hi-hat, and sidestick
   const gain = ctx.createGain();
-  const vol = isAccent ? 0.85 : 0.6;
+  const vol = isAccent ? 0.55 : 0.38;
   gain.gain.setValueAtTime(vol, time);
+  // Transient shaping: gentle decay after initial consonant attack
+  // This makes voice feel more like a rhythmic "hit" than a sustained word
+  gain.gain.exponentialRampToValueAtTime(vol * 0.6, time + 0.30);
 
   source.connect(highpass);
   highpass.connect(presence);
