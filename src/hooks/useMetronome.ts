@@ -222,6 +222,8 @@ function scheduleWoodBlock(ctx: AudioContext, time: number, isAccent: boolean) {
 
   const source = ctx.createBufferSource();
   source.buffer = sample;
+  // Pitch down one whole step (2 semitones)
+  source.playbackRate.value = Math.pow(2, -2 / 12);
 
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(isAccent ? 1.0 : 0.7, time);
