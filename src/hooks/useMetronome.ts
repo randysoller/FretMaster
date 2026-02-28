@@ -757,6 +757,46 @@ function scheduleVoice(ctx: AudioContext, time: number, beatNumber: number, isAc
   source.start(startTime);
 }
 
+// ─── Preload All Samples on First Interaction ───────────
+
+let preloadState: 'idle' | 'loading' | 'done' = 'idle';
+
+/**
+ * Preload all metronome audio samples (wood block, hi-hat, sidestick, voice)
+ * using a temporary AudioContext for decoding. Call on first user interaction
+ * (click/touch/keydown) so samples are ready before the metronome starts.
+ *
+ * AudioBuffers decoded by one AudioContext can be played by another, so
+ * the buffers remain valid when the metronome later creates its own context.
+ *
+ * Safe to call multiple times — deduplicates via preloadState.
+ */
+export async function preloadMetronomeSamples(): Promise<void> {
+  if (preloadState !== 'idle') return;
+  preloadState = 'loading';
+
+  try {
+    const ctx = new AudioContext();
+    console.log('[Metronome] Preloading all samples on first interaction…');
+
+    // Fire all sample loaders in parallel (each is internally deduplicated)
+    await Promise.allSettled([
+      loadWoodBlockSamples(ctx),
+      loadHiHatSamples(ctx),
+      loadRimClickSamples(ctx),
+      loadVoiceSamples(ctx),
+    ]);
+
+    // Close the temporary context — decoded buffers persist in module vars
+    await ctx.close();
+    preloadState = 'done';
+    console.log('[Metronome] All samples preloaded successfully');
+  } catch (err) {
+    console.warn('[Metronome] Preload error (non-fatal, will retry on play):', err);
+    preloadState = 'idle'; // allow retry
+  }
+}
+
 // ─── Hook ────────────────────────────────────────────────
 
 export function useMetronome(): MetronomeState {
