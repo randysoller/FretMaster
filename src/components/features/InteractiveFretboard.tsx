@@ -891,7 +891,7 @@ function isLightColor(color: string): boolean {
   const hslMatch = color.match(/hsl\(\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)/);
   if (hslMatch) {
     const l = parseFloat(hslMatch[3]);
-    return l > 55;
+    return l > 40;
   }
   const c = color.replace('#', '');
   if (c.length >= 6) {
