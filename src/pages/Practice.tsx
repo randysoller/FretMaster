@@ -2,13 +2,11 @@ import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePracticeStore } from '@/stores/practiceStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
-import { useCountdown } from '@/hooks/useCountdown';
 import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import CountdownRing from '@/components/features/CountdownRing';
 import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
@@ -68,7 +66,7 @@ function SensitivitySlider({ value, onChange }: { value: number; onChange: (v: n
 export default function Practice() {
   const navigate = useNavigate();
   const {
-    isPracticing, isRevealed, timerDuration, currentIndex, practiceChords, totalPracticed,
+    isPracticing, isRevealed, currentIndex, practiceChords, totalPracticed,
     categories, chordTypes, barreRoots,
     getCurrentChord, revealChord, nextChord, prevChord, stopPractice, startPractice,
   } = usePracticeStore();
@@ -89,17 +87,11 @@ export default function Practice() {
     if (current) playChord(current);
   }, [revealChord, getCurrentChord, playChord]);
 
-  const { timeLeft, progress, start, reset } = useCountdown({
-    duration: timerDuration,
-    onComplete: handleReveal,
-  });
-
   const handleDetectionCorrect = useCallback(() => {
     if (!usePracticeStore.getState().isRevealed) revealChord();
-    reset();
     resetBeatCounter();
     nextChord();
-  }, [revealChord, reset, nextChord]);
+  }, [revealChord, nextChord]);
 
   const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
     useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true });
@@ -110,11 +102,10 @@ export default function Practice() {
       const s = usePracticeStore.getState();
       if (!s.isPracticing) return;
       if (!s.isRevealed) revealChord();
-      reset();
       nextChord();
     });
     return unsub;
-  }, [revealChord, reset, nextChord]);
+  }, [revealChord, nextChord]);
 
   // Subscribe to auto-reveal before advancing
   useEffect(() => {
@@ -133,18 +124,13 @@ export default function Practice() {
   }, [isPracticing, navigate]);
 
   useEffect(() => {
-    if (isPracticing && !isRevealed && timerDuration > 0) start();
-  }, [isPracticing, isRevealed, currentIndex, start, timerDuration]);
-
-  useEffect(() => {
     return () => { stopListening(); };
   }, [stopListening]);
 
-  const handleNext = () => { reset(); resetBeatCounter(); nextChord(); };
-  const handlePrev = () => { reset(); resetBeatCounter(); prevChord(); };
-  const handleSkipReveal = () => { reset(); revealChord(); };
+  const handleNext = () => { resetBeatCounter(); nextChord(); };
+  const handlePrev = () => { resetBeatCounter(); prevChord(); };
   const handleBack = () => { stopListening(); stopPractice(); navigate('/chord-practice'); };
-  const handleRestart = () => { reset(); resetBeatCounter(); startPractice(); };
+  const handleRestart = () => { resetBeatCounter(); startPractice(); };
 
   if (!chord) return null;
 
@@ -256,14 +242,10 @@ export default function Practice() {
             <div className="relative min-h-[200px] sm:min-h-[260px] flex items-center justify-center mt-2 sm:mt-6 w-full">
               <AnimatePresence mode="wait">
                 {!isRevealed ? (
-                  <motion.div key="countdown" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-4 sm:gap-6">
-                    {timerDuration > 0 ? (
-                      <div className="scale-[0.85] sm:scale-100 origin-center"><CountdownRing progress={progress} timeLeft={timeLeft} size={180} /></div>
-                    ) : (
-                      <div className="min-h-[140px] sm:min-h-[180px] flex items-center justify-center">
-                        <div className="text-center text-[hsl(var(--text-muted))]"><Eye className="size-8 sm:size-10 mx-auto mb-2 opacity-30" /><p className="text-xs sm:text-sm font-body">Tap reveal to see the chord</p></div>
-                      </div>
-                    )}
+                  <motion.div key="hidden" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-4 sm:gap-6">
+                    <div className="min-h-[140px] sm:min-h-[180px] flex items-center justify-center">
+                      <div className="text-center text-[hsl(var(--text-muted))]"><Eye className="size-8 sm:size-10 mx-auto mb-2 opacity-30" /><p className="text-xs sm:text-sm font-body">Tap reveal to see the chord</p></div>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-3 sm:gap-6 w-full">
@@ -292,8 +274,8 @@ export default function Practice() {
             <RotateCcw className="size-5" />
           </button>
           {!isRevealed ? (
-            <button onClick={timerDuration > 0 ? handleSkipReveal : handleReveal} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
-              <Eye className="size-5" /> {timerDuration > 0 ? 'Reveal Now' : 'Reveal Chord'}
+            <button onClick={handleReveal} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
+              <Eye className="size-5" /> Reveal Chord
             </button>
           ) : (
             <button onClick={() => { pauseDetection(2000); playChord(chord); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all">
