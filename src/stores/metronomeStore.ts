@@ -85,6 +85,7 @@ type ChordAdvanceListener = () => void;
 const beatListeners = new Set<BeatListener>();
 const chordAdvanceListeners = new Set<ChordAdvanceListener>();
 const autoRevealListeners = new Set<ChordAdvanceListener>();
+const countInCompleteListeners = new Set<() => void>();
 
 export function onBeat(listener: BeatListener): () => void {
   beatListeners.add(listener);
@@ -101,6 +102,11 @@ export function onAutoReveal(listener: ChordAdvanceListener): () => void {
   return () => { autoRevealListeners.delete(listener); };
 }
 
+export function onCountInComplete(listener: () => void): () => void {
+  countInCompleteListeners.add(listener);
+  return () => { countInCompleteListeners.delete(listener); };
+}
+
 function notifyBeat(beat: number, measure: number) {
   beatListeners.forEach((l) => l(beat, measure));
 }
@@ -113,6 +119,10 @@ function notifyAutoReveal() {
   autoRevealListeners.forEach((l) => l());
 }
 
+function notifyCountInComplete() {
+  countInCompleteListeners.forEach((l) => l());
+}
+
 // ─── Audio engine (module-scoped, singleton) ─────────────
 
 let audioCtx: AudioContext | null = null;
@@ -122,6 +132,7 @@ let timerHandle: number = 0;
 let nextNoteTime = 0;
 let currentBeatInternal = 0;
 let beatsSinceChordChange = 0;
+let countInBeatsRemaining = 0;
 
 function getOutput(ctx: AudioContext): AudioNode {
   return metronomeOutput || ctx.destination;
@@ -434,6 +445,12 @@ interface MetronomeStore {
   autoRevealBeforeAdvance: boolean;
   /** Beats remaining until the next chord advance (for countdown UI) */
   beatsUntilAdvance: number;
+  /** Whether currently in a count-in phase */
+  isCountingIn: boolean;
+  /** Current beat of the count-in (1-based, 0 = not started) */
+  countInBeat: number;
+  /** Total beats in the count-in (2 * beatsPerMeasure) */
+  countInTotal: number;
 
   setBpm: (v: number) => void;
   setBeatsPerMeasure: (v: number) => void;
@@ -443,6 +460,8 @@ interface MetronomeStore {
   setSyncEnabled: (v: boolean) => void;
   setSyncUnit: (v: 'beats' | 'measures') => void;
   setAutoRevealBeforeAdvance: (v: boolean) => void;
+  startCountIn: () => void;
+  stopCountIn: () => void;
   toggle: () => void;
   start: () => void;
   stop: () => void;
@@ -460,6 +479,9 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
   syncUnit: getStoredSyncUnit(),
   autoRevealBeforeAdvance: getStoredAutoReveal(),
   beatsUntilAdvance: getStoredBeatsPerChord(),
+  isCountingIn: false,
+  countInBeat: 0,
+  countInTotal: 0,
 
   setBpm: (v) => {
     const clamped = Math.max(30, Math.min(260, v));
@@ -516,6 +538,28 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
     try { localStorage.setItem(AUTO_REVEAL_KEY, String(v)); } catch {}
   },
 
+  startCountIn: () => {
+    const s = get();
+    if (!s.syncEnabled) set({ syncEnabled: true });
+    const total = 2 * s.beatsPerMeasure;
+    countInBeatsRemaining = total;
+    set({ isCountingIn: true, countInBeat: 0, countInTotal: total });
+    if (s.isPlaying) {
+      // Reset timing for clean count-in from beat 1
+      currentBeatInternal = 0;
+      beatsSinceChordChange = 0;
+      if (audioCtx) nextNoteTime = audioCtx.currentTime + 0.05;
+    } else {
+      get().start();
+    }
+  },
+
+  stopCountIn: () => {
+    countInBeatsRemaining = 0;
+    set({ isCountingIn: false, countInBeat: 0 });
+    get().stop();
+  },
+
   start: () => {
     if (audioCtx) return;
     const ctx = new AudioContext();
@@ -556,6 +600,25 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
           set({ currentBeat: snapBeat });
           notifyBeat(snapBeat, Math.floor(snapBeatsSince / s.beatsPerMeasure));
 
+          // Count-in handling — suppress chord advance during count-in
+          if (countInBeatsRemaining > 0) {
+            countInBeatsRemaining--;
+            const ciTotal = s.countInTotal || (2 * s.beatsPerMeasure);
+            const ciCurrent = ciTotal - countInBeatsRemaining; // 1 to ciTotal
+            set({ countInBeat: ciCurrent, isCountingIn: true });
+
+            if (countInBeatsRemaining === 0) {
+              // Keep "START" visible briefly before transitioning
+              setTimeout(() => {
+                beatsSinceChordChange = 0;
+                const totalSync = s.syncUnit === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
+                set({ isCountingIn: false, countInBeat: 0, beatsUntilAdvance: totalSync });
+                notifyCountInComplete();
+              }, 500);
+            }
+            return;
+          }
+
           // Check chord advance
           if (s.syncEnabled && s.beatsPerChord > 0) {
             const totalBeats = s.syncUnit === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
@@ -586,7 +649,8 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
   },
 
   stop: () => {
-    set({ isPlaying: false, currentBeat: 0 });
+    countInBeatsRemaining = 0;
+    set({ isPlaying: false, currentBeat: 0, isCountingIn: false, countInBeat: 0 });
     if (timerHandle) { clearInterval(timerHandle); timerHandle = 0; }
     if (audioCtx) { audioCtx.close(); audioCtx = null; }
     masterGain = null;
