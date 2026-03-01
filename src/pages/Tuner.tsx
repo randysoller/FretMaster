@@ -241,61 +241,71 @@ export default function Tuner() {
     }
   }, []);
 
-  // Cowbell "in tune" confirmation sound
+  // Bright chime "in tune" confirmation sound
   const playCowbellSound = useCallback(() => {
     const ctx = new AudioContext();
     const now = ctx.currentTime;
-    const duration = 0.6;
+    const duration = 2.2;
 
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.45, now);
-    masterGain.gain.setTargetAtTime(0.0001, now + 0.01, duration * 0.28);
+    masterGain.gain.setValueAtTime(0.5, now);
+    masterGain.gain.setTargetAtTime(0.0001, now + 0.08, duration * 0.35);
     masterGain.connect(ctx.destination);
 
-    // Bandpass for metallic character
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 1100;
-    bp.Q.value = 3.5;
-    bp.connect(masterGain);
+    // Shimmer with a subtle high shelf boost
+    const highShelf = ctx.createBiquadFilter();
+    highShelf.type = 'highshelf';
+    highShelf.frequency.value = 3000;
+    highShelf.gain.value = 4;
+    highShelf.connect(masterGain);
 
-    // High-pass to remove low rumble
+    // High-pass to keep it airy
     const hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
-    hp.frequency.value = 600;
-    hp.Q.value = 0.7;
-    hp.connect(bp);
+    hp.frequency.value = 800;
+    hp.Q.value = 0.5;
+    hp.connect(highShelf);
 
-    // Two detuned square oscillators for cowbell character
-    const freqs = [1050, 1380];
-    freqs.forEach((f) => {
+    // Three sine partials for a bright, bell-like chime
+    const partials = [
+      { freq: 1568, amp: 0.40, decay: 0.45 },
+      { freq: 2350, amp: 0.25, decay: 0.32 },
+      { freq: 3136, amp: 0.15, decay: 0.22 },
+      { freq: 4700, amp: 0.06, decay: 0.14 },
+    ];
+    partials.forEach(({ freq, amp, decay }) => {
       const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.value = f;
+      osc.type = 'sine';
+      osc.frequency.value = freq;
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0.35, now);
-      g.gain.setTargetAtTime(0.0001, now + 0.005, duration * 0.22);
+      g.gain.setValueAtTime(amp, now);
+      g.gain.setTargetAtTime(0.0001, now + 0.02, duration * decay);
       osc.connect(g);
       g.connect(hp);
       osc.start(now);
       osc.stop(now + duration);
     });
 
-    // Metallic transient — short noise burst
-    const tLen = Math.floor(ctx.sampleRate * 0.004);
+    // Soft metallic transient — tiny filtered noise for the "ting"
+    const tLen = Math.floor(ctx.sampleRate * 0.006);
     const tBuf = ctx.createBuffer(1, tLen, ctx.sampleRate);
     const tData = tBuf.getChannelData(0);
-    for (let i = 0; i < tLen; i++) tData[i] = (Math.random() * 2 - 1) * 0.3;
+    for (let i = 0; i < tLen; i++) tData[i] = (Math.random() * 2 - 1) * 0.15;
     const tSrc = ctx.createBufferSource();
     tSrc.buffer = tBuf;
+    const tBP = ctx.createBiquadFilter();
+    tBP.type = 'bandpass';
+    tBP.frequency.value = 4000;
+    tBP.Q.value = 2;
     const tGain = ctx.createGain();
-    tGain.gain.setValueAtTime(0.2, now);
-    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
-    tSrc.connect(tGain);
+    tGain.gain.setValueAtTime(0.12, now);
+    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+    tSrc.connect(tBP);
+    tBP.connect(tGain);
     tGain.connect(hp);
     tSrc.start(now);
 
-    setTimeout(() => ctx.close(), (duration + 0.3) * 1000);
+    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
   }, []);
 
   // Reference tone playback — realistic acoustic guitar synthesis
