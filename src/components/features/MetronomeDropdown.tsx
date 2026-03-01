@@ -146,9 +146,13 @@ export default function MetronomeDropdown() {
                 ))}
 
               </div>
-              <button onClick={tapTempo} className="w-2/3 mx-auto rounded-lg sm:rounded-md px-4 sm:px-3 py-3 sm:py-2 text-sm sm:text-xs font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
-                Tap Tempo
-              </button>
+              <div className="flex items-center gap-2.5 sm:gap-2">
+                <div className="size-10 sm:size-7 shrink-0" />
+                <button onClick={tapTempo} className="flex-1 rounded-lg sm:rounded-md px-4 sm:px-3 py-3 sm:py-2 text-sm sm:text-xs font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
+                  Tap Tempo
+                </button>
+                <div className="size-10 sm:size-7 shrink-0" />
+              </div>
             </div>
 
             {/* Time Signature */}
