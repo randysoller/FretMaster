@@ -108,18 +108,18 @@ export default function MetronomeDropdown() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-[340px] sm:w-[380px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
+        <div className="fixed left-2 right-2 top-[3.5rem] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--border-subtle))]">
+          <div className="flex items-center justify-between px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <div className="flex items-center gap-2">
-              <MetronomeIcon className="size-4 text-[hsl(var(--color-emphasis))]" />
-              <span className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Metronome</span>
+              <MetronomeIcon className="size-5 sm:size-4 text-[hsl(var(--color-emphasis))]" />
+              <span className="font-display text-base sm:text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Metronome</span>
             </div>
             {/* Play / Stop */}
             <button
               onClick={store.toggle}
               className={`
-                flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-display font-bold transition-all duration-200
+                flex items-center gap-2 sm:gap-1.5 rounded-lg px-4 sm:px-3 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all duration-200
                 ${store.isPlaying
                   ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
                   : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
@@ -134,45 +134,45 @@ export default function MetronomeDropdown() {
             </button>
           </div>
 
-          <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="p-4 sm:p-4 space-y-5 sm:space-y-4 max-h-[calc(100vh-6rem)] sm:max-h-[70vh] overflow-y-auto">
             {/* BPM control */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Tempo</span>
+                <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Tempo</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-body italic text-[hsl(var(--text-subtle))]">{getTempoMarking(store.bpm)}</span>
-                  <span className="text-sm font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
-                    {store.bpm} <span className="text-[10px] font-body font-normal text-[hsl(var(--text-muted))]">BPM</span>
+                  <span className="text-sm sm:text-xs font-body italic text-[hsl(var(--text-subtle))]">{getTempoMarking(store.bpm)}</span>
+                  <span className="text-base sm:text-sm font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
+                    {store.bpm} <span className="text-xs sm:text-[10px] font-body font-normal text-[hsl(var(--text-muted))]">BPM</span>
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => store.setBpm(store.bpm - 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
-                  <Minus className="size-3" />
+              <div className="flex items-center gap-2.5 sm:gap-2">
+                <button onClick={() => store.setBpm(store.bpm - 1)} className="size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors active:scale-95">
+                  <Minus className="size-4 sm:size-3" />
                 </button>
                 <input type="range" min={30} max={260} step={1} value={store.bpm} onChange={(e) => store.setBpm(Number(e.target.value))} className="volume-slider flex-1" />
-                <button onClick={() => store.setBpm(store.bpm + 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
-                  <Plus className="size-3" />
+                <button onClick={() => store.setBpm(store.bpm + 1)} className="size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors active:scale-95">
+                  <Plus className="size-4 sm:size-3" />
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-1.5">
                 {presetBpms.map((p) => (
-                  <button key={p} onClick={() => store.setBpm(p)} className={`rounded-md px-2 py-1 text-[11px] font-display font-bold transition-all ${store.bpm === p ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'}`}>
+                  <button key={p} onClick={() => store.setBpm(p)} className={`rounded-lg sm:rounded-md px-3 sm:px-2 py-2 sm:py-1 text-xs sm:text-[11px] font-display font-bold transition-all active:scale-95 ${store.bpm === p ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'}`}>
                     {p}
                   </button>
                 ))}
-                <button onClick={tapTempo} className="rounded-md px-2.5 py-1 text-[11px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
+                <button onClick={tapTempo} className="rounded-lg sm:rounded-md px-3.5 sm:px-2.5 py-2 sm:py-1 text-xs sm:text-[11px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
                   Tap
                 </button>
               </div>
             </div>
 
             {/* Time Signature */}
-            <div className="space-y-2">
-              <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Time Signature</span>
-              <div className="flex gap-1.5">
+            <div className="space-y-2.5 sm:space-y-2">
+              <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Time Signature</span>
+              <div className="flex gap-2 sm:gap-1.5">
                 {timeSigOptions.map((opt) => (
-                  <button key={opt.value} onClick={() => store.setBeatsPerMeasure(opt.value)} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-display font-bold transition-all ${store.beatsPerMeasure === opt.value ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                  <button key={opt.value} onClick={() => store.setBeatsPerMeasure(opt.value)} className={`flex-1 rounded-lg sm:rounded-md px-2 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.beatsPerMeasure === opt.value ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
                     {opt.label}
                   </button>
                 ))}
@@ -180,11 +180,11 @@ export default function MetronomeDropdown() {
             </div>
 
             {/* Sound type */}
-            <div className="space-y-2">
-              <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Sound</span>
-              <div className="grid grid-cols-3 gap-1.5">
+            <div className="space-y-2.5 sm:space-y-2">
+              <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Sound</span>
+              <div className="grid grid-cols-3 gap-2 sm:gap-1.5">
                 {soundTypes.map((s) => (
-                  <button key={s} onClick={() => store.setSoundType(s)} className={`rounded-md px-2 py-2 text-xs font-display font-bold transition-all ${store.soundType === s ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                  <button key={s} onClick={() => store.setSoundType(s)} className={`rounded-lg sm:rounded-md px-2 py-3 sm:py-2 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.soundType === s ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
                     {SOUND_LABELS[s]}
                   </button>
                 ))}
@@ -192,85 +192,85 @@ export default function MetronomeDropdown() {
             </div>
 
             {/* Volume */}
-            <div className="space-y-2">
+            <div className="space-y-2.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Volume</span>
-                <span className="text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">{Math.round(store.volume * 100)}%</span>
+                <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Volume</span>
+                <span className="text-sm sm:text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">{Math.round(store.volume * 100)}%</span>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => store.setVolume(0)} className={`size-7 flex items-center justify-center rounded-md border transition-colors ${store.volume === 0 ? 'border-[hsl(var(--semantic-error)/0.4)] bg-[hsl(var(--semantic-error)/0.1)] text-[hsl(var(--semantic-error))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'}`}>
-                  <VolumeX className="size-3.5" />
+              <div className="flex items-center gap-2.5 sm:gap-2">
+                <button onClick={() => store.setVolume(0)} className={`size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border transition-colors active:scale-95 ${store.volume === 0 ? 'border-[hsl(var(--semantic-error)/0.4)] bg-[hsl(var(--semantic-error)/0.1)] text-[hsl(var(--semantic-error))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'}`}>
+                  <VolumeX className="size-4 sm:size-3.5" />
                 </button>
                 <input type="range" min={0} max={1} step={0.01} value={store.volume} onChange={(e) => store.setVolume(Number(e.target.value))} className="volume-slider flex-1" />
-                <button onClick={() => store.setVolume(1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
-                  <VolumeIcon className="size-3.5" />
+                <button onClick={() => store.setVolume(1)} className="size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors active:scale-95">
+                  <VolumeIcon className="size-4 sm:size-3.5" />
                 </button>
               </div>
             </div>
 
             {/* Beat Sync — Beats Per Chord */}
-            <div className="space-y-2 border-t border-[hsl(var(--border-subtle))] pt-4">
+            <div className="space-y-3 sm:space-y-2 border-t border-[hsl(var(--border-subtle))] pt-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {store.syncEnabled ? <Link2 className="size-3.5 text-[hsl(var(--color-emphasis))]" /> : <Link2Off className="size-3.5 text-[hsl(var(--text-muted))]" />}
-                  <span className="text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Beat Sync</span>
+                  {store.syncEnabled ? <Link2 className="size-4 sm:size-3.5 text-[hsl(var(--color-emphasis))]" /> : <Link2Off className="size-4 sm:size-3.5 text-[hsl(var(--text-muted))]" />}
+                  <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Beat Sync</span>
                 </div>
                 <button
                   onClick={() => store.setSyncEnabled(!store.syncEnabled)}
                   className={`
-                    relative w-10 h-5 rounded-full transition-colors duration-200
+                    relative w-12 h-7 sm:w-10 sm:h-5 rounded-full transition-colors duration-200
                     ${store.syncEnabled ? 'bg-[hsl(var(--color-emphasis))]' : 'bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))]'}
                   `}
                 >
-                  <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform duration-200 ${store.syncEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 sm:top-0.5 size-6 sm:size-4 rounded-full bg-white shadow transition-transform duration-200 ${store.syncEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
               {store.syncEnabled && (
                 <div className="space-y-3">
                   {/* Sync unit toggle */}
-                  <div className="flex gap-1.5">
-                    <button onClick={() => store.setSyncUnit('beats')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-display font-bold transition-all ${store.syncUnit === 'beats' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                  <div className="flex gap-2 sm:gap-1.5">
+                    <button onClick={() => store.setSyncUnit('beats')} className={`flex-1 rounded-lg sm:rounded-md px-2 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.syncUnit === 'beats' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
                       Beats
                     </button>
-                    <button onClick={() => store.setSyncUnit('measures')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-display font-bold transition-all ${store.syncUnit === 'measures' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                    <button onClick={() => store.setSyncUnit('measures')} className={`flex-1 rounded-lg sm:rounded-md px-2 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.syncUnit === 'measures' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
                       Measures
                     </button>
                   </div>
 
                   {/* Count control */}
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Advance every</span>
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord - 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
-                        <Minus className="size-3" />
+                    <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-subtle))]">Advance every</span>
+                    <div className="flex items-center gap-2 sm:gap-1.5">
+                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord - 1)} className="size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors active:scale-95">
+                        <Minus className="size-4 sm:size-3" />
                       </button>
-                      <span className="text-sm font-display font-bold text-[hsl(var(--color-emphasis))] tabular-nums w-6 text-center">{store.beatsPerChord}</span>
-                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord + 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
-                        <Plus className="size-3" />
+                      <span className="text-base sm:text-sm font-display font-bold text-[hsl(var(--color-emphasis))] tabular-nums w-6 text-center">{store.beatsPerChord}</span>
+                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord + 1)} className="size-10 sm:size-7 flex items-center justify-center rounded-lg sm:rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors active:scale-95">
+                        <Plus className="size-4 sm:size-3" />
                       </button>
                     </div>
-                    <span className="text-xs font-body text-[hsl(var(--text-subtle))]">{store.syncUnit === 'measures' ? 'measures' : 'beats'}</span>
+                    <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-subtle))]">{store.syncUnit === 'measures' ? 'measures' : 'beats'}</span>
                   </div>
 
                   {/* Auto-reveal toggle */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Eye className="size-3.5 text-[hsl(var(--text-muted))]" />
-                      <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Auto-reveal before advancing</span>
+                      <Eye className="size-4 sm:size-3.5 text-[hsl(var(--text-muted))]" />
+                      <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-subtle))]">Auto-reveal before advancing</span>
                     </div>
                     <button
                       onClick={() => store.setAutoRevealBeforeAdvance(!store.autoRevealBeforeAdvance)}
                       className={`
-                        relative w-10 h-5 rounded-full transition-colors duration-200
+                        relative w-12 h-7 sm:w-10 sm:h-5 rounded-full transition-colors duration-200
                         ${store.autoRevealBeforeAdvance ? 'bg-[hsl(var(--color-primary))]' : 'bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))]'}
                       `}
                     >
-                      <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform duration-200 ${store.autoRevealBeforeAdvance ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      <span className={`absolute top-0.5 size-6 sm:size-4 rounded-full bg-white shadow transition-transform duration-200 ${store.autoRevealBeforeAdvance ? 'translate-x-5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
                 </div>
               )}
-              <p className="text-[10px] font-body text-[hsl(var(--text-muted))] leading-relaxed">
+              <p className="text-xs sm:text-[10px] font-body text-[hsl(var(--text-muted))] leading-relaxed">
                 {store.syncEnabled
                   ? `Auto-advances to the next chord every ${store.beatsPerChord} ${store.syncUnit === 'measures' ? `measure${store.beatsPerChord > 1 ? 's' : ''} (${store.beatsPerChord * store.beatsPerMeasure} beats)` : `beat${store.beatsPerChord > 1 ? 's' : ''}`} during practice.${store.autoRevealBeforeAdvance ? ' Chord is revealed 2 beats before advancing.' : ''}`
                   : 'Enable to auto-advance chords on a beat count during practice.'}
@@ -279,14 +279,14 @@ export default function MetronomeDropdown() {
 
             {/* Beat indicators */}
             {store.isPlaying && (
-              <div className="flex items-center justify-center gap-1 pt-2 border-t border-[hsl(var(--border-subtle))]">
+              <div className="flex items-center justify-center gap-1.5 sm:gap-1 pt-3 sm:pt-2 border-t border-[hsl(var(--border-subtle))]">
                 {Array.from({ length: store.beatsPerMeasure }, (_, i) => {
                   const isActive = i === store.currentBeat;
                   const isAccentBeat = i === 0 || (store.beatsPerMeasure === 6 && i === 3) || (store.beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
                   return (
                     <span
                       key={i}
-                      className={`font-display font-bold tabular-nums transition-all duration-100 select-none text-center ${store.beatsPerMeasure === 12 ? 'text-xs min-w-[16px]' : 'text-sm min-w-[20px]'} ${isActive ? isAccentBeat ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_8px_hsl(var(--color-emphasis)/0.7)]' : 'text-[hsl(var(--color-primary))] scale-110 drop-shadow-[0_0_6px_hsl(var(--color-primary)/0.6)]' : isAccentBeat ? 'text-[hsl(var(--text-muted)/0.6)]' : 'text-[hsl(var(--text-muted)/0.3)]'}`}
+                      className={`font-display font-bold tabular-nums transition-all duration-100 select-none text-center ${store.beatsPerMeasure === 12 ? 'text-sm sm:text-xs min-w-[18px] sm:min-w-[16px]' : 'text-base sm:text-sm min-w-[24px] sm:min-w-[20px]'} ${isActive ? isAccentBeat ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_8px_hsl(var(--color-emphasis)/0.7)]' : 'text-[hsl(var(--color-primary))] scale-110 drop-shadow-[0_0_6px_hsl(var(--color-primary)/0.6)]' : isAccentBeat ? 'text-[hsl(var(--text-muted)/0.6)]' : 'text-[hsl(var(--text-muted)/0.3)]'}`}
                     >
                       {i + 1}
                     </span>
