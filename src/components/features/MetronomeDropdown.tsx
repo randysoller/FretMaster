@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMetronomeStore, SOUND_LABELS, type MetronomeSoundType } from '@/stores/metronomeStore';
 import {
   Gauge, Play, Minus, Plus, Volume2, Volume1, VolumeX,
-  ChevronUp, ChevronDown, Link2, Link2Off,
+  ChevronUp, ChevronDown, Link2, Link2Off, Eye,
 } from 'lucide-react';
 
 function getTempoMarking(bpm: number): string {
@@ -226,23 +226,53 @@ export default function MetronomeDropdown() {
                 </button>
               </div>
               {store.syncEnabled && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Advance every</span>
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => store.setBeatsPerChord(store.beatsPerChord - 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
-                      <Minus className="size-3" />
+                <div className="space-y-3">
+                  {/* Sync unit toggle */}
+                  <div className="flex gap-1.5">
+                    <button onClick={() => store.setSyncUnit('beats')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-display font-bold transition-all ${store.syncUnit === 'beats' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                      Beats
                     </button>
-                    <span className="text-sm font-display font-bold text-[hsl(var(--color-emphasis))] tabular-nums w-6 text-center">{store.beatsPerChord}</span>
-                    <button onClick={() => store.setBeatsPerChord(store.beatsPerChord + 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
-                      <Plus className="size-3" />
+                    <button onClick={() => store.setSyncUnit('measures')} className={`flex-1 rounded-md px-2 py-1.5 text-xs font-display font-bold transition-all ${store.syncUnit === 'measures' ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
+                      Measures
                     </button>
                   </div>
-                  <span className="text-xs font-body text-[hsl(var(--text-subtle))]">beats</span>
+
+                  {/* Count control */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Advance every</span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord - 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="text-sm font-display font-bold text-[hsl(var(--color-emphasis))] tabular-nums w-6 text-center">{store.beatsPerChord}</span>
+                      <button onClick={() => store.setBeatsPerChord(store.beatsPerChord + 1)} className="size-7 flex items-center justify-center rounded-md border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] transition-colors">
+                        <Plus className="size-3" />
+                      </button>
+                    </div>
+                    <span className="text-xs font-body text-[hsl(var(--text-subtle))]">{store.syncUnit === 'measures' ? 'measures' : 'beats'}</span>
+                  </div>
+
+                  {/* Auto-reveal toggle */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Eye className="size-3.5 text-[hsl(var(--text-muted))]" />
+                      <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Auto-reveal before advancing</span>
+                    </div>
+                    <button
+                      onClick={() => store.setAutoRevealBeforeAdvance(!store.autoRevealBeforeAdvance)}
+                      className={`
+                        relative w-10 h-5 rounded-full transition-colors duration-200
+                        ${store.autoRevealBeforeAdvance ? 'bg-[hsl(var(--color-primary))]' : 'bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))]'}
+                      `}
+                    >
+                      <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform duration-200 ${store.autoRevealBeforeAdvance ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
                 </div>
               )}
               <p className="text-[10px] font-body text-[hsl(var(--text-muted))] leading-relaxed">
                 {store.syncEnabled
-                  ? 'Auto-advances to the next chord during practice when the beat count is reached.'
+                  ? `Auto-advances to the next chord every ${store.beatsPerChord} ${store.syncUnit === 'measures' ? `measure${store.beatsPerChord > 1 ? 's' : ''} (${store.beatsPerChord * store.beatsPerMeasure} beats)` : `beat${store.beatsPerChord > 1 ? 's' : ''}`} during practice.${store.autoRevealBeforeAdvance ? ' Chord is revealed 2 beats before advancing.' : ''}`
                   : 'Enable to auto-advance chords on a beat count during practice.'}
               </p>
             </div>

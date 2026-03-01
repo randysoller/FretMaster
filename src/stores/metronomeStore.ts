@@ -5,6 +5,8 @@ const BEATS_KEY = 'fretmaster-metronome-beats';
 const SOUND_KEY = 'fretmaster-metronome-sound';
 const VOLUME_KEY = 'fretmaster-metronome-volume';
 const BEATS_PER_CHORD_KEY = 'fretmaster-metronome-beats-per-chord';
+const SYNC_UNIT_KEY = 'fretmaster-metronome-sync-unit';
+const AUTO_REVEAL_KEY = 'fretmaster-metronome-auto-reveal';
 
 export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'sidestick' | 'voice';
 
@@ -56,6 +58,23 @@ function getStoredBeatsPerChord(): number {
   return 4;
 }
 
+function getStoredSyncUnit(): 'beats' | 'measures' {
+  try {
+    const v = localStorage.getItem(SYNC_UNIT_KEY);
+    if (v === 'beats' || v === 'measures') return v;
+  } catch {}
+  return 'beats';
+}
+
+function getStoredAutoReveal(): boolean {
+  try {
+    const v = localStorage.getItem(AUTO_REVEAL_KEY);
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+  } catch {}
+  return true;
+}
+
 // ─── Beat callback system ────────────────────────────────
 // Pages subscribe to beat events. Each beat tick increments a counter.
 // When the counter reaches beatsPerChord, a "chord advance" event fires.
@@ -65,6 +84,7 @@ type ChordAdvanceListener = () => void;
 
 const beatListeners = new Set<BeatListener>();
 const chordAdvanceListeners = new Set<ChordAdvanceListener>();
+const autoRevealListeners = new Set<ChordAdvanceListener>();
 
 export function onBeat(listener: BeatListener): () => void {
   beatListeners.add(listener);
@@ -76,12 +96,21 @@ export function onChordAdvance(listener: ChordAdvanceListener): () => void {
   return () => { chordAdvanceListeners.delete(listener); };
 }
 
+export function onAutoReveal(listener: ChordAdvanceListener): () => void {
+  autoRevealListeners.add(listener);
+  return () => { autoRevealListeners.delete(listener); };
+}
+
 function notifyBeat(beat: number, measure: number) {
   beatListeners.forEach((l) => l(beat, measure));
 }
 
 function notifyChordAdvance() {
   chordAdvanceListeners.forEach((l) => l());
+}
+
+function notifyAutoReveal() {
+  autoRevealListeners.forEach((l) => l());
 }
 
 // ─── Audio engine (module-scoped, singleton) ─────────────
@@ -395,10 +424,16 @@ interface MetronomeStore {
   currentBeat: number;
   soundType: MetronomeSoundType;
   volume: number;
-  /** How many beats before auto-advancing to next chord (0 = disabled) */
+  /** How many beats/measures before auto-advancing to next chord */
   beatsPerChord: number;
   /** Whether beat-sync auto-advance is enabled */
   syncEnabled: boolean;
+  /** Whether to count beats or measures for advancing */
+  syncUnit: 'beats' | 'measures';
+  /** Whether to auto-reveal the chord before advancing */
+  autoRevealBeforeAdvance: boolean;
+  /** Beats remaining until the next chord advance (for countdown UI) */
+  beatsUntilAdvance: number;
 
   setBpm: (v: number) => void;
   setBeatsPerMeasure: (v: number) => void;
@@ -406,6 +441,8 @@ interface MetronomeStore {
   setVolume: (v: number) => void;
   setBeatsPerChord: (v: number) => void;
   setSyncEnabled: (v: boolean) => void;
+  setSyncUnit: (v: 'beats' | 'measures') => void;
+  setAutoRevealBeforeAdvance: (v: boolean) => void;
   toggle: () => void;
   start: () => void;
   stop: () => void;
@@ -420,6 +457,9 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
   volume: getStoredVolume(),
   beatsPerChord: getStoredBeatsPerChord(),
   syncEnabled: false,
+  syncUnit: getStoredSyncUnit(),
+  autoRevealBeforeAdvance: getStoredAutoReveal(),
+  beatsUntilAdvance: getStoredBeatsPerChord(),
 
   setBpm: (v) => {
     const clamped = Math.max(30, Math.min(260, v));
@@ -457,6 +497,23 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
   setSyncEnabled: (v) => {
     set({ syncEnabled: v });
     beatsSinceChordChange = 0;
+    const s = get();
+    const total = s.syncUnit === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
+    set({ beatsUntilAdvance: total });
+  },
+
+  setSyncUnit: (v) => {
+    set({ syncUnit: v });
+    beatsSinceChordChange = 0;
+    const s = get();
+    const total = v === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
+    set({ beatsUntilAdvance: total });
+    try { localStorage.setItem(SYNC_UNIT_KEY, v); } catch {}
+  },
+
+  setAutoRevealBeforeAdvance: (v) => {
+    set({ autoRevealBeforeAdvance: v });
+    try { localStorage.setItem(AUTO_REVEAL_KEY, String(v)); } catch {}
   },
 
   start: () => {
@@ -500,9 +557,22 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
           notifyBeat(snapBeat, Math.floor(snapBeatsSince / s.beatsPerMeasure));
 
           // Check chord advance
-          if (s.syncEnabled && s.beatsPerChord > 0 && snapBeatsSince >= s.beatsPerChord) {
-            beatsSinceChordChange = 0;
-            notifyChordAdvance();
+          if (s.syncEnabled && s.beatsPerChord > 0) {
+            const totalBeats = s.syncUnit === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
+            const remaining = totalBeats - snapBeatsSince;
+            set({ beatsUntilAdvance: Math.max(0, remaining) });
+
+            // Auto-reveal before advancing
+            const revealThreshold = Math.min(2, totalBeats - 1);
+            if (s.autoRevealBeforeAdvance && revealThreshold > 0 && remaining === revealThreshold) {
+              notifyAutoReveal();
+            }
+
+            if (snapBeatsSince >= totalBeats) {
+              beatsSinceChordChange = 0;
+              set({ beatsUntilAdvance: totalBeats });
+              notifyChordAdvance();
+            }
           }
         }, Math.max(0, (schedTime - ctx.currentTime) * 1000));
 
@@ -532,4 +602,7 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
 /** Reset the chord-advance beat counter (call when manually advancing) */
 export function resetBeatCounter() {
   beatsSinceChordChange = 0;
+  const s = useMetronomeStore.getState();
+  const total = s.syncUnit === 'measures' ? s.beatsPerChord * s.beatsPerMeasure : s.beatsPerChord;
+  useMetronomeStore.setState({ beatsUntilAdvance: total });
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type ProgressionTimerDuration, type SavedProgression } from '@/stores/progressionStore';
-import { useMetronomeStore, onChordAdvance, resetBeatCounter } from '@/stores/metronomeStore';
+import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
@@ -273,6 +273,18 @@ export default function ProgressionPractice() {
     return unsub;
   }, [revealChord, reset, nextChord]);
 
+  // Subscribe to auto-reveal before advancing
+  useEffect(() => {
+    const unsub = onAutoReveal(() => {
+      const s = useProgressionStore.getState();
+      if (!s.isPracticing || s.isRevealed) return;
+      revealChord();
+      const current = s.getCurrentChord();
+      if (current?.chordData) playChord(current.chordData);
+    });
+    return unsub;
+  }, [revealChord, playChord]);
+
   useEffect(() => {
     if (isPracticing && !isRevealed && timerPerChord > 0) start();
   }, [isPracticing, isRevealed, currentChordIndex, start, timerPerChord]);
@@ -359,25 +371,38 @@ export default function ProgressionPractice() {
         )}
 
         {/* Metronome status indicator */}
-        {metronome.isPlaying && (
-          <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-3 rounded-lg bg-[hsl(var(--color-emphasis)/0.06)] border border-[hsl(var(--color-emphasis)/0.15)] px-4 py-1.5">
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(metronome.beatsPerMeasure, 12) }, (_, i) => {
-                const isActive = i === metronome.currentBeat;
-                const isAccent = i === 0 || (metronome.beatsPerMeasure === 6 && i === 3) || (metronome.beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
-                return (
-                  <span key={i} className={`font-display font-bold tabular-nums text-xs min-w-[16px] text-center transition-all duration-100 select-none ${isActive ? isAccent ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_6px_hsl(var(--color-emphasis)/0.7)]' : 'text-[hsl(var(--color-primary))] scale-110' : 'text-[hsl(var(--text-muted)/0.3)]'}`}>
-                    {i + 1}
-                  </span>
-                );
-              })}
+        {metronome.isPlaying && (() => {
+          const totalSyncBeats = metronome.syncUnit === 'measures' ? metronome.beatsPerChord * metronome.beatsPerMeasure : metronome.beatsPerChord;
+          const syncProgress = totalSyncBeats > 0 ? ((totalSyncBeats - metronome.beatsUntilAdvance) / totalSyncBeats) * 100 : 0;
+          return (
+            <div className="mx-4 sm:mx-6 mb-2 flex items-center justify-center gap-3 rounded-lg bg-[hsl(var(--color-emphasis)/0.06)] border border-[hsl(var(--color-emphasis)/0.15)] px-4 py-1.5">
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(metronome.beatsPerMeasure, 12) }, (_, i) => {
+                  const isActive = i === metronome.currentBeat;
+                  const isAccent = i === 0 || (metronome.beatsPerMeasure === 6 && i === 3) || (metronome.beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
+                  return (
+                    <span key={i} className={`font-display font-bold tabular-nums text-xs min-w-[16px] text-center transition-all duration-100 select-none ${isActive ? isAccent ? 'text-[hsl(var(--color-emphasis))] scale-125 drop-shadow-[0_0_6px_hsl(var(--color-emphasis)/0.7)]' : 'text-[hsl(var(--color-primary))] scale-110' : 'text-[hsl(var(--text-muted)/0.3)]'}`}>
+                      {i + 1}
+                    </span>
+                  );
+                })}
+              </div>
+              <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">{metronome.bpm} BPM</span>
+              {metronome.syncEnabled && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="font-display font-bold text-sm text-[hsl(var(--color-emphasis))] tabular-nums">{metronome.beatsUntilAdvance}</span>
+                    <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">left</span>
+                  </div>
+                  <div className="w-14 h-1.5 rounded-full bg-[hsl(var(--border-default))] overflow-hidden">
+                    <div className="h-full rounded-full bg-[hsl(var(--color-emphasis))] transition-all duration-150" style={{ width: `${syncProgress}%` }} />
+                  </div>
+                  {metronome.autoRevealBeforeAdvance && <Eye className="size-3 text-[hsl(var(--color-primary)/0.5)]" />}
+                </div>
+              )}
             </div>
-            <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">{metronome.bpm} BPM</span>
-            {metronome.syncEnabled && (
-              <span className="text-[10px] font-body text-[hsl(var(--color-emphasis))]">Sync: {metronome.beatsPerChord} beats</span>
-            )}
-          </div>
-        )}
+          );
+        })()}
 
         {/* Progression Timeline */}
         <div className="px-4 sm:px-6 py-2 flex justify-center">
