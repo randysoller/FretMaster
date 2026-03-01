@@ -20,7 +20,7 @@ export default function Header() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-[2px]">
+        <nav className="flex items-center gap-[6px]">
           {/* Metronome dropdown — first position */}
           <MetronomeDropdown />
 
