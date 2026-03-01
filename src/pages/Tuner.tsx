@@ -670,7 +670,7 @@ export default function Tuner() {
               <span className="text-sm font-body text-[hsl(var(--text-muted))]">
                 {selectedTuning.strings.map((s) => s.display).join(' ')}
               </span>
-              <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`size-5 text-[hsl(var(--color-primary))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : 'animate-bounce'}`} />
             </button>
 
             {tuningDropdownOpen && (
