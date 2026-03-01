@@ -396,7 +396,7 @@ export default function Tuner() {
           const centsOff = target ? Math.round(1200 * Math.log2(freq / target.freq)) : info.cents;
           if (Math.abs(centsOff) <= 5) {
             if (inTuneStartRef.current === 0) inTuneStartRef.current = performance.now();
-            if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 1000) {
+            if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 500) {
               inTuneSoundPlayedRef.current = true;
               setInTuneConfirmed(true);
               playCowbellSound();
