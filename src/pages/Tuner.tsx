@@ -366,72 +366,82 @@ export default function Tuner() {
     }
   }, []);
 
+  // Dedicated AudioContext for chime — created on first user gesture
+  const chimeCtxRef = useRef<AudioContext | null>(null);
+  const getChimeCtx = useCallback(() => {
+    if (!chimeCtxRef.current || chimeCtxRef.current.state === 'closed') {
+      chimeCtxRef.current = new AudioContext();
+    }
+    if (chimeCtxRef.current.state === 'suspended') {
+      chimeCtxRef.current.resume();
+    }
+    return chimeCtxRef.current;
+  }, []);
+
   // Bright chime "in tune" confirmation sound
   const playCowbellSound = useCallback(() => {
-    const ctx = new AudioContext();
-    const now = ctx.currentTime;
-    const duration = 1.4;
+    try {
+      const ctx = getChimeCtx();
+      const now = ctx.currentTime;
+      const duration = 1.4;
 
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.5, now);
-    masterGain.gain.setTargetAtTime(0.0001, now + 0.06, duration * 0.28);
-    masterGain.connect(ctx.destination);
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.5, now);
+      masterGain.gain.setTargetAtTime(0.0001, now + 0.06, duration * 0.28);
+      masterGain.connect(ctx.destination);
 
-    // Shimmer with a subtle high shelf boost
-    const highShelf = ctx.createBiquadFilter();
-    highShelf.type = 'highshelf';
-    highShelf.frequency.value = 3000;
-    highShelf.gain.value = 4;
-    highShelf.connect(masterGain);
+      const highShelf = ctx.createBiquadFilter();
+      highShelf.type = 'highshelf';
+      highShelf.frequency.value = 3000;
+      highShelf.gain.value = 4;
+      highShelf.connect(masterGain);
 
-    // High-pass to keep it airy
-    const hp = ctx.createBiquadFilter();
-    hp.type = 'highpass';
-    hp.frequency.value = 800;
-    hp.Q.value = 0.5;
-    hp.connect(highShelf);
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 800;
+      hp.Q.value = 0.5;
+      hp.connect(highShelf);
 
-    // Three sine partials for a bright, bell-like chime
-    const partials = [
-      { freq: 1568, amp: 0.40, decay: 0.45 },
-      { freq: 2350, amp: 0.25, decay: 0.32 },
-      { freq: 3136, amp: 0.15, decay: 0.22 },
-      { freq: 4700, amp: 0.06, decay: 0.14 },
-    ];
-    partials.forEach(({ freq, amp, decay }) => {
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(amp, now);
-      g.gain.setTargetAtTime(0.0001, now + 0.02, duration * decay);
-      osc.connect(g);
-      g.connect(hp);
-      osc.start(now);
-      osc.stop(now + duration);
-    });
+      const partials = [
+        { freq: 1568, amp: 0.40, decay: 0.45 },
+        { freq: 2350, amp: 0.25, decay: 0.32 },
+        { freq: 3136, amp: 0.15, decay: 0.22 },
+        { freq: 4700, amp: 0.06, decay: 0.14 },
+      ];
+      partials.forEach(({ freq, amp, decay }) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(amp, now);
+        g.gain.setTargetAtTime(0.0001, now + 0.02, duration * decay);
+        osc.connect(g);
+        g.connect(hp);
+        osc.start(now);
+        osc.stop(now + duration);
+      });
 
-    // Soft metallic transient — tiny filtered noise for the "ting"
-    const tLen = Math.floor(ctx.sampleRate * 0.006);
-    const tBuf = ctx.createBuffer(1, tLen, ctx.sampleRate);
-    const tData = tBuf.getChannelData(0);
-    for (let i = 0; i < tLen; i++) tData[i] = (Math.random() * 2 - 1) * 0.15;
-    const tSrc = ctx.createBufferSource();
-    tSrc.buffer = tBuf;
-    const tBP = ctx.createBiquadFilter();
-    tBP.type = 'bandpass';
-    tBP.frequency.value = 4000;
-    tBP.Q.value = 2;
-    const tGain = ctx.createGain();
-    tGain.gain.setValueAtTime(0.12, now);
-    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
-    tSrc.connect(tBP);
-    tBP.connect(tGain);
-    tGain.connect(hp);
-    tSrc.start(now);
-
-    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
-  }, []);
+      const tLen = Math.floor(ctx.sampleRate * 0.006);
+      const tBuf = ctx.createBuffer(1, tLen, ctx.sampleRate);
+      const tData = tBuf.getChannelData(0);
+      for (let i = 0; i < tLen; i++) tData[i] = (Math.random() * 2 - 1) * 0.15;
+      const tSrc = ctx.createBufferSource();
+      tSrc.buffer = tBuf;
+      const tBP = ctx.createBiquadFilter();
+      tBP.type = 'bandpass';
+      tBP.frequency.value = 4000;
+      tBP.Q.value = 2;
+      const tGain = ctx.createGain();
+      tGain.gain.setValueAtTime(0.12, now);
+      tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+      tSrc.connect(tBP);
+      tBP.connect(tGain);
+      tGain.connect(hp);
+      tSrc.start(now);
+    } catch (e) {
+      console.log('Chime sound error:', e);
+    }
+  }, [getChimeCtx]);
 
   // Reference tone playback — realistic acoustic guitar synthesis
   const playReferenceTone = useCallback((gs: GuitarString) => {
@@ -585,6 +595,21 @@ export default function Tuner() {
     setTimeout(() => setPlayingString((prev) => prev === gs.string ? null : prev), 2200);
     setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
   }, []);
+
+  // Warm up chime context on first user interaction so it's ready for auto-play
+  useEffect(() => {
+    const warmUp = () => {
+      getChimeCtx();
+      window.removeEventListener('click', warmUp);
+      window.removeEventListener('touchstart', warmUp);
+    };
+    window.addEventListener('click', warmUp, { once: true });
+    window.addEventListener('touchstart', warmUp, { once: true });
+    return () => {
+      window.removeEventListener('click', warmUp);
+      window.removeEventListener('touchstart', warmUp);
+    };
+  }, [getChimeCtx]);
 
   // Auto-start listening on mount
   useEffect(() => {
@@ -751,40 +776,61 @@ export default function Tuner() {
 
             </div>
 
-            {/* Cents meter */}
+            {/* Segmented cents meter */}
             <div className="space-y-2">
-              <div className="relative h-8 rounded-full bg-[hsl(var(--bg-surface))] overflow-hidden border border-[hsl(var(--border-subtle))]">
-                {/* Center line */}
-                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[hsl(var(--text-muted)/0.3)]" />
-                {/* Tick marks */}
-                {[-40, -30, -20, -10, 10, 20, 30, 40].map((tick) => (
-                  <div
-                    key={tick}
-                    className="absolute top-0 bottom-0 w-px bg-[hsl(var(--border-subtle)/0.5)]"
-                    style={{ left: `${50 + tick}%` }}
-                  />
-                ))}
-                {/* Indicator */}
-                <motion.div
-                  className={`absolute top-1 bottom-1 w-3 rounded-full transition-colors duration-300 ${
-                    !shownNote
-                      ? 'bg-[hsl(var(--text-muted)/0.2)]'
-                      : isTargetInTune
-                        ? 'bg-[hsl(142_71%_45%)] shadow-[0_0_12px_hsl(142_71%_45%/0.6)]'
-                        : isTargetClose
-                          ? 'bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.5)]'
-                          : 'bg-[hsl(var(--semantic-error))] shadow-[0_0_8px_hsl(var(--semantic-error)/0.5)]'
-                  }`}
-                  animate={{ left: `calc(${50 + (shownNote ? targetMeterPosition : 0)}% - 6px)` }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                />
+              <div className="flex items-center justify-center gap-[2px] px-1">
+                {Array.from({ length: 41 }, (_, i) => {
+                  const segCents = (i - 20) * 2.5;
+                  const isCenter = i === 20;
+                  const absSegCents = Math.abs(segCents);
+
+                  // Zone colors
+                  let hue: string;
+                  if (absSegCents <= 5) hue = '142 71% 45%';
+                  else if (absSegCents <= 15) hue = '45 93% 47%';
+                  else hue = '0 72% 51%';
+
+                  // Fill logic: light segments from center toward current offset
+                  const cur = shownNote ? centsFromTarget : 0;
+                  const hasSignal = !!shownNote;
+                  let lit = false;
+                  if (hasSignal) {
+                    if (isCenter && Math.abs(cur) < 2.5) {
+                      lit = true;
+                    } else if (cur > 0 && segCents > 0 && segCents <= cur + 1.25) {
+                      lit = true;
+                    } else if (cur < 0 && segCents < 0 && segCents >= cur - 1.25) {
+                      lit = true;
+                    }
+                    // Always light center when within green zone
+                    if (isCenter && Math.abs(cur) <= 5) lit = true;
+                  }
+
+                  return (
+                    <div
+                      key={i}
+                      className="rounded-sm transition-all duration-150"
+                      style={{
+                        width: isCenter ? 6 : 4,
+                        height: isCenter ? 36 : absSegCents <= 5 ? 28 : absSegCents <= 15 ? 24 : 20,
+                        backgroundColor: lit
+                          ? `hsl(${hue})`
+                          : `hsl(${hue} / 0.12)`,
+                        boxShadow: lit
+                          ? `0 0 8px hsl(${hue} / 0.5), 0 0 2px hsl(${hue} / 0.3)`
+                          : 'none',
+                      }}
+                    />
+                  );
+                })}
               </div>
-              <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted))]">
+              {/* Labels */}
+              <div className="flex justify-between items-center text-[10px] font-body text-[hsl(var(--text-muted))]">
                 <span>♭ Flat</span>
-                <span className={`font-display font-bold tabular-nums transition-colors duration-300 ${
+                <span className={`font-display text-sm font-bold tabular-nums transition-colors duration-300 ${
                   !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
                 }`}>
-                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
+                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget}¢` : '0¢'}
                 </span>
                 <span>Sharp ♯</span>
               </div>
