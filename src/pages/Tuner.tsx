@@ -204,7 +204,10 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
-  const [sensitivity, setSensitivity] = useState(50);
+  const [sensitivity, setSensitivity] = useState(() => {
+    const saved = localStorage.getItem('tuner-mic-sensitivity');
+    return saved !== null ? Number(saved) : 50;
+  });
   const sensitivityRef = useRef(50);
   const startedRef = useRef(false);
   const inTuneStartRef = useRef<number>(0);
@@ -221,7 +224,10 @@ export default function Tuner() {
   // Keep refs in sync so the detect loop can access current values
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
   useEffect(() => { selectedTuningRef.current = selectedTuning; }, [selectedTuning]);
-  useEffect(() => { sensitivityRef.current = sensitivity; }, [sensitivity]);
+  useEffect(() => {
+    sensitivityRef.current = sensitivity;
+    localStorage.setItem('tuner-mic-sensitivity', String(sensitivity));
+  }, [sensitivity]);
 
   // Close tuning dropdown on outside click
   useEffect(() => {
