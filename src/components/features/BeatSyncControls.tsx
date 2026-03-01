@@ -95,23 +95,7 @@ export default function BeatSyncControls() {
 
         {/* Expanded controls */}
         {expanded && (
-          <div className="px-4 pb-4 space-y-3 border-t border-[hsl(var(--border-subtle))]">
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between pt-3">
-              <span className="text-sm font-body text-[hsl(var(--text-subtle))]">Auto-advance chords</span>
-              <button
-                onClick={() => store.setSyncEnabled(!store.syncEnabled)}
-                className={`
-                  relative w-12 h-7 rounded-full transition-colors duration-200
-                  ${store.syncEnabled ? 'bg-[hsl(var(--color-emphasis))]' : 'bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))]'}
-                `}
-              >
-                <span className={`absolute top-0.5 size-6 rounded-full bg-white shadow transition-transform duration-200 ${store.syncEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
-            </div>
-
-            {store.syncEnabled && (
-              <>
+          <div className="px-4 pb-4 space-y-3 border-t border-[hsl(var(--border-subtle))] pt-3">
                 {/* Sync unit toggle */}
                 <div className="flex gap-2">
                   <button
@@ -198,17 +182,15 @@ export default function BeatSyncControls() {
                   </div>
                 </div>
 
-                {/* Summary text */}
-                <p className="text-xs font-body text-[hsl(var(--text-muted))] leading-relaxed">
-                  Counts in {store.countInMeasures} {store.countInMeasures === 1 ? 'measure' : 'measures'}, then auto-advances every {store.beatsPerChord}{' '}
-                  {store.syncUnit === 'measures'
-                    ? `measure${store.beatsPerChord > 1 ? 's' : ''} (${store.beatsPerChord * store.beatsPerMeasure} beats)`
-                    : `beat${store.beatsPerChord > 1 ? 's' : ''}`}
-                  {' '}during practice.
-                  {store.autoRevealBeforeAdvance ? ' Chord is revealed 2 beats before advancing.' : ''}
-                </p>
-              </>
-            )}
+            {/* Summary text */}
+            <p className="text-xs font-body text-[hsl(var(--text-muted))] leading-relaxed">
+              Counts in {store.countInMeasures} {store.countInMeasures === 1 ? 'measure' : 'measures'}, then auto-advances every {store.beatsPerChord}{' '}
+              {store.syncUnit === 'measures'
+                ? `measure${store.beatsPerChord > 1 ? 's' : ''} (${store.beatsPerChord * store.beatsPerMeasure} beats)`
+                : `beat${store.beatsPerChord > 1 ? 's' : ''}`}
+              {' '}during practice.
+              {store.autoRevealBeforeAdvance ? ' Chord is revealed 2 beats before advancing.' : ''}
+            </p>
           </div>
         )}
       </div>
