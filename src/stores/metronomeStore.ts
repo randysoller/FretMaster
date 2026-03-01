@@ -7,6 +7,7 @@ const VOLUME_KEY = 'fretmaster-metronome-volume';
 const BEATS_PER_CHORD_KEY = 'fretmaster-metronome-beats-per-chord';
 const SYNC_UNIT_KEY = 'fretmaster-metronome-sync-unit';
 const AUTO_REVEAL_KEY = 'fretmaster-metronome-auto-reveal';
+const COUNTIN_MEASURES_KEY = 'fretmaster-metronome-countin-measures';
 
 export type MetronomeSoundType = 'click' | 'woodblock' | 'hihat' | 'sidestick' | 'voice';
 
@@ -64,6 +65,14 @@ function getStoredSyncUnit(): 'beats' | 'measures' {
     if (v === 'beats' || v === 'measures') return v;
   } catch {}
   return 'beats';
+}
+
+function getStoredCountInMeasures(): number {
+  try {
+    const v = localStorage.getItem(COUNTIN_MEASURES_KEY);
+    if (v) { const n = Number(v); if ([1, 2, 4].includes(n)) return n; }
+  } catch {}
+  return 2;
 }
 
 function getStoredAutoReveal(): boolean {
@@ -449,8 +458,10 @@ interface MetronomeStore {
   isCountingIn: boolean;
   /** Current beat of the count-in (1-based, 0 = not started) */
   countInBeat: number;
-  /** Total beats in the count-in (2 * beatsPerMeasure) */
+  /** Total beats in the count-in (countInMeasures * beatsPerMeasure) */
   countInTotal: number;
+  /** Number of measures for count-in (1, 2, or 4) */
+  countInMeasures: number;
 
   setBpm: (v: number) => void;
   setBeatsPerMeasure: (v: number) => void;
@@ -460,6 +471,7 @@ interface MetronomeStore {
   setSyncEnabled: (v: boolean) => void;
   setSyncUnit: (v: 'beats' | 'measures') => void;
   setAutoRevealBeforeAdvance: (v: boolean) => void;
+  setCountInMeasures: (v: number) => void;
   startCountIn: () => void;
   stopCountIn: () => void;
   toggle: () => void;
@@ -482,6 +494,7 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
   isCountingIn: false,
   countInBeat: 0,
   countInTotal: 0,
+  countInMeasures: getStoredCountInMeasures(),
 
   setBpm: (v) => {
     const clamped = Math.max(30, Math.min(260, v));
@@ -538,10 +551,16 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
     try { localStorage.setItem(AUTO_REVEAL_KEY, String(v)); } catch {}
   },
 
+  setCountInMeasures: (v) => {
+    const clamped = [1, 2, 4].includes(v) ? v : 2;
+    set({ countInMeasures: clamped });
+    try { localStorage.setItem(COUNTIN_MEASURES_KEY, String(clamped)); } catch {}
+  },
+
   startCountIn: () => {
     const s = get();
     if (!s.syncEnabled) set({ syncEnabled: true });
-    const total = 2 * s.beatsPerMeasure;
+    const total = s.countInMeasures * s.beatsPerMeasure;
     countInBeatsRemaining = total;
     set({ isCountingIn: true, countInBeat: 0, countInTotal: total });
     if (s.isPlaying) {

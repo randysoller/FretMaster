@@ -178,9 +178,29 @@ export default function BeatSyncControls() {
                   </button>
                 </div>
 
+                {/* Count-in length */}
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-body text-[hsl(var(--text-subtle))]">Count-in</span>
+                  <div className="flex gap-1.5">
+                    {[1, 2, 4].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => store.setCountInMeasures(m)}
+                        className={`rounded-lg px-3 py-2 text-sm font-display font-bold transition-all active:scale-95 ${
+                          store.countInMeasures === m
+                            ? 'bg-[hsl(var(--color-emphasis))] text-[hsl(var(--bg-base))]'
+                            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
+                        }`}
+                      >
+                        {m} {m === 1 ? 'bar' : 'bars'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Summary text */}
                 <p className="text-xs font-body text-[hsl(var(--text-muted))] leading-relaxed">
-                  Counts in 2 measures, then auto-advances every {store.beatsPerChord}{' '}
+                  Counts in {store.countInMeasures} {store.countInMeasures === 1 ? 'measure' : 'measures'}, then auto-advances every {store.beatsPerChord}{' '}
                   {store.syncUnit === 'measures'
                     ? `measure${store.beatsPerChord > 1 ? 's' : ''} (${store.beatsPerChord * store.beatsPerMeasure} beats)`
                     : `beat${store.beatsPerChord > 1 ? 's' : ''}`}
