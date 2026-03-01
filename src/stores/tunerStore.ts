@@ -227,112 +227,154 @@ export const useTunerStore = create<TunerState>((set, get) => ({
     if (!stringInfo) return;
 
     const ctx = ensureAudioCtx();
-    const sampleRate = ctx.sampleRate;
-    const duration = 4.0;
-    const numSamples = Math.floor(sampleRate * duration);
+    const sr = ctx.sampleRate;
+    const duration = 3.5;
+    const numSamples = Math.floor(sr * duration);
+    const freq = stringInfo.freq;
+    const period = sr / freq;
+    const periodInt = Math.floor(period);
+    const periodFrac = period - periodInt;
 
-    // Stereo buffer with slight detuning for natural chorus
-    const buffer = ctx.createBuffer(2, numSamples, sampleRate);
-    const detuneCents = 3;
-    const freqL = stringInfo.freq * Math.pow(2, -detuneCents / 1200);
-    const freqR = stringInfo.freq * Math.pow(2, detuneCents / 1200);
+    // Mono Karplus-Strong with realistic acoustic guitar modelling
+    const buffer = ctx.createBuffer(1, numSamples, sr);
+    const data = buffer.getChannelData(0);
 
-    for (let ch = 0; ch < 2; ch++) {
-      const data = buffer.getChannelData(ch);
-      const freq = ch === 0 ? freqL : freqR;
-      const period = Math.round(sampleRate / freq);
+    // --- Excitation: noise burst shaped by pick position comb filter ---
+    const pickPos = 0.12; // Near bridge for natural brightness
+    const burstLen = periodInt * 2;
+    const excitation = new Float32Array(burstLen);
 
-      // Shaped noise burst: mix noise with sinusoidal pluck shape
-      for (let i = 0; i < period; i++) {
-        const pos = i / period;
-        const noise = Math.random() * 2 - 1;
-        const pluckShape = Math.sin(Math.PI * pos);
-        data[i] = (noise * 0.65 + pluckShape * 0.35) * 0.9;
-      }
+    for (let i = 0; i < burstLen; i++) {
+      excitation[i] = Math.random() * 2 - 1;
+    }
 
-      // Two-pass smoothing for warmer initial burst
-      for (let pass = 0; pass < 2; pass++) {
-        for (let i = 1; i < period; i++) {
-          data[i] = 0.55 * data[i] + 0.45 * data[i - 1];
-        }
-      }
+    // Pick position comb filter — notches at harmonics of 1/pickPos
+    const pickDelay = Math.max(1, Math.round(periodInt * pickPos));
+    for (let i = pickDelay; i < burstLen; i++) {
+      excitation[i] = excitation[i] - 0.9 * excitation[i - pickDelay];
+    }
 
-      // Karplus-Strong with allpass dispersion for string stiffness
-      const isLow = stringInfo.freq < 150;
-      const isMid = stringInfo.freq >= 150 && stringInfo.freq < 250;
-      const decay = isLow ? 0.9988 : isMid ? 0.998 : 0.9972;
-      const blend = 0.498;
-      const dispersion = isLow ? 0.2 : 0.1;
+    // Light lowpass on excitation for realism
+    for (let i = 1; i < burstLen; i++) {
+      excitation[i] = 0.6 * excitation[i] + 0.4 * excitation[i - 1];
+    }
 
-      let prevAllpass = 0;
-      for (let i = period; i < numSamples; i++) {
-        const avg = blend * data[i - period] + (1 - blend) * data[i - period + 1];
-        const allpassed = dispersion * avg + data[i - period] - dispersion * prevAllpass;
-        prevAllpass = allpassed;
-        data[i] = decay * allpassed;
-      }
+    // Half-sine envelope on burst
+    for (let i = 0; i < burstLen; i++) {
+      excitation[i] *= Math.sin(Math.PI * i / burstLen) * 0.85;
+    }
 
-      // Attack bloom (0–20ms fade-in)
-      const bloomEnd = Math.floor(sampleRate * 0.02);
-      for (let i = 0; i < Math.min(bloomEnd, numSamples); i++) {
-        data[i] *= i / bloomEnd;
-      }
+    for (let i = 0; i < burstLen && i < numSamples; i++) {
+      data[i] = excitation[i];
+    }
 
-      // Cosine fade-out in last 30%
-      const fadeStart = Math.floor(numSamples * 0.7);
-      for (let i = fadeStart; i < numSamples; i++) {
-        const t = (i - fadeStart) / (numSamples - fadeStart);
-        data[i] *= Math.cos(t * Math.PI * 0.5);
-      }
+    // --- Karplus-Strong loop with one-pole lowpass and fractional delay ---
+    const isLow = freq < 130;
+    const isMid = freq >= 130 && freq < 250;
+
+    // Lowpass coefficient: controls how fast brightness decays
+    // Higher = brighter longer
+    const lpCoeff = isLow ? 0.38 : isMid ? 0.44 : 0.50;
+
+    // String decay
+    const decayFactor = isLow ? 0.9994 : isMid ? 0.9988 : 0.9980;
+
+    // Allpass coefficient for fractional delay tuning
+    const C = (1 - periodFrac) / (1 + periodFrac);
+
+    let prevLp = 0;
+    let prevAllpass = 0;
+    const loopStart = Math.max(periodInt + 1, burstLen);
+
+    for (let i = loopStart; i < numSamples; i++) {
+      const d0 = data[i - periodInt];
+      const d1 = i - periodInt + 1 < numSamples ? data[i - periodInt + 1] : 0;
+
+      // Allpass interpolation for fractional delay
+      const ap = C * (d0 - prevAllpass) + d1;
+      prevAllpass = ap;
+
+      // One-pole lowpass in the feedback loop
+      const lp = (1 - lpCoeff) * ap + lpCoeff * prevLp;
+      prevLp = lp;
+
+      data[i] += lp * decayFactor;
+    }
+
+    // --- Envelope: gentle attack, natural decay tail ---
+    const attackSamples = Math.floor(sr * 0.0015);
+    for (let i = 0; i < attackSamples && i < numSamples; i++) {
+      data[i] *= i / attackSamples;
+    }
+
+    const fadeStart = Math.floor(numSamples * 0.82);
+    for (let i = fadeStart; i < numSamples; i++) {
+      const t = (i - fadeStart) / (numSamples - fadeStart);
+      data[i] *= Math.cos(t * Math.PI * 0.5);
     }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
-    // EQ chain for realistic guitar tone
+    // --- Acoustic guitar body resonance filter bank ---
     const gain = ctx.createGain();
-    gain.gain.value = 0.55;
+    gain.gain.value = 0.65;
 
-    // Body resonance — low warmth
-    const bodyLow = ctx.createBiquadFilter();
-    bodyLow.type = 'peaking';
-    bodyLow.frequency.value = 200;
-    bodyLow.Q.value = 1.5;
-    bodyLow.gain.value = 4;
+    // Air resonance (~98 Hz — sound hole)
+    const bodyAir = ctx.createBiquadFilter();
+    bodyAir.type = 'peaking';
+    bodyAir.frequency.value = 98;
+    bodyAir.Q.value = 4;
+    bodyAir.gain.value = 5;
 
-    // Body resonance — mid character
-    const bodyMid = ctx.createBiquadFilter();
-    bodyMid.type = 'peaking';
-    bodyMid.frequency.value = stringInfo.freq * 1.5;
-    bodyMid.Q.value = 2;
-    bodyMid.gain.value = 2.5;
+    // Top plate resonance (~200 Hz — warmth)
+    const bodyTop = ctx.createBiquadFilter();
+    bodyTop.type = 'peaking';
+    bodyTop.frequency.value = 200;
+    bodyTop.Q.value = 2.5;
+    bodyTop.gain.value = 4;
 
-    // Presence definition
-    const presence = ctx.createBiquadFilter();
-    presence.type = 'peaking';
-    presence.frequency.value = stringInfo.freq < 150 ? 800 : 1200;
-    presence.Q.value = 1;
-    presence.gain.value = 2;
+    // Back plate / mid body (~400 Hz)
+    const bodyBack = ctx.createBiquadFilter();
+    bodyBack.type = 'peaking';
+    bodyBack.frequency.value = 400;
+    bodyBack.Q.value = 2;
+    bodyBack.gain.value = 2;
 
-    // High-frequency rolloff for warmth
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.value = stringInfo.freq < 150 ? 2000 : stringInfo.freq < 250 ? 2800 : 3500;
-    lowpass.Q.value = 0.7;
+    // String presence (~1.2–2 kHz)
+    const presenceEq = ctx.createBiquadFilter();
+    presenceEq.type = 'peaking';
+    presenceEq.frequency.value = isLow ? 1200 : isMid ? 1600 : 2000;
+    presenceEq.Q.value = 1.2;
+    presenceEq.gain.value = 1.5;
 
-    // High shelf cut to tame harshness
-    const highShelf = ctx.createBiquadFilter();
-    highShelf.type = 'highshelf';
-    highShelf.frequency.value = 4000;
-    highShelf.gain.value = -4;
+    // High cut — acoustic guitars naturally roll off
+    const highCut = ctx.createBiquadFilter();
+    highCut.type = 'lowpass';
+    highCut.frequency.value = isLow ? 3000 : isMid ? 4000 : 5000;
+    highCut.Q.value = 0.5;
 
-    // Chain: source → bodyLow → bodyMid → presence → lowpass → highShelf → gain → out
-    source.connect(bodyLow);
-    bodyLow.connect(bodyMid);
-    bodyMid.connect(presence);
-    presence.connect(lowpass);
-    lowpass.connect(highShelf);
-    highShelf.connect(gain);
+    // Tame harsh overtones
+    const hShelf = ctx.createBiquadFilter();
+    hShelf.type = 'highshelf';
+    hShelf.frequency.value = 5000;
+    hShelf.gain.value = -5;
+
+    // Low cut to remove sub rumble
+    const lowCut = ctx.createBiquadFilter();
+    lowCut.type = 'highpass';
+    lowCut.frequency.value = isLow ? 55 : 70;
+    lowCut.Q.value = 0.7;
+
+    // Chain: source → lowCut → bodyAir → bodyTop → bodyBack → presenceEq → highCut → hShelf → gain → out
+    source.connect(lowCut);
+    lowCut.connect(bodyAir);
+    bodyAir.connect(bodyTop);
+    bodyTop.connect(bodyBack);
+    bodyBack.connect(presenceEq);
+    presenceEq.connect(highCut);
+    highCut.connect(hShelf);
+    hShelf.connect(gain);
     gain.connect(ctx.destination);
     source.start();
 
