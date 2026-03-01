@@ -6,21 +6,21 @@ export default function Header() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/library', label: 'Library', icon: <BookOpen className="size-[18px]" />, matchPaths: ['/library'] },
-    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[18px]" />, matchPaths: ['/editor'] },
+    { to: '/library', label: 'Library', icon: <BookOpen className="size-[20px]" />, matchPaths: ['/library'] },
+    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[20px]" />, matchPaths: ['/editor'] },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.85)] backdrop-blur-md">
       <div className="flex h-[58px] items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center group">
-          <Guitar className="size-[26px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
+          <Guitar className="size-[28px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
           <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight hidden sm:inline">
             Guitar Chord Trainer
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="flex items-center gap-[2px]">
           {/* Metronome dropdown — first position */}
           <MetronomeDropdown />
 

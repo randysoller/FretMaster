@@ -90,7 +90,7 @@ export default function MetronomeDropdown() {
       <button
         onClick={() => setOpen(!open)}
         className={`
-          flex items-center justify-center w-[43px] h-[43px] rounded-lg border transition-all duration-200
+          flex items-center justify-center w-[45px] h-[45px] rounded-lg border transition-all duration-200
           ${store.isPlaying
             ? 'border-[hsl(var(--color-emphasis)/0.6)] bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))]'
             : open
@@ -100,7 +100,7 @@ export default function MetronomeDropdown() {
         `}
         title="Metronome"
       >
-        <MetronomeIcon className="w-[25px] h-[25px]" />
+        <MetronomeIcon className="w-[27px] h-[27px]" />
         {store.isPlaying && (
           <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(var(--color-emphasis))] animate-pulse" />
         )}
