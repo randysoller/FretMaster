@@ -113,12 +113,18 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const startedRef = useRef(false);
+  const inTuneStartRef = useRef<number>(0);
+  const inTuneSoundPlayedRef = useRef(false);
+  const selectedStringRef = useRef<typeof GUITAR_STRINGS[number] | null>(null);
 
   // Hold last detected note to prevent flickering when signal briefly drops
   const [displayNote, setDisplayNote] = useState<{ note: string; octave: number; cents: number } | null>(null);
   const [displayFreq, setDisplayFreq] = useState<number | null>(null);
   const [displayClosest, setDisplayClosest] = useState<typeof GUITAR_STRINGS[number] | null>(null);
   const holdTimerRef = useRef<number>(0);
+
+  // Keep selectedString in a ref so the detect loop can access it
+  useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -189,12 +195,27 @@ export default function Tuner() {
           setFrequency(freq);
           const info = frequencyToNoteInfo(freq);
           setNoteInfo(info);
-          setClosestString(findClosestString(freq));
+          const closest = findClosestString(freq);
+          setClosestString(closest);
           // Update held display immediately
           setDisplayNote(info);
           setDisplayFreq(freq);
-          setDisplayClosest(findClosestString(freq));
+          setDisplayClosest(closest);
           if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = 0; }
+
+          // Check if in tune for cowbell confirmation
+          const target = selectedStringRef.current ?? closest;
+          const centsOff = target ? Math.round(1200 * Math.log2(freq / target.freq)) : info.cents;
+          if (Math.abs(centsOff) <= 5) {
+            if (inTuneStartRef.current === 0) inTuneStartRef.current = performance.now();
+            if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 1000) {
+              inTuneSoundPlayedRef.current = true;
+              playCowbellSound();
+            }
+          } else {
+            inTuneStartRef.current = 0;
+            inTuneSoundPlayedRef.current = false;
+          }
         } else {
           setFrequency(null);
           setNoteInfo(null);
@@ -218,6 +239,63 @@ export default function Tuner() {
       setPermissionDenied(true);
       setIsListening(false);
     }
+  }, []);
+
+  // Cowbell "in tune" confirmation sound
+  const playCowbellSound = useCallback(() => {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    const duration = 0.6;
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.45, now);
+    masterGain.gain.setTargetAtTime(0.0001, now + 0.01, duration * 0.28);
+    masterGain.connect(ctx.destination);
+
+    // Bandpass for metallic character
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1100;
+    bp.Q.value = 3.5;
+    bp.connect(masterGain);
+
+    // High-pass to remove low rumble
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 600;
+    hp.Q.value = 0.7;
+    hp.connect(bp);
+
+    // Two detuned square oscillators for cowbell character
+    const freqs = [1050, 1380];
+    freqs.forEach((f) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.35, now);
+      g.gain.setTargetAtTime(0.0001, now + 0.005, duration * 0.22);
+      osc.connect(g);
+      g.connect(hp);
+      osc.start(now);
+      osc.stop(now + duration);
+    });
+
+    // Metallic transient — short noise burst
+    const tLen = Math.floor(ctx.sampleRate * 0.004);
+    const tBuf = ctx.createBuffer(1, tLen, ctx.sampleRate);
+    const tData = tBuf.getChannelData(0);
+    for (let i = 0; i < tLen; i++) tData[i] = (Math.random() * 2 - 1) * 0.3;
+    const tSrc = ctx.createBufferSource();
+    tSrc.buffer = tBuf;
+    const tGain = ctx.createGain();
+    tGain.gain.setValueAtTime(0.2, now);
+    tGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+    tSrc.connect(tGain);
+    tGain.connect(hp);
+    tSrc.start(now);
+
+    setTimeout(() => ctx.close(), (duration + 0.3) * 1000);
   }, []);
 
   // Reference tone playback — realistic acoustic guitar synthesis
