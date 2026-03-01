@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MicOff, Music } from 'lucide-react';
+import { Mic, MicOff, Music } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ─── Constants ───────────────────────────────────────────
