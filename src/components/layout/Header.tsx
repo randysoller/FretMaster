@@ -17,15 +17,15 @@ export default function Header() {
   const isTunerActive = location.pathname === '/tuner';
 
   const navLinks = [
-    { to: '/library', label: 'Library', icon: <BookOpen className="size-[20px]" />, matchPaths: ['/library'] },
-    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[20px]" />, matchPaths: ['/editor'] },
+    { to: '/library', label: 'Library', icon: <BookOpen className="size-[23px]" />, matchPaths: ['/library'] },
+    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[23px]" />, matchPaths: ['/editor'] },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.85)] backdrop-blur-md">
       <div className="flex h-[58px] items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center group">
-          <Guitar className="size-[28px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
+          <Guitar className="size-[31px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
           <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight hidden sm:inline">
             Guitar Chord Trainer
           </span>
@@ -52,7 +52,7 @@ export default function Header() {
               }
             `}
           >
-            <TuningForkIcon className="size-[20px]" />
+            <TuningForkIcon className="size-[23px]" />
             <span className="hidden sm:inline">Tuner</span>
             {isTunerActive && (
               <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
