@@ -110,28 +110,11 @@ export default function MetronomeDropdown() {
       {open && (
         <div className="fixed left-2 right-2 top-[3.5rem] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
+          <div className="flex items-center justify-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <div className="flex items-center gap-2">
               <MetronomeIcon className="size-5 sm:size-4 text-[hsl(var(--color-emphasis))]" />
               <span className="font-display text-base sm:text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Metronome</span>
             </div>
-            {/* Play / Stop */}
-            <button
-              onClick={store.toggle}
-              className={`
-                flex items-center gap-2 sm:gap-1.5 rounded-lg px-4 sm:px-3 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all duration-200
-                ${store.isPlaying
-                  ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
-                  : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
-                }
-              `}
-            >
-              {store.isPlaying ? (
-                <><span className="size-3 rounded-sm bg-current" /> Stop</>
-              ) : (
-                <><Play className="size-3.5" /> Play</>
-              )}
-            </button>
           </div>
 
           <div className="p-4 sm:p-4 space-y-5 sm:space-y-4 max-h-[calc(100vh-6rem)] sm:max-h-[70vh] overflow-y-auto">
@@ -161,10 +144,11 @@ export default function MetronomeDropdown() {
                     {p}
                   </button>
                 ))}
-                <button onClick={tapTempo} className="rounded-lg sm:rounded-md px-3.5 sm:px-2.5 py-2 sm:py-1 text-xs sm:text-[11px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
-                  Tap
-                </button>
+
               </div>
+              <button onClick={tapTempo} className="w-2/3 mx-auto rounded-lg sm:rounded-md px-4 sm:px-3 py-3 sm:py-2 text-sm sm:text-xs font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))] border border-[hsl(var(--color-emphasis)/0.3)] hover:bg-[hsl(var(--color-emphasis)/0.22)] transition-all active:scale-90">
+                Tap Tempo
+              </button>
             </div>
 
             {/* Time Signature */}
@@ -206,6 +190,26 @@ export default function MetronomeDropdown() {
                   <VolumeIcon className="size-4 sm:size-3.5" />
                 </button>
               </div>
+            </div>
+
+            {/* Play / Stop */}
+            <div className="flex justify-center">
+              <button
+                onClick={store.toggle}
+                className={`
+                  flex items-center justify-center gap-2.5 sm:gap-2 rounded-xl w-3/4 py-3.5 sm:py-2.5 text-base sm:text-sm font-display font-bold transition-all duration-200 active:scale-95
+                  ${store.isPlaying
+                    ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
+                    : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
+                  }
+                `}
+              >
+                {store.isPlaying ? (
+                  <><span className="size-3.5 rounded-sm bg-current" /> Stop</>
+                ) : (
+                  <><Play className="size-4" /> Play</>
+                )}
+              </button>
             </div>
 
             {/* Beat Sync — Beats Per Chord */}
