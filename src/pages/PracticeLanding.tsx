@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Guitar, ListMusic, Music, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
 
 export default function PracticeLanding() {
@@ -17,22 +18,34 @@ export default function PracticeLanding() {
         </div>
 
         <div className="relative px-4 sm:px-6 py-10 sm:py-16 md:py-20 text-center max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-5">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-5">
             <Music className="size-3.5 text-[hsl(var(--color-primary))]" />
             <span className="text-xs font-body font-medium text-[hsl(var(--color-primary))]">
               Choose Your Practice Mode
             </span>
-          </div>
+          </motion.div>
 
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-balance">
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
+            className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-balance">
             <span className="text-[hsl(var(--text-default))]">How Do You Want to</span>
             <br />
             <span className="text-gradient">Practice Today?</span>
-          </h1>
+          </motion.h1>
 
-          <p className="mt-3 sm:mt-4 font-body text-sm sm:text-base text-[hsl(var(--text-subtle))] max-w-lg mx-auto text-pretty">
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
+            className="mt-3 sm:mt-4 font-body text-sm sm:text-base text-[hsl(var(--text-subtle))] max-w-lg mx-auto text-pretty">
             Master individual chords or work through full progressions — pick a mode and start building your skills.
-          </p>
+          </motion.p>
         </div>
       </div>
 
@@ -40,6 +53,11 @@ export default function PracticeLanding() {
       <div className="px-4 sm:px-6 pb-16 -mt-2 sm:-mt-4">
         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Chord Practice Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          >
           <Link
             to="/chord-practice"
             className="group relative flex flex-col rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-primary)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-primary)/0.12)] active:scale-[0.98]"
@@ -69,8 +87,14 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
+          </motion.div>
 
           {/* Progression Practice Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          >
           <Link
             to="/progressions"
             className="group relative flex flex-col rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-emphasis)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-emphasis)/0.12)] active:scale-[0.98]"
@@ -100,6 +124,7 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
+          </motion.div>
         </div>
       </div>
     </div>
