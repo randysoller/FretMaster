@@ -228,54 +228,111 @@ export const useTunerStore = create<TunerState>((set, get) => ({
 
     const ctx = ensureAudioCtx();
     const sampleRate = ctx.sampleRate;
-    const duration = 3.5;
+    const duration = 4.0;
     const numSamples = Math.floor(sampleRate * duration);
 
-    // Karplus-Strong plucked string synthesis
-    const buffer = ctx.createBuffer(1, numSamples, sampleRate);
-    const data = buffer.getChannelData(0);
-    const period = Math.round(sampleRate / stringInfo.freq);
+    // Stereo buffer with slight detuning for natural chorus
+    const buffer = ctx.createBuffer(2, numSamples, sampleRate);
+    const detuneCents = 3;
+    const freqL = stringInfo.freq * Math.pow(2, -detuneCents / 1200);
+    const freqR = stringInfo.freq * Math.pow(2, detuneCents / 1200);
 
-    // Initialize delay line with shaped noise burst
-    for (let i = 0; i < period; i++) {
-      // Mix of white noise shaped with a slight body resonance
-      data[i] = (Math.random() * 2 - 1) * 0.85;
-    }
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buffer.getChannelData(ch);
+      const freq = ch === 0 ? freqL : freqR;
+      const period = Math.round(sampleRate / freq);
 
-    // Apply short low-pass filter to initial burst for warmth
-    for (let i = 1; i < period; i++) {
-      data[i] = 0.6 * data[i] + 0.4 * data[i - 1];
-    }
+      // Shaped noise burst: mix noise with sinusoidal pluck shape
+      for (let i = 0; i < period; i++) {
+        const pos = i / period;
+        const noise = Math.random() * 2 - 1;
+        const pluckShape = Math.sin(Math.PI * pos);
+        data[i] = (noise * 0.65 + pluckShape * 0.35) * 0.9;
+      }
 
-    // Karplus-Strong with tuned decay and damping
-    const decay = stringInfo.freq < 120 ? 0.9985 : stringInfo.freq < 200 ? 0.9978 : 0.997;
-    const blend = 0.497; // slightly off 0.5 for tonal color
-    for (let i = period; i < numSamples; i++) {
-      data[i] = decay * (blend * data[i - period] + (1 - blend) * data[i - period + 1]);
-    }
+      // Two-pass smoothing for warmer initial burst
+      for (let pass = 0; pass < 2; pass++) {
+        for (let i = 1; i < period; i++) {
+          data[i] = 0.55 * data[i] + 0.45 * data[i - 1];
+        }
+      }
 
-    // Gentle fade out in last 25%
-    const fadeStart = Math.floor(numSamples * 0.75);
-    for (let i = fadeStart; i < numSamples; i++) {
-      const t = (i - fadeStart) / (numSamples - fadeStart);
-      data[i] *= Math.cos(t * Math.PI * 0.5); // cosine fade
+      // Karplus-Strong with allpass dispersion for string stiffness
+      const isLow = stringInfo.freq < 150;
+      const isMid = stringInfo.freq >= 150 && stringInfo.freq < 250;
+      const decay = isLow ? 0.9988 : isMid ? 0.998 : 0.9972;
+      const blend = 0.498;
+      const dispersion = isLow ? 0.2 : 0.1;
+
+      let prevAllpass = 0;
+      for (let i = period; i < numSamples; i++) {
+        const avg = blend * data[i - period] + (1 - blend) * data[i - period + 1];
+        const allpassed = dispersion * avg + data[i - period] - dispersion * prevAllpass;
+        prevAllpass = allpassed;
+        data[i] = decay * allpassed;
+      }
+
+      // Attack bloom (0–20ms fade-in)
+      const bloomEnd = Math.floor(sampleRate * 0.02);
+      for (let i = 0; i < Math.min(bloomEnd, numSamples); i++) {
+        data[i] *= i / bloomEnd;
+      }
+
+      // Cosine fade-out in last 30%
+      const fadeStart = Math.floor(numSamples * 0.7);
+      for (let i = fadeStart; i < numSamples; i++) {
+        const t = (i - fadeStart) / (numSamples - fadeStart);
+        data[i] *= Math.cos(t * Math.PI * 0.5);
+      }
     }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
+    // EQ chain for realistic guitar tone
     const gain = ctx.createGain();
-    gain.gain.value = 0.6;
+    gain.gain.value = 0.55;
 
-    // Body resonance filter
-    const bodyFilter = ctx.createBiquadFilter();
-    bodyFilter.type = 'peaking';
-    bodyFilter.frequency.value = stringInfo.freq * 2;
-    bodyFilter.Q.value = 2;
-    bodyFilter.gain.value = 3;
+    // Body resonance — low warmth
+    const bodyLow = ctx.createBiquadFilter();
+    bodyLow.type = 'peaking';
+    bodyLow.frequency.value = 200;
+    bodyLow.Q.value = 1.5;
+    bodyLow.gain.value = 4;
 
-    source.connect(bodyFilter);
-    bodyFilter.connect(gain);
+    // Body resonance — mid character
+    const bodyMid = ctx.createBiquadFilter();
+    bodyMid.type = 'peaking';
+    bodyMid.frequency.value = stringInfo.freq * 1.5;
+    bodyMid.Q.value = 2;
+    bodyMid.gain.value = 2.5;
+
+    // Presence definition
+    const presence = ctx.createBiquadFilter();
+    presence.type = 'peaking';
+    presence.frequency.value = stringInfo.freq < 150 ? 800 : 1200;
+    presence.Q.value = 1;
+    presence.gain.value = 2;
+
+    // High-frequency rolloff for warmth
+    const lowpass = ctx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.value = stringInfo.freq < 150 ? 2000 : stringInfo.freq < 250 ? 2800 : 3500;
+    lowpass.Q.value = 0.7;
+
+    // High shelf cut to tame harshness
+    const highShelf = ctx.createBiquadFilter();
+    highShelf.type = 'highshelf';
+    highShelf.frequency.value = 4000;
+    highShelf.gain.value = -4;
+
+    // Chain: source → bodyLow → bodyMid → presence → lowpass → highShelf → gain → out
+    source.connect(bodyLow);
+    bodyLow.connect(bodyMid);
+    bodyMid.connect(presence);
+    presence.connect(lowpass);
+    lowpass.connect(highShelf);
+    highShelf.connect(gain);
     gain.connect(ctx.destination);
     source.start();
 
@@ -284,9 +341,7 @@ export const useTunerStore = create<TunerState>((set, get) => ({
     set({ playingString: stringNum });
 
     source.onended = () => {
-      if (get().playingString === stringNum) {
-        set({ playingString: null });
-      }
+      if (get().playingString === stringNum) set({ playingString: null });
       refSource = null;
       refGain = null;
     };

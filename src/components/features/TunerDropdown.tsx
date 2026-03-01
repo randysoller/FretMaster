@@ -124,15 +124,21 @@ export default function TunerDropdown() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const store = useTunerStore();
 
-  // Close on click outside
+  // Keep dropdown open while tuner is listening
+  useEffect(() => {
+    if (store.isListening && !open) setOpen(true);
+  }, [store.isListening]);
+
+  // Close on click outside — only when tuner is NOT listening
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
+      if (store.isListening) return;
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  }, [open, store.isListening]);
 
   const centsDisplay = store.hasSignal
     ? store.centsOff > 0
@@ -179,7 +185,7 @@ export default function TunerDropdown() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="fixed left-2 right-2 top-[58px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[380px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
+        <div className="fixed left-2 right-2 top-[58px] z-[70] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[380px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <div className="flex items-center gap-2">
