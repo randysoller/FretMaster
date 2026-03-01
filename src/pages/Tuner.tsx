@@ -245,11 +245,11 @@ export default function Tuner() {
   const playCowbellSound = useCallback(() => {
     const ctx = new AudioContext();
     const now = ctx.currentTime;
-    const duration = 2.2;
+    const duration = 1.4;
 
     const masterGain = ctx.createGain();
     masterGain.gain.setValueAtTime(0.5, now);
-    masterGain.gain.setTargetAtTime(0.0001, now + 0.08, duration * 0.35);
+    masterGain.gain.setTargetAtTime(0.0001, now + 0.06, duration * 0.28);
     masterGain.connect(ctx.destination);
 
     // Shimmer with a subtle high shelf boost
