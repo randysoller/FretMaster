@@ -139,10 +139,9 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  // Peak-picking: find first positive-region peak above confidence threshold
-  const threshold = 0.6;
-  let bestTau = -1;
-  let bestVal = -Infinity;
+  // Collect ALL peaks above minimum threshold — then pick the best fundamental
+  const threshold = 0.45; // lowered from 0.6 for better sensitivity
+  const peaks: { tau: number; val: number }[] = [];
 
   // Skip lag 0, find first zero crossing
   let firstZero = 1;
@@ -153,10 +152,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   // Search positive regions after first zero crossing
   let idx = firstZero;
   while (idx < halfSize - 1) {
-    // Skip negative region
     while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
-
-    // Find peak in this positive region
     let peakTau = idx;
     let peakVal = nsdf[idx];
     while (idx < halfSize - 1 && nsdf[idx] > 0) {
@@ -166,31 +162,35 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
       }
       idx++;
     }
-
-    // Accept first peak above threshold (fundamental frequency)
-    if (peakVal >= threshold && peakVal > bestVal) {
-      bestVal = peakVal;
-      bestTau = peakTau;
-      break; // Prefer fundamental, avoid octave errors
+    if (peakVal >= 0.2) {
+      peaks.push({ tau: peakTau, val: peakVal });
     }
   }
 
-  // Fallback: if no peak above threshold, use the strongest peak
+  if (peaks.length === 0) return -1;
+
+  // Pick the first peak above threshold (fundamental) — avoids octave errors
+  let bestTau = -1;
+  let bestVal = -Infinity;
+  for (const p of peaks) {
+    if (p.val >= threshold) {
+      bestTau = p.tau;
+      bestVal = p.val;
+      break;
+    }
+  }
+
+  // Fallback: strongest peak if none above threshold
   if (bestTau <= 0) {
-    idx = firstZero;
-    while (idx < halfSize - 1) {
-      while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
-      let peakTau = idx;
-      let peakVal = nsdf[idx];
-      while (idx < halfSize - 1 && nsdf[idx] > 0) {
-        if (nsdf[idx] > peakVal) { peakVal = nsdf[idx]; peakTau = idx; }
-        idx++;
+    for (const p of peaks) {
+      if (p.val > bestVal) {
+        bestVal = p.val;
+        bestTau = p.tau;
       }
-      if (peakVal > bestVal) { bestVal = peakVal; bestTau = peakTau; }
     }
   }
 
-  if (bestTau <= 0 || bestVal < 0.3) return -1;
+  if (bestTau <= 0 || bestVal < 0.2) return -1;
 
   // Parabolic interpolation for sub-sample accuracy
   let refinedTau = bestTau;
@@ -322,14 +322,28 @@ export default function Tuner() {
 
   const startListening = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          channelCount: { ideal: 1 },
+        },
+      });
       const ctx = new AudioContext();
+
+      // High-pass filter to remove rumble below guitar range
+      const source = ctx.createMediaStreamSource(stream);
+      const highPass = ctx.createBiquadFilter();
+      highPass.type = 'highpass';
+      highPass.frequency.value = 60;
+      highPass.Q.value = 0.7;
+      source.connect(highPass);
+
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 8192;
-      analyser.smoothingTimeConstant = 0.7;
-
-      const source = ctx.createMediaStreamSource(stream);
-      source.connect(analyser);
+      analyser.smoothingTimeConstant = 0; // no smoothing — clean time-domain data for NSDF
+      highPass.connect(analyser);
 
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
@@ -352,13 +366,18 @@ export default function Tuner() {
         const rawFreq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
 
         if (rawFreq > 0) {
-          // Smooth frequency to reduce display jitter
+          // Smooth frequency with adaptive weight to reduce display jitter
           let freq = rawFreq;
           if (smoothedFreqRef.current !== null) {
             const ratio = rawFreq / smoothedFreqRef.current;
-            if (ratio > 0.95 && ratio < 1.05) {
-              freq = smoothedFreqRef.current * 0.6 + rawFreq * 0.4;
+            if (ratio > 0.97 && ratio < 1.03) {
+              // Small deviation: smooth heavily to stabilize meter
+              freq = smoothedFreqRef.current * 0.75 + rawFreq * 0.25;
+            } else if (ratio > 0.93 && ratio < 1.07) {
+              // Medium deviation: moderate smoothing
+              freq = smoothedFreqRef.current * 0.5 + rawFreq * 0.5;
             }
+            // Large deviation: no smoothing, jump to new note immediately
           }
           smoothedFreqRef.current = freq;
           setFrequency(freq);
@@ -391,7 +410,7 @@ export default function Tuner() {
           setFrequency(null);
           setNoteInfo(null);
           setClosestString(null);
-          // Delay clearing display to prevent flicker
+          // Delay clearing display to prevent flicker (shorter hold for responsiveness)
           if (!holdTimerRef.current) {
             holdTimerRef.current = window.setTimeout(() => {
               setDisplayNote(null);
@@ -399,7 +418,7 @@ export default function Tuner() {
               setDisplayClosest(null);
               smoothedFreqRef.current = null;
               holdTimerRef.current = 0;
-            }, 600);
+            }, 400);
           }
         }
 

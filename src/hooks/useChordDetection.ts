@@ -24,6 +24,96 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * Math.max(0, Math.min(1, t));
 }
 
+// ─── NSDF (YIN-style) pitch detection for chord detection ───
+
+function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshold: number): number {
+  let rms = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    rms += buffer[i] * buffer[i];
+  }
+  rms = Math.sqrt(rms / buffer.length);
+  if (rms < rmsThreshold) return -1;
+
+  const size = buffer.length;
+  const halfSize = Math.floor(size / 2);
+
+  // Normalized Square Difference Function (NSDF)
+  const nsdf = new Float32Array(halfSize);
+  for (let tau = 0; tau < halfSize; tau++) {
+    let acf = 0;
+    let divisor = 0;
+    for (let i = 0; i < halfSize; i++) {
+      acf += buffer[i] * buffer[i + tau];
+      divisor += buffer[i] * buffer[i] + buffer[i + tau] * buffer[i + tau];
+    }
+    nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
+  }
+
+  const threshold = 0.5;
+  let bestTau = -1;
+  let bestVal = -Infinity;
+
+  // Find first zero crossing
+  let firstZero = 1;
+  while (firstZero < halfSize - 1 && nsdf[firstZero] > 0) {
+    firstZero++;
+  }
+
+  // Search positive regions
+  let idx = firstZero;
+  while (idx < halfSize - 1) {
+    while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
+    let peakTau = idx;
+    let peakVal = nsdf[idx];
+    while (idx < halfSize - 1 && nsdf[idx] > 0) {
+      if (nsdf[idx] > peakVal) {
+        peakVal = nsdf[idx];
+        peakTau = idx;
+      }
+      idx++;
+    }
+    if (peakVal >= threshold && peakVal > bestVal) {
+      bestVal = peakVal;
+      bestTau = peakTau;
+      break;
+    }
+  }
+
+  // Fallback: strongest peak
+  if (bestTau <= 0) {
+    idx = firstZero;
+    while (idx < halfSize - 1) {
+      while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
+      let peakTau = idx;
+      let peakVal = nsdf[idx];
+      while (idx < halfSize - 1 && nsdf[idx] > 0) {
+        if (nsdf[idx] > peakVal) { peakVal = nsdf[idx]; peakTau = idx; }
+        idx++;
+      }
+      if (peakVal > bestVal) { bestVal = peakVal; bestTau = peakTau; }
+    }
+  }
+
+  if (bestTau <= 0 || bestVal < 0.25) return -1;
+
+  // Parabolic interpolation
+  let refinedTau = bestTau;
+  if (bestTau > 0 && bestTau < halfSize - 1) {
+    const prev = nsdf[bestTau - 1];
+    const curr = nsdf[bestTau];
+    const next = nsdf[bestTau + 1];
+    const denominator = 2 * (2 * curr - prev - next);
+    if (Math.abs(denominator) > 1e-10) {
+      refinedTau = bestTau + (prev - next) / denominator;
+    }
+  }
+
+  const frequency = sampleRate / refinedTau;
+  // Guitar range ~60Hz to ~1400Hz
+  if (frequency < 60 || frequency > 1400) return -1;
+  return frequency;
+}
+
 export type DetectionResult = 'correct' | 'wrong' | null;
 
 interface UseChordDetectionOptions {
@@ -54,6 +144,7 @@ export function useChordDetection({
   const targetChordRef = useRef(targetChord);
   const sensitivityRef = useRef(sensitivity);
   const isListeningRef = useRef(false);
+  const timeDomainBufferRef = useRef<Float32Array | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
@@ -85,6 +176,7 @@ export function useChordDetection({
       audioContextRef.current = null;
     }
     analyserRef.current = null;
+    timeDomainBufferRef.current = null;
     isListeningRef.current = false;
     setIsListening(false);
     setResult(null);
@@ -98,7 +190,6 @@ export function useChordDetection({
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-          // Request high sample rate for better harmonic resolution
           sampleRate: { ideal: 48000 },
           channelCount: { ideal: 1 },
         },
@@ -110,14 +201,14 @@ export function useChordDetection({
 
       const source = ctx.createMediaStreamSource(stream);
 
-      // High-pass filter to remove low-frequency rumble below guitar range (~70 Hz)
+      // High-pass filter to remove low-frequency rumble below guitar range
       const highPass = ctx.createBiquadFilter();
       highPass.type = 'highpass';
       highPass.frequency.value = 65;
       highPass.Q.value = 0.7;
       source.connect(highPass);
 
-      // Mild boost in guitar fundamental range (80–500 Hz)
+      // Mild boost in guitar fundamental range
       const midBoost = ctx.createBiquadFilter();
       midBoost.type = 'peaking';
       midBoost.frequency.value = 250;
@@ -126,10 +217,12 @@ export function useChordDetection({
       highPass.connect(midBoost);
 
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 16384; // larger FFT for better low-frequency resolution
+      analyser.fftSize = 16384;
+      // Use minimal smoothing — we need both frequency-domain AND clean time-domain
       analyser.smoothingTimeConstant = 0.78;
       midBoost.connect(analyser);
       analyserRef.current = analyser;
+      timeDomainBufferRef.current = new Float32Array(analyser.fftSize);
 
       isListeningRef.current = true;
       setIsListening(true);
@@ -137,7 +230,7 @@ export function useChordDetection({
 
       // Analysis loop at ~10 Hz
       intervalRef.current = window.setInterval(() => {
-        if (!analyserRef.current || cooldownRef.current) return;
+        if (!analyserRef.current || cooldownRef.current || !audioContextRef.current) return;
 
         const chord = targetChordRef.current;
         if (!chord) return;
@@ -147,7 +240,16 @@ export function useChordDetection({
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
 
-        const chroma = extractChroma(freqData, analyserRef.current, sens);
+        // Also do NSDF time-domain pitch detection for primary pitch
+        let nsdfPitch = -1;
+        if (timeDomainBufferRef.current) {
+          analyserRef.current.getFloatTimeDomainData(timeDomainBufferRef.current);
+          const t = (sens - 1) / 9;
+          const rmsThreshold = lerp(0.015, 0.003, t);
+          nsdfPitch = autoCorrelateNSDF(timeDomainBufferRef.current, audioContextRef.current.sampleRate, rmsThreshold);
+        }
+
+        const chroma = extractChroma(freqData, analyserRef.current, sens, nsdfPitch);
         if (!chroma) return; // below noise gate
 
         const expected = getChordPitchClasses(chord);
@@ -188,7 +290,6 @@ export function useChordDetection({
   // Auto-start mic on mount
   useEffect(() => {
     if (autoStart && !isListeningRef.current) {
-      // Small delay to let the page settle
       const t = setTimeout(() => {
         startListening();
       }, 400);
@@ -221,14 +322,15 @@ export function useChordDetection({
 }
 
 /**
- * Build a 12-bin chromagram from FFT frequency data.
- * Uses harmonic product spectrum weighting for better fundamental detection.
+ * Build a 12-bin chromagram from FFT frequency data + NSDF pitch.
+ * Uses NSDF-detected fundamental to boost confidence in the correct pitch class.
  * Returns null if the overall energy is below the noise gate.
  */
 function extractChroma(
   freqData: Float32Array,
   analyser: AnalyserNode,
-  sensitivity: number
+  sensitivity: number,
+  nsdfPitch: number
 ): Float64Array | null {
   const t = (sensitivity - 1) / 9; // 0..1
   const sampleRate = analyser.context.sampleRate;
@@ -236,13 +338,13 @@ function extractChroma(
   const binWidth = sampleRate / fftSize;
 
   // Sensitivity-derived thresholds
-  const dbFloor = lerp(-42, -68, t); // which dB bins to include
-  const noiseGateEnergy = lerp(14, 2.5, t); // total energy to pass
+  const dbFloor = lerp(-42, -68, t);
+  const noiseGateEnergy = lerp(14, 2.5, t);
 
   const chroma = new Float64Array(12);
   let totalEnergy = 0;
 
-  // Guitar range: ~70 Hz (drop D low) to ~2800 Hz (harmonics of high notes)
+  // Guitar range: ~70 Hz to ~2800 Hz
   const minBin = Math.floor(65 / binWidth);
   const maxBin = Math.min(Math.ceil(2800 / binWidth), freqData.length);
 
@@ -250,7 +352,6 @@ function extractChroma(
     const db = freqData[bin];
     if (db < dbFloor) continue;
 
-    // Convert dB to approximate linear magnitude
     const magnitude = Math.pow(10, (db - dbFloor) / 25);
     const freq = bin * binWidth;
     if (freq < 60) continue;
@@ -258,32 +359,35 @@ function extractChroma(
     const midi = freqToMidi(freq);
     const pc = ((Math.round(midi) % 12) + 12) % 12;
 
-    // Weight fundamentals (80–600 Hz) more heavily than upper harmonics
+    // Weight fundamentals more heavily than upper harmonics
     let weight = 1.0;
     if (freq <= 600) {
-      weight = 1.8; // boost fundamental range
+      weight = 1.8;
     } else if (freq <= 1200) {
-      weight = 1.2; // mild boost for first harmonics
+      weight = 1.2;
     } else {
-      weight = 0.7; // attenuate upper harmonics to reduce false positives
+      weight = 0.7;
     }
 
     chroma[pc] += magnitude * weight;
     totalEnergy += magnitude;
   }
 
-  // Harmonic product spectrum: reinforce fundamentals by checking integer multiples
-  const hpsChroma = new Float64Array(12);
-  for (let pc = 0; pc < 12; pc++) {
-    // A true fundamental should have energy at its octave (+12 semitones = same pitch class)
-    // So we just accumulate — the weighting above already handles this
-    hpsChroma[pc] = chroma[pc];
-  }
-
   // Noise gate
   if (totalEnergy < noiseGateEnergy) return null;
 
-  return hpsChroma;
+  // If NSDF detected a valid pitch, boost that pitch class for higher confidence
+  if (nsdfPitch > 0) {
+    const nsdfMidi = freqToMidi(nsdfPitch);
+    const nsdfPc = ((Math.round(nsdfMidi) % 12) + 12) % 12;
+    const maxChroma = Math.max(...chroma);
+    if (maxChroma > 0) {
+      // Give the NSDF-confirmed pitch class a significant boost
+      chroma[nsdfPc] += maxChroma * 0.5;
+    }
+  }
+
+  return chroma;
 }
 
 /**
@@ -299,15 +403,13 @@ function matchChroma(
 
   const t = (sensitivity - 1) / 9; // 0..1
 
-  // Sensitivity-derived match parameters
-  const chromaThreshold = lerp(0.28, 0.12, t); // % of peak to count as "present"
-  const matchRatioMin = lerp(0.72, 0.38, t); // min % of expected notes detected
-  const maxExtrasBase = lerp(1.5, 4.5, t); // allowed extra detected notes
+  const chromaThreshold = lerp(0.28, 0.12, t);
+  const matchRatioMin = lerp(0.72, 0.38, t);
+  const maxExtrasBase = lerp(1.5, 4.5, t);
 
   const maxVal = Math.max(...chroma);
   if (maxVal < 0.01) return false;
 
-  // Determine which pitch classes are "present"
   const threshold = maxVal * chromaThreshold;
   const detected = new Set<number>();
   for (let i = 0; i < 12; i++) {
@@ -316,15 +418,12 @@ function matchChroma(
     }
   }
 
-  // Count how many expected pitch classes are detected
   let matches = 0;
   for (const pc of expected) {
     if (detected.has(pc)) matches++;
   }
 
   const matchRatio = matches / expected.size;
-
-  // Count unexpected extra notes
   const extras = [...detected].filter((pc) => !expected.has(pc)).length;
   const maxExtras = Math.floor(maxExtrasBase) + expected.size;
 
