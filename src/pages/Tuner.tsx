@@ -782,6 +782,10 @@ export default function Tuner() {
               const isActive = selectedString?.string === gs.string;
               const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
               const isPlaying = playingString === gs.string;
+              // Real-time cents offset from this string's target
+              const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
+              const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
+              const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
               return (
                 <button
                   key={gs.string}
@@ -816,8 +820,24 @@ export default function Tuner() {
                   <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
                     {gs.freq.toFixed(1)} Hz
                   </span>
+                  {/* Real-time cents offset readout */}
+                  <span className={`text-[10px] font-display font-bold tabular-nums mt-0.5 h-3.5 transition-colors duration-200 ${
+                    stringCents === null
+                      ? 'text-transparent'
+                      : stringInTune
+                        ? 'text-[hsl(142_71%_45%)]'
+                        : stringClose
+                          ? 'text-[hsl(var(--color-emphasis))]'
+                          : 'text-[hsl(var(--text-muted)/0.7)]'
+                  }`}>
+                    {stringCents !== null
+                      ? stringInTune
+                        ? '✓'
+                        : `${stringCents > 0 ? '+' : ''}${stringCents}¢`
+                      : '—'}
+                  </span>
                   {isPlaying && (
-                    <Volume2 className="size-3 mt-1 text-[hsl(var(--color-primary))] animate-pulse" />
+                    <Volume2 className="size-3 mt-0.5 text-[hsl(var(--color-primary))] animate-pulse" />
                   )}
                 </button>
               );
