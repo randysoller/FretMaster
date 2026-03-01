@@ -301,7 +301,7 @@ export default function ProgressionPractice() {
     const chord = currentInfo.chordData;
 
     return (
-      <div className="stage-gradient min-h-[calc(100vh-3.5rem)] flex flex-col">
+      <div className="stage-gradient min-h-[calc(100vh-58px)] flex flex-col">
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
           <button onClick={handleBack} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
@@ -465,7 +465,7 @@ export default function ProgressionPractice() {
 
   // ─── SETUP VIEW ───
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]">
       <div className="relative px-4 sm:px-6 pt-8 pb-6 text-center max-w-3xl mx-auto">
         <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-4">
           <Music className="size-3.5 text-[hsl(var(--color-primary))]" />

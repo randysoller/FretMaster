@@ -146,7 +146,7 @@ export default function ChordLibrary() {
   const hasActiveFilters = filterCategories.size > 0 || filterTypes.size > 0 || filterBarreRoots.size > 0 || searchQuery !== '';
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]">
       <div className="px-3 sm:px-6 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

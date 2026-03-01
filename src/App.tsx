@@ -11,7 +11,7 @@ const ProgressionPractice = lazy(() => import('@/pages/ProgressionPractice'));
 
 function LoadingFallback() {
   return (
-    <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center stage-gradient">
+    <div className="flex min-h-[calc(100vh-58px)] items-center justify-center stage-gradient">
       <div className="flex flex-col items-center gap-3">
         <div className="size-8 rounded-full border-2 border-[hsl(var(--color-primary))] border-t-transparent animate-spin" />
         <span className="text-sm font-body text-[hsl(var(--text-muted))]">Loading...</span>

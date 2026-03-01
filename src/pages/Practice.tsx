@@ -135,7 +135,7 @@ export default function Practice() {
   if (!chord) return null;
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)] flex flex-col">
+    <div className="stage-gradient min-h-[calc(100vh-58px)] flex flex-col">
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 sm:px-6 py-4">
         <button onClick={handleBack} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">

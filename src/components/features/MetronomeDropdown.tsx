@@ -90,7 +90,7 @@ export default function MetronomeDropdown() {
       <button
         onClick={() => setOpen(!open)}
         className={`
-          flex items-center justify-center size-9 rounded-lg border transition-all duration-200
+          flex items-center justify-center size-10 rounded-lg border transition-all duration-200
           ${store.isPlaying
             ? 'border-[hsl(var(--color-emphasis)/0.6)] bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))]'
             : open
@@ -100,7 +100,7 @@ export default function MetronomeDropdown() {
         `}
         title="Metronome"
       >
-        <MetronomeIcon className="size-5" />
+        <MetronomeIcon className="size-[22px]" />
         {store.isPlaying && (
           <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(var(--color-emphasis))] animate-pulse" />
         )}
@@ -108,7 +108,7 @@ export default function MetronomeDropdown() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="fixed left-2 right-2 top-[3.5rem] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
+        <div className="fixed left-2 right-2 top-[58px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <div className="flex items-center gap-2">

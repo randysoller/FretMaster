@@ -57,7 +57,7 @@ export default function ChordEditor() {
   };
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]">
       <div className="px-4 sm:px-6 py-6 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}

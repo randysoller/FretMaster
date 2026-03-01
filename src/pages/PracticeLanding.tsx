@@ -5,7 +5,7 @@ import heroImg from '@/assets/hero-guitar.jpg';
 
 export default function PracticeLanding() {
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]">
       {/* Hero */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">

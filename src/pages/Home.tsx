@@ -19,7 +19,7 @@ export default function Home() {
   };
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-3.5rem)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]">
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0">

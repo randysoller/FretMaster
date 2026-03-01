@@ -6,16 +6,16 @@ export default function Header() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/', label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
-    { to: '/library', label: 'Library', icon: <BookOpen className="size-4" />, matchPaths: ['/library'] },
-    { to: '/editor', label: 'Editor', icon: <PenTool className="size-4" />, matchPaths: ['/editor'] },
+    { to: '/', label: 'Practice', icon: <Guitar className="size-[18px]" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
+    { to: '/library', label: 'Library', icon: <BookOpen className="size-[18px]" />, matchPaths: ['/library'] },
+    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[18px]" />, matchPaths: ['/editor'] },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.85)] backdrop-blur-md">
-      <div className="flex h-14 items-center justify-between px-4 sm:px-6">
+      <div className="flex h-[58px] items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center group">
-          <Guitar className="size-6 text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
+          <Guitar className="size-[26px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
           <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight hidden sm:inline">
             Guitar Chord Trainer
           </span>
@@ -29,7 +29,7 @@ export default function Header() {
                 key={link.to}
                 to={link.to}
                 className={`
-                  flex items-center gap-2 rounded-md px-3 py-2 text-sm font-body font-medium transition-colors
+                  flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-body font-medium transition-colors
                   ${isActive
                     ? 'bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
                     : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
