@@ -755,8 +755,8 @@ export default function Tuner() {
                     : isTargetInTune
                       ? 'text-[hsl(142_71%_45%)]'
                       : isTargetClose
-                        ? 'text-[hsl(var(--color-emphasis))]'
-                        : 'text-[hsl(var(--text-default))]'
+                        ? 'text-[hsl(45_93%_47%)]'
+                        : 'text-[hsl(0_72%_51%)]'
                 }`}>
                   {shownNote ? (
                     <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
