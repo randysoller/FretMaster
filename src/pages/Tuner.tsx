@@ -624,7 +624,7 @@ export default function Tuner() {
               <span className="font-display text-base font-bold text-[hsl(var(--text-default))]">
                 {selectedTuning.label}
               </span>
-              <span className="text-xs font-body text-[hsl(var(--text-muted))]">
+              <span className="text-sm font-body text-[hsl(var(--text-muted))]">
                 {selectedTuning.strings.map((s) => s.display).join(' ')}
               </span>
               <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} />
@@ -659,7 +659,7 @@ export default function Tuner() {
                         }`}>
                           {preset.label}
                         </p>
-                        <p className="text-xs font-body text-[hsl(var(--text-muted))]">
+                        <p className="text-sm font-body text-[hsl(var(--text-muted))]">
                           {preset.strings.map((s) => s.note).join(' – ')}
                         </p>
                       </div>
