@@ -619,12 +619,12 @@ export default function Tuner() {
           <div ref={tuningDropdownRef} className="relative">
             <button
               onClick={() => setTuningDropdownOpen((o) => !o)}
-              className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm px-4 py-2.5 min-h-[44px] transition-all hover:bg-[hsl(var(--bg-overlay))] active:scale-95"
+              className="inline-flex items-center gap-3 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm px-5 py-3 min-h-[48px] transition-all hover:bg-[hsl(var(--bg-overlay))] active:scale-95"
             >
-              <span className="font-display text-sm font-bold text-[hsl(var(--text-default))]">
+              <span className="font-display text-base font-bold text-[hsl(var(--text-default))]">
                 {selectedTuning.label}
               </span>
-              <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+              <span className="text-xs font-body text-[hsl(var(--text-muted))]">
                 {selectedTuning.strings.map((s) => s.display).join(' ')}
               </span>
               <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} />
@@ -635,7 +635,7 @@ export default function Tuner() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15 }}
-                className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-64 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))] backdrop-blur-xl shadow-xl overflow-hidden"
+                className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-72 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))] backdrop-blur-xl shadow-xl overflow-hidden"
               >
                 {TUNING_PRESETS.map((preset) => {
                   const isActive = selectedTuning.name === preset.name;
@@ -647,19 +647,19 @@ export default function Tuner() {
                         setSelectedString(null);
                         setTuningDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] transition-colors ${
+                      className={`w-full flex items-center justify-between px-5 py-3.5 min-h-[48px] transition-colors ${
                         isActive
                           ? 'bg-[hsl(var(--color-primary)/0.1)]'
                           : 'hover:bg-[hsl(var(--bg-overlay))]'
                       }`}
                     >
                       <div className="text-left">
-                        <p className={`font-display text-sm font-bold ${
+                        <p className={`font-display text-base font-bold ${
                           isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                         }`}>
                           {preset.label}
                         </p>
-                        <p className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                        <p className="text-xs font-body text-[hsl(var(--text-muted))]">
                           {preset.strings.map((s) => s.note).join(' – ')}
                         </p>
                       </div>
