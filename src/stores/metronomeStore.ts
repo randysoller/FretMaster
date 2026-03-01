@@ -656,7 +656,7 @@ export const useMetronomeStore = create<MetronomeStore>((set, get) => ({
               notifyChordAdvance();
             }
           }
-        }, Math.max(0, (schedTime - ctx.currentTime) * 1000));
+        }, Math.max(0, (schedTime - ctx.currentTime) * 1000 - 70));
 
         beatsSinceChordChange++;
         nextNoteTime += 60 / state.bpm;
