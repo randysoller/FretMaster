@@ -812,7 +812,7 @@ export default function Tuner() {
                       className="rounded-sm transition-all duration-150"
                       style={{
                         width: isCenter ? 6 : 4,
-                        height: isCenter ? 36 : absSegCents <= 5 ? 28 : absSegCents <= 15 ? 24 : 20,
+                        height: isCenter ? 42 : absSegCents <= 5 ? 34 : absSegCents <= 15 ? 30 : 26,
                         backgroundColor: lit
                           ? `hsl(${hue})`
                           : `hsl(${hue} / 0.12)`,
