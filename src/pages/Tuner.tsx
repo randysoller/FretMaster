@@ -122,7 +122,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     rms += buffer[i] * buffer[i];
   }
   rms = Math.sqrt(rms / buffer.length);
-  if (rms < 0.008) return -1;
+  if (rms < ((globalThis as any).__tunerRmsThreshold ?? 0.008)) return -1;
 
   const size = buffer.length;
   const halfSize = Math.floor(size / 2);
@@ -204,6 +204,8 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
+  const [sensitivity, setSensitivity] = useState(50);
+  const sensitivityRef = useRef(50);
   const startedRef = useRef(false);
   const inTuneStartRef = useRef<number>(0);
   const inTuneSoundPlayedRef = useRef(false);
@@ -219,6 +221,7 @@ export default function Tuner() {
   // Keep refs in sync so the detect loop can access current values
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
   useEffect(() => { selectedTuningRef.current = selectedTuning; }, [selectedTuning]);
+  useEffect(() => { sensitivityRef.current = sensitivity; }, [sensitivity]);
 
   // Close tuning dropdown on outside click
   useEffect(() => {
@@ -296,6 +299,11 @@ export default function Tuner() {
 
       const detect = () => {
         if (!analyserRef.current || !bufferRef.current || !audioCtxRef.current) return;
+
+        // Map sensitivity (0–100) to RMS threshold: high sensitivity → low threshold
+        const s = sensitivityRef.current;
+        const rmsThreshold = 0.05 * Math.pow(0.02, s / 100);
+        (globalThis as any).__tunerRmsThreshold = rmsThreshold;
 
         analyserRef.current.getFloatTimeDomainData(bufferRef.current);
         const freq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
@@ -773,6 +781,38 @@ export default function Tuner() {
                   {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
                 </span>
                 <span>Sharp ♯</span>
+              </div>
+            </div>
+
+            {/* Mic sensitivity */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
+                  <Mic className="size-3.5" />
+                  Mic Sensitivity
+                </label>
+                <span className="text-xs font-body tabular-nums text-[hsl(var(--text-muted))]">{sensitivity}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={sensitivity}
+                onChange={(e) => setSensitivity(Number(e.target.value))}
+                className="w-full h-2 rounded-full appearance-none cursor-pointer
+                  bg-[hsl(var(--bg-surface))]
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[hsl(var(--color-primary))]
+                  [&::-webkit-slider-thumb]:shadow-[0_0_6px_hsl(var(--color-primary)/0.4)]
+                  [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-150
+                  [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:active:scale-95
+                  [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full
+                  [&::-moz-range-thumb]:bg-[hsl(var(--color-primary))] [&::-moz-range-thumb]:border-none"
+              />
+              <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted)/0.5)]">
+                <span>Low</span>
+                <span>High</span>
               </div>
             </div>
 
