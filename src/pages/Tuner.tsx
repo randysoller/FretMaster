@@ -837,7 +837,7 @@ export default function Tuner() {
             </div>
 
             {/* Mic sensitivity */}
-            <div className="space-y-2">
+            <div className="space-y-2 !mt-14">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
                   <Mic className="size-3.5" />
