@@ -2,7 +2,6 @@ import { useNavigate } from 'react-router-dom';
 import { usePracticeStore } from '@/stores/practiceStore';
 import CategorySelector from '@/components/features/CategorySelector';
 import TypeSelector from '@/components/features/TypeSelector';
-import TimerSelector from '@/components/features/TimerSelector';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import { Play, Music, AlertCircle } from 'lucide-react';
 import heroImg from '@/assets/hero-guitar.jpg';
@@ -66,13 +65,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Right: Timer + Start */}
+            {/* Right: Summary + Start */}
             <div className="lg:col-span-5 space-y-4 sm:space-y-6 lg:space-y-8">
-              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-                <TimerSelector />
-              </div>
-
-              {/* Summary + Start */}
               <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
                 <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
                   Ready to Practice
