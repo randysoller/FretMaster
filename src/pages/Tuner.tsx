@@ -812,7 +812,7 @@ export default function Tuner() {
                       className="rounded-sm transition-all duration-150"
                       style={{
                         width: isCenter ? 6 : 4,
-                        height: isCenter ? 42 : absSegCents <= 5 ? 34 : absSegCents <= 15 ? 30 : 26,
+                        height: isCenter ? 84 : absSegCents <= 5 ? 68 : absSegCents <= 15 ? 60 : 52,
                         backgroundColor: lit
                           ? `hsl(${hue})`
                           : `hsl(${hue} / 0.12)`,
@@ -830,7 +830,7 @@ export default function Tuner() {
                 <span className={`font-display text-sm font-bold tabular-nums transition-colors duration-300 ${
                   !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
                 }`}>
-                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget}¢` : '0¢'}
+                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
                 </span>
                 <span>Sharp ♯</span>
               </div>
@@ -964,7 +964,7 @@ export default function Tuner() {
                     {stringCents !== null
                       ? stringInTune
                         ? '✓'
-                        : `${stringCents > 0 ? '+' : ''}${stringCents}¢`
+                        : `${stringCents > 0 ? '+' : ''}${stringCents}c`
                       : '—'}
                   </span>
                   {isPlaying && (
