@@ -1,27 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool, ListMusic } from 'lucide-react';
+import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 export default function Header() {
   const location = useLocation();
 
   const navLinks = [
     { to: '/', label: 'Practice', icon: <Guitar className="size-4" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
-    { to: '/progressions', label: 'Progressions', icon: <ListMusic className="size-4" />, matchPaths: ['/progressions'] },
     { to: '/library', label: 'Library', icon: <BookOpen className="size-4" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-4" />, matchPaths: ['/editor'] },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.85)] backdrop-blur-md">
-      <div className="flex h-14 items-center justify-between px-6">
+      <div className="flex h-14 items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center group">
           <Guitar className="size-6 text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
-            <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight">
-              Guitar Chord Trainer
-            </span>
+          <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight hidden sm:inline">
+            Guitar Chord Trainer
+          </span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-3">
+        <nav className="flex items-center gap-1 sm:gap-2">
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
             return (
@@ -42,6 +42,8 @@ export default function Header() {
             );
           })}
 
+          {/* Metronome dropdown — replaces the old Progressions nav link */}
+          <MetronomeDropdown />
         </nav>
       </div>
     </header>

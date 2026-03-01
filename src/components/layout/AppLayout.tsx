@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import { preloadMetronomeSamples } from '@/hooks/useMetronome';
+import { preloadMetronomeSamples } from '@/stores/metronomeStore';
 
 export default function AppLayout() {
   const preloaded = useRef(false);
