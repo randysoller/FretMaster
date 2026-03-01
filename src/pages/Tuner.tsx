@@ -28,6 +28,18 @@ const TUNING_PRESETS: TuningPreset[] = [
     ],
   },
   {
+    name: 'half-step-down',
+    label: '½ Step Down',
+    strings: [
+      { string: 6, note: 'Eb2', freq: 77.78, display: 'E♭' },
+      { string: 5, note: 'Ab2', freq: 103.83, display: 'A♭' },
+      { string: 4, note: 'Db3', freq: 138.59, display: 'D♭' },
+      { string: 3, note: 'Gb3', freq: 185.00, display: 'G♭' },
+      { string: 2, note: 'Bb3', freq: 233.08, display: 'B♭' },
+      { string: 1, note: 'Eb4', freq: 311.13, display: 'E♭' },
+    ],
+  },
+  {
     name: 'drop-d',
     label: 'Drop D',
     strings: [
@@ -52,6 +64,30 @@ const TUNING_PRESETS: TuningPreset[] = [
     ],
   },
   {
+    name: 'open-d',
+    label: 'Open D',
+    strings: [
+      { string: 6, note: 'D2', freq: 73.42, display: 'D' },
+      { string: 5, note: 'A2', freq: 110.00, display: 'A' },
+      { string: 4, note: 'D3', freq: 146.83, display: 'D' },
+      { string: 3, note: 'F#3', freq: 185.00, display: 'F#' },
+      { string: 2, note: 'A3', freq: 220.00, display: 'A' },
+      { string: 1, note: 'D4', freq: 293.66, display: 'D' },
+    ],
+  },
+  {
+    name: 'open-e',
+    label: 'Open E',
+    strings: [
+      { string: 6, note: 'E2', freq: 82.41, display: 'E' },
+      { string: 5, note: 'B2', freq: 123.47, display: 'B' },
+      { string: 4, note: 'E3', freq: 164.81, display: 'E' },
+      { string: 3, note: 'G#3', freq: 207.65, display: 'G#' },
+      { string: 2, note: 'B3', freq: 246.94, display: 'B' },
+      { string: 1, note: 'E4', freq: 329.63, display: 'E' },
+    ],
+  },
+  {
     name: 'dadgad',
     label: 'DADGAD',
     strings: [
@@ -61,18 +97,6 @@ const TUNING_PRESETS: TuningPreset[] = [
       { string: 3, note: 'G3', freq: 196.00, display: 'G' },
       { string: 2, note: 'A3', freq: 220.00, display: 'A' },
       { string: 1, note: 'D4', freq: 293.66, display: 'D' },
-    ],
-  },
-  {
-    name: 'half-step-down',
-    label: '½ Step Down',
-    strings: [
-      { string: 6, note: 'Eb2', freq: 77.78, display: 'E♭' },
-      { string: 5, note: 'Ab2', freq: 103.83, display: 'A♭' },
-      { string: 4, note: 'Db3', freq: 138.59, display: 'D♭' },
-      { string: 3, note: 'Gb3', freq: 185.00, display: 'G♭' },
-      { string: 2, note: 'Bb3', freq: 233.08, display: 'B♭' },
-      { string: 1, note: 'Eb4', freq: 311.13, display: 'E♭' },
     ],
   },
 ];
