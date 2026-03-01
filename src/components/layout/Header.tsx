@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Guitar, BookOpen, PenTool, ListMusic } from 'lucide-react';
+import { Guitar, BookOpen, PenTool } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 export default function Header() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/', label: 'Practice', icon: <Guitar className="size-[18px]" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
     { to: '/library', label: 'Library', icon: <BookOpen className="size-[18px]" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-[18px]" />, matchPaths: ['/editor'] },
   ];
@@ -22,6 +21,9 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-1 sm:gap-2">
+          {/* Metronome dropdown — in first nav position */}
+          <MetronomeDropdown />
+
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
             return (
@@ -41,9 +43,6 @@ export default function Header() {
               </Link>
             );
           })}
-
-          {/* Metronome dropdown — replaces the old Progressions nav link */}
-          <MetronomeDropdown />
         </nav>
       </div>
     </header>
