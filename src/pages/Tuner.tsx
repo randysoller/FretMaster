@@ -127,51 +127,86 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   const size = buffer.length;
   const halfSize = Math.floor(size / 2);
 
-  // Compute autocorrelation for lags up to half buffer
-  const correlations = new Float32Array(halfSize);
-  for (let lag = 0; lag < halfSize; lag++) {
-    let sum = 0;
+  // Normalized Square Difference Function (NSDF) — YIN-style for reliable pitch detection
+  const nsdf = new Float32Array(halfSize);
+  for (let tau = 0; tau < halfSize; tau++) {
+    let acf = 0;
+    let divisor = 0;
     for (let i = 0; i < halfSize; i++) {
-      sum += buffer[i] * buffer[i + lag];
+      acf += buffer[i] * buffer[i + tau];
+      divisor += buffer[i] * buffer[i] + buffer[i + tau] * buffer[i + tau];
     }
-    correlations[lag] = sum;
+    nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  // Find first zero crossing (dip)
-  let dip = 1;
-  while (dip < halfSize - 1 && correlations[dip] > correlations[dip + 1]) {
-    dip++;
+  // Peak-picking: find first positive-region peak above confidence threshold
+  const threshold = 0.6;
+  let bestTau = -1;
+  let bestVal = -Infinity;
+
+  // Skip lag 0, find first zero crossing
+  let firstZero = 1;
+  while (firstZero < halfSize - 1 && nsdf[firstZero] > 0) {
+    firstZero++;
   }
 
-  // Find the peak after the dip
-  let maxVal = -Infinity;
-  let maxPos = dip;
-  for (let i = dip; i < halfSize - 1; i++) {
-    if (correlations[i] > maxVal) {
-      maxVal = correlations[i];
-      maxPos = i;
+  // Search positive regions after first zero crossing
+  let idx = firstZero;
+  while (idx < halfSize - 1) {
+    // Skip negative region
+    while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
+
+    // Find peak in this positive region
+    let peakTau = idx;
+    let peakVal = nsdf[idx];
+    while (idx < halfSize - 1 && nsdf[idx] > 0) {
+      if (nsdf[idx] > peakVal) {
+        peakVal = nsdf[idx];
+        peakTau = idx;
+      }
+      idx++;
+    }
+
+    // Accept first peak above threshold (fundamental frequency)
+    if (peakVal >= threshold && peakVal > bestVal) {
+      bestVal = peakVal;
+      bestTau = peakTau;
+      break; // Prefer fundamental, avoid octave errors
     }
   }
 
-  // Validate: peak should be significant relative to zero-lag
-  if (maxPos <= 0 || maxVal < correlations[0] * 0.25) return -1;
+  // Fallback: if no peak above threshold, use the strongest peak
+  if (bestTau <= 0) {
+    idx = firstZero;
+    while (idx < halfSize - 1) {
+      while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
+      let peakTau = idx;
+      let peakVal = nsdf[idx];
+      while (idx < halfSize - 1 && nsdf[idx] > 0) {
+        if (nsdf[idx] > peakVal) { peakVal = nsdf[idx]; peakTau = idx; }
+        idx++;
+      }
+      if (peakVal > bestVal) { bestVal = peakVal; bestTau = peakTau; }
+    }
+  }
+
+  if (bestTau <= 0 || bestVal < 0.3) return -1;
 
   // Parabolic interpolation for sub-sample accuracy
-  let refinedPos = maxPos;
-  if (maxPos > 0 && maxPos < halfSize - 1) {
-    const prev = correlations[maxPos - 1];
-    const curr = correlations[maxPos];
-    const next = correlations[maxPos + 1];
-    const denominator = 2 * (prev - 2 * curr + next);
+  let refinedTau = bestTau;
+  if (bestTau > 0 && bestTau < halfSize - 1) {
+    const prev = nsdf[bestTau - 1];
+    const curr = nsdf[bestTau];
+    const next = nsdf[bestTau + 1];
+    const denominator = 2 * (2 * curr - prev - next);
     if (Math.abs(denominator) > 1e-10) {
-      const shift = (prev - next) / denominator;
-      refinedPos = maxPos + shift;
+      refinedTau = bestTau + (prev - next) / denominator;
     }
   }
 
-  const frequency = sampleRate / refinedPos;
+  const frequency = sampleRate / refinedTau;
 
-  // Sanity check: guitar range ~70Hz to ~1200Hz
+  // Guitar range ~60Hz to ~1400Hz
   if (frequency < 60 || frequency > 1400) return -1;
 
   return frequency;
@@ -220,6 +255,7 @@ export default function Tuner() {
   const [displayFreq, setDisplayFreq] = useState<number | null>(null);
   const [displayClosest, setDisplayClosest] = useState<GuitarString | null>(null);
   const holdTimerRef = useRef<number>(0);
+  const smoothedFreqRef = useRef<number | null>(null);
 
   // Keep refs in sync so the detect loop can access current values
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
@@ -273,6 +309,7 @@ export default function Tuner() {
     }
     analyserRef.current = null;
     bufferRef.current = null;
+    smoothedFreqRef.current = null;
     setIsListening(false);
     setFrequency(null);
     setNoteInfo(null);
@@ -288,8 +325,8 @@ export default function Tuner() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const ctx = new AudioContext();
       const analyser = ctx.createAnalyser();
-      analyser.fftSize = 4096;
-      analyser.smoothingTimeConstant = 0.85;
+      analyser.fftSize = 8192;
+      analyser.smoothingTimeConstant = 0.7;
 
       const source = ctx.createMediaStreamSource(stream);
       source.connect(analyser);
@@ -312,9 +349,18 @@ export default function Tuner() {
         (globalThis as any).__tunerRmsThreshold = rmsThreshold;
 
         analyserRef.current.getFloatTimeDomainData(bufferRef.current);
-        const freq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
+        const rawFreq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
 
-        if (freq > 0) {
+        if (rawFreq > 0) {
+          // Smooth frequency to reduce display jitter
+          let freq = rawFreq;
+          if (smoothedFreqRef.current !== null) {
+            const ratio = rawFreq / smoothedFreqRef.current;
+            if (ratio > 0.95 && ratio < 1.05) {
+              freq = smoothedFreqRef.current * 0.6 + rawFreq * 0.4;
+            }
+          }
+          smoothedFreqRef.current = freq;
           setFrequency(freq);
           const info = frequencyToNoteInfo(freq);
           setNoteInfo(info);
@@ -351,6 +397,7 @@ export default function Tuner() {
               setDisplayNote(null);
               setDisplayFreq(null);
               setDisplayClosest(null);
+              smoothedFreqRef.current = null;
               holdTimerRef.current = 0;
             }, 600);
           }
@@ -837,7 +884,7 @@ export default function Tuner() {
             </div>
 
             {/* Mic sensitivity */}
-            <div className="space-y-2 !mt-14">
+            <div className="space-y-2 !mt-8">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
                   <Mic className="size-3.5" />
@@ -869,7 +916,7 @@ export default function Tuner() {
             </div>
 
             {/* Status text */}
-            <div className="text-center h-7">
+            <div className="text-center">
               {shownNote && isTargetInTune ? (
                 <motion.p
                   initial={{ opacity: 0, scale: 0.8 }}
