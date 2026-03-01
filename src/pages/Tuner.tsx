@@ -718,7 +718,7 @@ export default function Tuner() {
                   className="absolute rounded-full border-[3px] border-[hsl(142_71%_45%)] pointer-events-none"
                   style={{ width: 140, height: 140 }}
                   initial={{ opacity: 0, scale: 0.85 }}
-                  animate={inTuneConfirmed
+                  animate={Math.abs(centsFromTarget) <= 2 && shownNote
                     ? { opacity: 1, scale: 1 }
                     : { opacity: 0, scale: 0.85 }
                   }
