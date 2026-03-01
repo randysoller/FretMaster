@@ -29,6 +29,44 @@ let refSource: AudioBufferSourceNode | null = null;
 let refGain: GainNode | null = null;
 let refTimeout: ReturnType<typeof setTimeout> | null = null;
 
+// Acoustic guitar sample cache
+const sampleCache: Map<string, AudioBuffer> = new Map();
+const SAMPLE_BASE_URL = 'https://raw.githubusercontent.com/nbrosowsky/tonejs-instruments/master/samples/guitar-acoustic/';
+const STRING_SAMPLE_MAP: Record<number, string> = {
+  6: 'E2',  // Low E
+  5: 'A2',  // A
+  4: 'D3',  // D
+  3: 'G3',  // G
+  2: 'B3',  // B
+  1: 'E4',  // High E
+};
+
+async function loadSample(ctx: AudioContext, note: string): Promise<AudioBuffer> {
+  const cached = sampleCache.get(note);
+  if (cached) return cached;
+
+  // Try mp3 first, fall back to ogg
+  const urls = [
+    `${SAMPLE_BASE_URL}${note}.mp3`,
+    `${SAMPLE_BASE_URL}${note}.ogg`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const arrayBuf = await response.arrayBuffer();
+      const audioBuf = await ctx.decodeAudioData(arrayBuf);
+      sampleCache.set(note, audioBuf);
+      return audioBuf;
+    } catch (e) {
+      console.log(`Failed to load ${url}:`, e);
+    }
+  }
+
+  throw new Error(`Could not load sample for ${note}`);
+}
+
 // ─── Pitch detection ─────────────────────────────────────
 
 function autoCorrelate(buf: Float32Array, sampleRate: number): number {
@@ -219,180 +257,55 @@ export const useTunerStore = create<TunerState>((set, get) => ({
     });
   },
 
-  playReferenceString: (stringNum: number) => {
+  playReferenceString: async (stringNum: number) => {
     // Stop any current reference
     get().stopReference();
 
     const stringInfo = GUITAR_STRINGS.find((s) => s.num === stringNum);
     if (!stringInfo) return;
 
+    const noteName = STRING_SAMPLE_MAP[stringNum];
+    if (!noteName) return;
+
     const ctx = ensureAudioCtx();
-    const sr = ctx.sampleRate;
-    const duration = 3.5;
-    const numSamples = Math.floor(sr * duration);
-    const freq = stringInfo.freq;
-    const period = sr / freq;
-    const periodInt = Math.floor(period);
-    const periodFrac = period - periodInt;
-
-    // Mono Karplus-Strong with realistic acoustic guitar modelling
-    const buffer = ctx.createBuffer(1, numSamples, sr);
-    const data = buffer.getChannelData(0);
-
-    // --- Excitation: noise burst shaped by pick position comb filter ---
-    const pickPos = 0.12; // Near bridge for natural brightness
-    const burstLen = periodInt * 2;
-    const excitation = new Float32Array(burstLen);
-
-    for (let i = 0; i < burstLen; i++) {
-      excitation[i] = Math.random() * 2 - 1;
-    }
-
-    // Pick position comb filter — notches at harmonics of 1/pickPos
-    const pickDelay = Math.max(1, Math.round(periodInt * pickPos));
-    for (let i = pickDelay; i < burstLen; i++) {
-      excitation[i] = excitation[i] - 0.9 * excitation[i - pickDelay];
-    }
-
-    // Light lowpass on excitation for realism
-    for (let i = 1; i < burstLen; i++) {
-      excitation[i] = 0.6 * excitation[i] + 0.4 * excitation[i - 1];
-    }
-
-    // Half-sine envelope on burst
-    for (let i = 0; i < burstLen; i++) {
-      excitation[i] *= Math.sin(Math.PI * i / burstLen) * 0.85;
-    }
-
-    for (let i = 0; i < burstLen && i < numSamples; i++) {
-      data[i] = excitation[i];
-    }
-
-    // --- Karplus-Strong loop with one-pole lowpass and fractional delay ---
-    const isLow = freq < 130;
-    const isMid = freq >= 130 && freq < 250;
-
-    // Lowpass coefficient: controls how fast brightness decays
-    // Higher = brighter longer
-    const lpCoeff = isLow ? 0.38 : isMid ? 0.44 : 0.50;
-
-    // String decay
-    const decayFactor = isLow ? 0.9994 : isMid ? 0.9988 : 0.9980;
-
-    // Allpass coefficient for fractional delay tuning
-    const C = (1 - periodFrac) / (1 + periodFrac);
-
-    let prevLp = 0;
-    let prevAllpass = 0;
-    const loopStart = Math.max(periodInt + 1, burstLen);
-
-    for (let i = loopStart; i < numSamples; i++) {
-      const d0 = data[i - periodInt];
-      const d1 = i - periodInt + 1 < numSamples ? data[i - periodInt + 1] : 0;
-
-      // Allpass interpolation for fractional delay
-      const ap = C * (d0 - prevAllpass) + d1;
-      prevAllpass = ap;
-
-      // One-pole lowpass in the feedback loop
-      const lp = (1 - lpCoeff) * ap + lpCoeff * prevLp;
-      prevLp = lp;
-
-      data[i] += lp * decayFactor;
-    }
-
-    // --- Envelope: gentle attack, natural decay tail ---
-    const attackSamples = Math.floor(sr * 0.0015);
-    for (let i = 0; i < attackSamples && i < numSamples; i++) {
-      data[i] *= i / attackSamples;
-    }
-
-    const fadeStart = Math.floor(numSamples * 0.82);
-    for (let i = fadeStart; i < numSamples; i++) {
-      const t = (i - fadeStart) / (numSamples - fadeStart);
-      data[i] *= Math.cos(t * Math.PI * 0.5);
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-
-    // --- Acoustic guitar body resonance filter bank ---
-    const gain = ctx.createGain();
-    gain.gain.value = 0.65;
-
-    // Air resonance (~98 Hz — sound hole)
-    const bodyAir = ctx.createBiquadFilter();
-    bodyAir.type = 'peaking';
-    bodyAir.frequency.value = 98;
-    bodyAir.Q.value = 4;
-    bodyAir.gain.value = 5;
-
-    // Top plate resonance (~200 Hz — warmth)
-    const bodyTop = ctx.createBiquadFilter();
-    bodyTop.type = 'peaking';
-    bodyTop.frequency.value = 200;
-    bodyTop.Q.value = 2.5;
-    bodyTop.gain.value = 4;
-
-    // Back plate / mid body (~400 Hz)
-    const bodyBack = ctx.createBiquadFilter();
-    bodyBack.type = 'peaking';
-    bodyBack.frequency.value = 400;
-    bodyBack.Q.value = 2;
-    bodyBack.gain.value = 2;
-
-    // String presence (~1.2–2 kHz)
-    const presenceEq = ctx.createBiquadFilter();
-    presenceEq.type = 'peaking';
-    presenceEq.frequency.value = isLow ? 1200 : isMid ? 1600 : 2000;
-    presenceEq.Q.value = 1.2;
-    presenceEq.gain.value = 1.5;
-
-    // High cut — acoustic guitars naturally roll off
-    const highCut = ctx.createBiquadFilter();
-    highCut.type = 'lowpass';
-    highCut.frequency.value = isLow ? 3000 : isMid ? 4000 : 5000;
-    highCut.Q.value = 0.5;
-
-    // Tame harsh overtones
-    const hShelf = ctx.createBiquadFilter();
-    hShelf.type = 'highshelf';
-    hShelf.frequency.value = 5000;
-    hShelf.gain.value = -5;
-
-    // Low cut to remove sub rumble
-    const lowCut = ctx.createBiquadFilter();
-    lowCut.type = 'highpass';
-    lowCut.frequency.value = isLow ? 55 : 70;
-    lowCut.Q.value = 0.7;
-
-    // Chain: source → lowCut → bodyAir → bodyTop → bodyBack → presenceEq → highCut → hShelf → gain → out
-    source.connect(lowCut);
-    lowCut.connect(bodyAir);
-    bodyAir.connect(bodyTop);
-    bodyTop.connect(bodyBack);
-    bodyBack.connect(presenceEq);
-    presenceEq.connect(highCut);
-    highCut.connect(hShelf);
-    hShelf.connect(gain);
-    gain.connect(ctx.destination);
-    source.start();
-
-    refSource = source;
-    refGain = gain;
     set({ playingString: stringNum });
 
-    source.onended = () => {
-      if (get().playingString === stringNum) set({ playingString: null });
-      refSource = null;
-      refGain = null;
-    };
+    try {
+      const audioBuf = await loadSample(ctx, noteName);
 
-    refTimeout = setTimeout(() => {
+      // If user pressed another string while loading, bail
+      if (get().playingString !== stringNum) return;
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuf;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.85;
+
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+
+      refSource = source;
+      refGain = gain;
+
+      const duration = audioBuf.duration;
+
+      source.onended = () => {
+        if (get().playingString === stringNum) set({ playingString: null });
+        refSource = null;
+        refGain = null;
+      };
+
+      refTimeout = setTimeout(() => {
+        if (get().playingString === stringNum) set({ playingString: null });
+        refSource = null;
+        refGain = null;
+      }, duration * 1000 + 200);
+    } catch (err) {
+      console.log('Failed to play reference sample:', err);
       set({ playingString: null });
-      refSource = null;
-      refGain = null;
-    }, duration * 1000 + 100);
+    }
   },
 
   stopReference: () => {
