@@ -337,121 +337,98 @@ export default function Tuner() {
 
         {/* Main tuner display */}
         <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
-          {isListening && shownNote ? (
-            <motion.div
-              key={`${shownNote.note}${shownNote.octave}`}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.15 }}
-              className="space-y-6"
-            >
-              {/* Detected note */}
-              <div className="text-center">
-                <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-200 ${
-                  isTargetInTune
+          <div className="space-y-6">
+            {/* Detected note */}
+            <div className="text-center">
+              <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
+                !shownNote
+                  ? 'text-[hsl(var(--text-muted)/0.25)]'
+                  : isTargetInTune
                     ? 'text-[hsl(142_71%_45%)]'
                     : isTargetClose
                       ? 'text-[hsl(var(--color-emphasis))]'
                       : 'text-[hsl(var(--text-default))]'
-                }`}
-                  style={isTargetInTune ? { textShadow: '0 0 30px hsl(142 71% 45% / 0.4)' } : undefined}
-                >
-                  {shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span>
+              }`}
+                style={shownNote && isTargetInTune ? { textShadow: '0 0 30px hsl(142 71% 45% / 0.4)' } : undefined}
+              >
+                {shownNote ? (
+                  <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
+                ) : (
+                  <>—</>  
+                )}
+              </p>
+              <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
+                {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
+              </p>
+              {targetString && shownNote && (
+                <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
+                  Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
                 </p>
-                {shownFreq && (
-                  <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums">
-                    {shownFreq.toFixed(1)} Hz
-                  </p>
-                )}
-                {targetString && (
-                  <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
-                    Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
-                  </p>
-                )}
-              </div>
+              )}
+              {!shownNote && isListening && (
+                <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
+                  Play a string to detect pitch
+                </p>
+              )}
+            </div>
 
-              {/* Cents meter */}
-              <div className="space-y-2">
-                <div className="relative h-8 rounded-full bg-[hsl(var(--bg-surface))] overflow-hidden border border-[hsl(var(--border-subtle))]">
-                  {/* Center line */}
-                  <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[hsl(var(--text-muted)/0.3)]" />
-                  {/* Tick marks */}
-                  {[-40, -30, -20, -10, 10, 20, 30, 40].map((tick) => (
-                    <div
-                      key={tick}
-                      className="absolute top-0 bottom-0 w-px bg-[hsl(var(--border-subtle)/0.5)]"
-                      style={{ left: `${50 + tick}%` }}
-                    />
-                  ))}
-                  {/* Indicator */}
-                  <motion.div
-                    className={`absolute top-1 bottom-1 w-3 rounded-full transition-colors duration-200 ${
-                      isTargetInTune
+            {/* Cents meter */}
+            <div className="space-y-2">
+              <div className="relative h-8 rounded-full bg-[hsl(var(--bg-surface))] overflow-hidden border border-[hsl(var(--border-subtle))]">
+                {/* Center line */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-px bg-[hsl(var(--text-muted)/0.3)]" />
+                {/* Tick marks */}
+                {[-40, -30, -20, -10, 10, 20, 30, 40].map((tick) => (
+                  <div
+                    key={tick}
+                    className="absolute top-0 bottom-0 w-px bg-[hsl(var(--border-subtle)/0.5)]"
+                    style={{ left: `${50 + tick}%` }}
+                  />
+                ))}
+                {/* Indicator */}
+                <motion.div
+                  className={`absolute top-1 bottom-1 w-3 rounded-full transition-colors duration-300 ${
+                    !shownNote
+                      ? 'bg-[hsl(var(--text-muted)/0.2)]'
+                      : isTargetInTune
                         ? 'bg-[hsl(142_71%_45%)] shadow-[0_0_12px_hsl(142_71%_45%/0.6)]'
                         : isTargetClose
                           ? 'bg-[hsl(var(--color-emphasis))] shadow-[0_0_8px_hsl(var(--color-emphasis)/0.5)]'
                           : 'bg-[hsl(var(--semantic-error))] shadow-[0_0_8px_hsl(var(--semantic-error)/0.5)]'
-                    }`}
-                    animate={{ left: `calc(${50 + targetMeterPosition}% - 6px)` }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted))]">
-                  <span>♭ Flat</span>
-                  <span className={`font-display font-bold tabular-nums ${
-                    isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
-                  }`}>
-                    {centsFromTarget > 0 ? '+' : ''}{centsFromTarget} cents
-                  </span>
-                  <span>Sharp ♯</span>
-                </div>
+                  }`}
+                  animate={{ left: `calc(${50 + (shownNote ? targetMeterPosition : 0)}% - 6px)` }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                />
               </div>
-
-              {/* Status text */}
-              <div className="text-center">
-                {isTargetInTune ? (
-                  <motion.p
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
-                    style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
-                  >
-                    In Tune ✓
-                  </motion.p>
-                ) : (
-                  <p className="font-body text-sm text-[hsl(var(--text-muted))]">
-                    {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
-                  </p>
-                )}
+              <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted))]">
+                <span>♭ Flat</span>
+                <span className={`font-display font-bold tabular-nums transition-colors duration-300 ${
+                  !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
+                }`}>
+                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
+                </span>
+                <span>Sharp ♯</span>
               </div>
-            </motion.div>
-          ) : (
-            <div className="text-center py-8">
-              <div className={`size-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
-                isListening
-                  ? 'bg-[hsl(var(--semantic-success)/0.1)] border border-[hsl(var(--semantic-success)/0.2)]'
-                  : 'bg-[hsl(var(--bg-surface))]'
-              }`}>
-                {isListening ? (
-                  <div className="flex items-center gap-1">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-0.5 rounded-full bg-[hsl(var(--semantic-success))]"
-                        animate={{ height: [4, 14, 4] }}
-                        transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.12, ease: 'easeInOut' }}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <Mic className="size-7 text-[hsl(var(--text-muted))]" />
-                )}
-              </div>
-              <p className="font-body text-sm text-[hsl(var(--text-muted))]">
-                {isListening ? 'Play a string to detect pitch...' : 'Tap "Start Tuner" to begin'}
-              </p>
             </div>
-          )}
+
+            {/* Status text */}
+            <div className="text-center h-7">
+              {shownNote && isTargetInTune ? (
+                <motion.p
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
+                  style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
+                >
+                  In Tune ✓
+                </motion.p>
+              ) : shownNote ? (
+                <p className="font-body text-sm text-[hsl(var(--text-muted))]">
+                  {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
+                </p>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         {/* Reference frequencies */}
