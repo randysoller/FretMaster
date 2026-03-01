@@ -1,19 +1,83 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Music, Volume2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Mic, MicOff, Music, Volume2, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ─── Constants ───────────────────────────────────────────
 
 const NOTE_STRINGS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
 
-const GUITAR_STRINGS = [
-  { string: 6, note: 'E2', freq: 82.41, display: 'E' },
-  { string: 5, note: 'A2', freq: 110.00, display: 'A' },
-  { string: 4, note: 'D3', freq: 146.83, display: 'D' },
-  { string: 3, note: 'G3', freq: 196.00, display: 'G' },
-  { string: 2, note: 'B3', freq: 246.94, display: 'B' },
-  { string: 1, note: 'E4', freq: 329.63, display: 'E' },
+type GuitarString = { string: number; note: string; freq: number; display: string };
+
+interface TuningPreset {
+  name: string;
+  label: string;
+  strings: GuitarString[];
+}
+
+const TUNING_PRESETS: TuningPreset[] = [
+  {
+    name: 'standard',
+    label: 'Standard',
+    strings: [
+      { string: 6, note: 'E2', freq: 82.41, display: 'E' },
+      { string: 5, note: 'A2', freq: 110.00, display: 'A' },
+      { string: 4, note: 'D3', freq: 146.83, display: 'D' },
+      { string: 3, note: 'G3', freq: 196.00, display: 'G' },
+      { string: 2, note: 'B3', freq: 246.94, display: 'B' },
+      { string: 1, note: 'E4', freq: 329.63, display: 'E' },
+    ],
+  },
+  {
+    name: 'drop-d',
+    label: 'Drop D',
+    strings: [
+      { string: 6, note: 'D2', freq: 73.42, display: 'D' },
+      { string: 5, note: 'A2', freq: 110.00, display: 'A' },
+      { string: 4, note: 'D3', freq: 146.83, display: 'D' },
+      { string: 3, note: 'G3', freq: 196.00, display: 'G' },
+      { string: 2, note: 'B3', freq: 246.94, display: 'B' },
+      { string: 1, note: 'E4', freq: 329.63, display: 'E' },
+    ],
+  },
+  {
+    name: 'open-g',
+    label: 'Open G',
+    strings: [
+      { string: 6, note: 'D2', freq: 73.42, display: 'D' },
+      { string: 5, note: 'G2', freq: 98.00, display: 'G' },
+      { string: 4, note: 'D3', freq: 146.83, display: 'D' },
+      { string: 3, note: 'G3', freq: 196.00, display: 'G' },
+      { string: 2, note: 'B3', freq: 246.94, display: 'B' },
+      { string: 1, note: 'D4', freq: 293.66, display: 'D' },
+    ],
+  },
+  {
+    name: 'dadgad',
+    label: 'DADGAD',
+    strings: [
+      { string: 6, note: 'D2', freq: 73.42, display: 'D' },
+      { string: 5, note: 'A2', freq: 110.00, display: 'A' },
+      { string: 4, note: 'D3', freq: 146.83, display: 'D' },
+      { string: 3, note: 'G3', freq: 196.00, display: 'G' },
+      { string: 2, note: 'A3', freq: 220.00, display: 'A' },
+      { string: 1, note: 'D4', freq: 293.66, display: 'D' },
+    ],
+  },
+  {
+    name: 'half-step-down',
+    label: '½ Step Down',
+    strings: [
+      { string: 6, note: 'Eb2', freq: 77.78, display: 'E♭' },
+      { string: 5, note: 'Ab2', freq: 103.83, display: 'A♭' },
+      { string: 4, note: 'Db3', freq: 138.59, display: 'D♭' },
+      { string: 3, note: 'Gb3', freq: 185.00, display: 'G♭' },
+      { string: 2, note: 'Bb3', freq: 233.08, display: 'B♭' },
+      { string: 1, note: 'Eb4', freq: 311.13, display: 'E♭' },
+    ],
+  },
 ];
+
+const GUITAR_STRINGS = TUNING_PRESETS[0].strings;
 
 // ─── Pitch detection utilities ───────────────────────────
 
@@ -89,10 +153,10 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   return frequency;
 }
 
-function findClosestString(freq: number): typeof GUITAR_STRINGS[number] | null {
-  let closest = GUITAR_STRINGS[0];
+function findClosestString(freq: number, strings: GuitarString[]): GuitarString | null {
+  let closest = strings[0];
   let minDist = Infinity;
-  for (const gs of GUITAR_STRINGS) {
+  for (const gs of strings) {
     const dist = Math.abs(1200 * Math.log2(freq / gs.freq));
     if (dist < minDist) {
       minDist = dist;
@@ -106,25 +170,44 @@ function findClosestString(freq: number): typeof GUITAR_STRINGS[number] | null {
 
 export default function Tuner() {
   const [isListening, setIsListening] = useState(false);
+  const [selectedTuning, setSelectedTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
+  const [tuningDropdownOpen, setTuningDropdownOpen] = useState(false);
+  const tuningDropdownRef = useRef<HTMLDivElement>(null);
   const [frequency, setFrequency] = useState<number | null>(null);
   const [noteInfo, setNoteInfo] = useState<{ note: string; octave: number; cents: number } | null>(null);
-  const [closestString, setClosestString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const [closestString, setClosestString] = useState<GuitarString | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
-  const [selectedString, setSelectedString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const startedRef = useRef(false);
   const inTuneStartRef = useRef<number>(0);
   const inTuneSoundPlayedRef = useRef(false);
-  const selectedStringRef = useRef<typeof GUITAR_STRINGS[number] | null>(null);
+  const selectedStringRef = useRef<GuitarString | null>(null);
+  const selectedTuningRef = useRef<TuningPreset>(TUNING_PRESETS[0]);
 
   // Hold last detected note to prevent flickering when signal briefly drops
   const [displayNote, setDisplayNote] = useState<{ note: string; octave: number; cents: number } | null>(null);
   const [displayFreq, setDisplayFreq] = useState<number | null>(null);
-  const [displayClosest, setDisplayClosest] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const [displayClosest, setDisplayClosest] = useState<GuitarString | null>(null);
   const holdTimerRef = useRef<number>(0);
 
-  // Keep selectedString in a ref so the detect loop can access it
+  // Keep refs in sync so the detect loop can access current values
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
+  useEffect(() => { selectedTuningRef.current = selectedTuning; }, [selectedTuning]);
+
+  // Close tuning dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (tuningDropdownRef.current && !tuningDropdownRef.current.contains(e.target as Node)) {
+        setTuningDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // Active strings based on selected tuning
+  const activeStrings = useMemo(() => selectedTuning.strings, [selectedTuning]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -195,7 +278,7 @@ export default function Tuner() {
           setFrequency(freq);
           const info = frequencyToNoteInfo(freq);
           setNoteInfo(info);
-          const closest = findClosestString(freq);
+          const closest = findClosestString(freq, selectedTuningRef.current.strings);
           setClosestString(closest);
           // Update held display immediately
           setDisplayNote(info);
@@ -309,7 +392,7 @@ export default function Tuner() {
   }, []);
 
   // Reference tone playback — realistic acoustic guitar synthesis
-  const playReferenceTone = useCallback((gs: typeof GUITAR_STRINGS[number]) => {
+  const playReferenceTone = useCallback((gs: GuitarString) => {
     const ctx = new AudioContext();
     const duration = 3.0;
     const now = ctx.currentTime;
@@ -506,7 +589,68 @@ export default function Tuner() {
           <span className="text-[hsl(var(--text-default))]">Tune Your </span>
           <span className="text-gradient">Guitar</span>
         </h1>
-        <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))]">
+
+        {/* Tuning preset selector */}
+        <div className="mt-4 flex justify-center">
+          <div ref={tuningDropdownRef} className="relative">
+            <button
+              onClick={() => setTuningDropdownOpen((o) => !o)}
+              className="inline-flex items-center gap-2 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm px-4 py-2.5 min-h-[44px] transition-all hover:bg-[hsl(var(--bg-overlay))] active:scale-95"
+            >
+              <span className="font-display text-sm font-bold text-[hsl(var(--text-default))]">
+                {selectedTuning.label}
+              </span>
+              <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                {selectedTuning.strings.map((s) => s.display).join(' ')}
+              </span>
+              <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {tuningDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.15 }}
+                className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-64 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))] backdrop-blur-xl shadow-xl overflow-hidden"
+              >
+                {TUNING_PRESETS.map((preset) => {
+                  const isActive = selectedTuning.name === preset.name;
+                  return (
+                    <button
+                      key={preset.name}
+                      onClick={() => {
+                        setSelectedTuning(preset);
+                        setSelectedString(null);
+                        setTuningDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-3 min-h-[44px] transition-colors ${
+                        isActive
+                          ? 'bg-[hsl(var(--color-primary)/0.1)]'
+                          : 'hover:bg-[hsl(var(--bg-overlay))]'
+                      }`}
+                    >
+                      <div className="text-left">
+                        <p className={`font-display text-sm font-bold ${
+                          isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                        }`}>
+                          {preset.label}
+                        </p>
+                        <p className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                          {preset.strings.map((s) => s.note).join(' – ')}
+                        </p>
+                      </div>
+                      {isActive && (
+                        <span className="size-2 rounded-full bg-[hsl(var(--color-primary))]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
+        </div>
+
+        <p className="mt-3 text-sm font-body text-[hsl(var(--text-muted))]">
           Play a string and the tuner will detect the pitch.
         </p>
       </div>
@@ -634,7 +778,7 @@ export default function Tuner() {
             </button>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {GUITAR_STRINGS.map((gs) => {
+            {activeStrings.map((gs) => {
               const isActive = selectedString?.string === gs.string;
               const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
               const isPlaying = playingString === gs.string;
