@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Music } from 'lucide-react';
+import { Mic, MicOff, Music, Volume2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ─── Constants ───────────────────────────────────────────
@@ -111,6 +111,7 @@ export default function Tuner() {
   const [closestString, setClosestString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [selectedString, setSelectedString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const [playingString, setPlayingString] = useState<number | null>(null);
   const startedRef = useRef(false);
 
   // Hold last detected note to prevent flickering when signal briefly drops
@@ -219,6 +220,63 @@ export default function Tuner() {
     }
   }, []);
 
+  // Reference tone playback
+  const playReferenceTone = useCallback((gs: typeof GUITAR_STRINGS[number]) => {
+    const ctx = new AudioContext();
+    const duration = 2.2;
+    const now = ctx.currentTime;
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.35, now);
+    masterGain.gain.setTargetAtTime(0.001, now + 0.01, duration * 0.28);
+    masterGain.connect(ctx.destination);
+
+    // Guitar-like timbre: fundamental + decaying harmonics
+    const harmonicGains = [1.0, 0.55, 0.35, 0.22, 0.12, 0.06];
+    harmonicGains.forEach((g, i) => {
+      const h = i + 1;
+      const partialFreq = gs.freq * h;
+      if (partialFreq > 8000) return;
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = partialFreq;
+
+      const partialGain = ctx.createGain();
+      const decay = duration * Math.max(0.15, 1 - i * 0.16);
+      partialGain.gain.setValueAtTime(g * 0.3, now);
+      partialGain.gain.setTargetAtTime(0.001, now + 0.005, decay * 0.28);
+
+      osc.connect(partialGain);
+      partialGain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + duration);
+    });
+
+    // Slight initial "pluck" transient
+    const noise = ctx.createBufferSource();
+    const noiseLen = Math.floor(ctx.sampleRate * 0.015);
+    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+    const noiseData = noiseBuf.getChannelData(0);
+    for (let i = 0; i < noiseLen; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.3;
+    noise.buffer = noiseBuf;
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.15, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    const noiseFilt = ctx.createBiquadFilter();
+    noiseFilt.type = 'bandpass';
+    noiseFilt.frequency.value = gs.freq * 3;
+    noiseFilt.Q.value = 1.5;
+    noise.connect(noiseFilt);
+    noiseFilt.connect(noiseGain);
+    noiseGain.connect(masterGain);
+    noise.start(now);
+
+    setPlayingString(gs.string);
+    setTimeout(() => setPlayingString((prev) => prev === gs.string ? null : prev), 1800);
+    setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
+  }, []);
+
   // Auto-start listening on mount
   useEffect(() => {
     if (!startedRef.current) {
@@ -270,21 +328,6 @@ export default function Tuner() {
       </div>
 
       <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
-        {/* Listening indicator */}
-        {isListening && (
-          <div className="flex items-center justify-center gap-3 rounded-xl px-6 py-3 bg-[hsl(142_71%_45%/0.08)] border border-[hsl(142_71%_45%/0.2)]">
-            <div className="flex items-center gap-1">
-              {[0,1,2,3,4].map((i) => (
-                <motion.div key={i} className="w-0.5 rounded-full bg-[hsl(142_71%_45%)]" animate={{ height: [4, 14, 4] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.12, ease: 'easeInOut' }} />
-              ))}
-            </div>
-            <span className="text-sm font-body font-medium text-[hsl(142_71%_45%)]">
-              Listening — play a string
-            </span>
-            <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
-          </div>
-        )}
-
         {permissionDenied && (
           <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5 text-center justify-center">
             <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
@@ -365,11 +408,7 @@ export default function Tuner() {
                   Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
                 </p>
               )}
-              {!shownNote && isListening && (
-                <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
-                  Play a string to detect pitch
-                </p>
-              )}
+
             </div>
 
             {/* Cents meter */}
@@ -440,6 +479,7 @@ export default function Tuner() {
             {GUITAR_STRINGS.map((gs) => {
               const isDetected = isListening && shownClosest?.string === gs.string && shownFreq !== null;
               const isSelected = selectedString?.string === gs.string;
+              const isPlaying = playingString === gs.string;
               return (
                 <div
                   key={gs.string}
@@ -464,6 +504,18 @@ export default function Tuner() {
                     {gs.note}
                   </span>
                   <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">{gs.freq.toFixed(1)} Hz</span>
+                  <button
+                    onClick={() => playReferenceTone(gs)}
+                    className={`
+                      mt-1.5 flex items-center justify-center rounded-md w-9 h-8 transition-all active:scale-90
+                      ${isPlaying
+                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
+                        : 'bg-[hsl(var(--bg-overlay))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--color-primary)/0.15)] hover:text-[hsl(var(--color-primary))]'
+                      }
+                    `}
+                  >
+                    <Volume2 className="size-3.5" />
+                  </button>
                 </div>
               );
             })}
