@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
@@ -13,6 +13,7 @@ function TuningForkIcon({ className }: { className?: string }) {
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isTunerActive = location.pathname === '/tuner';
 
   const navLinks = [
@@ -34,9 +35,15 @@ export default function Header() {
           {/* Metronome dropdown — in first nav position */}
           <MetronomeDropdown />
 
-          {/* Tuner link — green when active */}
-          <Link
-            to="/tuner"
+          {/* Tuner toggle — green when active, click again to turn off */}
+          <button
+            onClick={() => {
+              if (isTunerActive) {
+                navigate(-1);
+              } else {
+                navigate('/tuner');
+              }
+            }}
             className={`
               flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-body font-medium transition-colors
               ${isTunerActive
@@ -50,7 +57,7 @@ export default function Header() {
             {isTunerActive && (
               <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
             )}
-          </Link>
+          </button>
 
           <div className="flex items-center gap-[6px]">
           {navLinks.map((link) => {

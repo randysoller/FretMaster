@@ -337,42 +337,72 @@ export default function Tuner() {
           </div>
         )}
 
-        {/* String selector */}
+        {/* String selector + reference tones (combined) */}
         <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
-          <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-3">
-            Select String <span className="normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(or auto-detect)</span>
-          </h3>
-          <div className="flex gap-2 justify-center">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
+              Strings
+            </h3>
             <button
               onClick={() => setSelectedString(null)}
-              className={`rounded-lg px-3 py-2.5 text-sm font-display font-bold transition-all active:scale-95 ${
+              className={`rounded-md px-2.5 py-1 text-[10px] font-display font-bold transition-all active:scale-95 ${
                 !selectedString
-                  ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
-                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
+                  ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]'
+                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))]'
               }`}
             >
-              Auto
+              Auto-Detect
             </button>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {GUITAR_STRINGS.map((gs) => {
               const isActive = selectedString?.string === gs.string;
               const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
+              const isPlaying = playingString === gs.string;
               return (
-                <button
+                <div
                   key={gs.string}
-                  onClick={() => setSelectedString(isActive ? null : gs)}
                   className={`
-                    relative rounded-lg px-3 py-2.5 min-w-[44px] text-sm font-display font-bold transition-all active:scale-95
+                    flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer
                     ${isActive
-                      ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
+                      ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
                       : isDetected
-                        ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.4)]'
-                        : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
+                        ? isTargetInTune
+                          ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
+                          : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
+                        : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
                     }
                   `}
+                  onClick={() => setSelectedString(isActive ? null : gs)}
                 >
-                  <span>{gs.display}</span>
-                  <span className="block text-[9px] font-body font-normal opacity-60">{gs.note}</span>
-                </button>
+                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                    String {gs.string}
+                  </span>
+                  <span className={`font-display text-lg font-bold ${
+                    isActive
+                      ? 'text-[hsl(var(--color-primary))]'
+                      : isDetected
+                        ? isTargetInTune ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(var(--color-primary))]'
+                        : 'text-[hsl(var(--text-default))]'
+                  }`}>
+                    {gs.note}
+                  </span>
+                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                    {gs.freq.toFixed(1)} Hz
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); playReferenceTone(gs); }}
+                    className={`
+                      mt-1.5 flex items-center justify-center rounded-md w-9 h-8 transition-all active:scale-90
+                      ${isPlaying
+                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
+                        : 'bg-[hsl(var(--bg-overlay))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--color-primary)/0.15)] hover:text-[hsl(var(--color-primary))]'
+                      }
+                    `}
+                  >
+                    <Volume2 className="size-3.5" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -470,57 +500,7 @@ export default function Tuner() {
           </div>
         </div>
 
-        {/* Reference frequencies */}
-        <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
-          <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-3">
-            Standard Tuning Reference
-          </h3>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {GUITAR_STRINGS.map((gs) => {
-              const isDetected = isListening && shownClosest?.string === gs.string && shownFreq !== null;
-              const isSelected = selectedString?.string === gs.string;
-              const isPlaying = playingString === gs.string;
-              return (
-                <div
-                  key={gs.string}
-                  className={`
-                    flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200
-                    ${isDetected
-                      ? isTargetInTune
-                        ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
-                        : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
-                      : isSelected
-                        ? 'bg-[hsl(var(--color-primary)/0.06)] border border-[hsl(var(--color-primary)/0.2)]'
-                        : 'bg-[hsl(var(--bg-surface))] border border-transparent'
-                    }
-                  `}
-                >
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">String {gs.string}</span>
-                  <span className={`font-display text-lg font-bold ${
-                    isDetected
-                      ? isTargetInTune ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(var(--color-primary))]'
-                      : 'text-[hsl(var(--text-default))]'
-                  }`}>
-                    {gs.note}
-                  </span>
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">{gs.freq.toFixed(1)} Hz</span>
-                  <button
-                    onClick={() => playReferenceTone(gs)}
-                    className={`
-                      mt-1.5 flex items-center justify-center rounded-md w-9 h-8 transition-all active:scale-90
-                      ${isPlaying
-                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
-                        : 'bg-[hsl(var(--bg-overlay))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--color-primary)/0.15)] hover:text-[hsl(var(--color-primary))]'
-                      }
-                    `}
-                  >
-                    <Volume2 className="size-3.5" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+
       </div>
     </div>
   );
