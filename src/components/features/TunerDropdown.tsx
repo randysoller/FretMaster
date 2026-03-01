@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTunerStore, GUITAR_STRINGS } from '@/stores/tunerStore';
-import { Mic, MicOff, Volume2 } from 'lucide-react';
+import { Volume2 } from 'lucide-react';
 
 /** Tuning fork SVG icon */
 function TuningForkIcon({ className }: { className?: string }) {
@@ -150,7 +150,15 @@ export default function TunerDropdown() {
     <div ref={dropdownRef} className="relative">
       {/* Trigger button */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (store.isListening) {
+            store.stopListening();
+            setOpen(false);
+          } else {
+            store.startListening();
+            setOpen(true);
+          }
+        }}
         className={`
           flex items-center justify-center gap-1.5 h-[45px] px-2.5 rounded-lg border transition-all duration-200
           ${store.isListening
@@ -160,7 +168,7 @@ export default function TunerDropdown() {
               : 'border-transparent text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--bg-overlay))]'
           }
         `}
-        title="Tuner"
+        title={store.isListening ? 'Stop Tuner' : 'Start Tuner'}
       >
         <TuningForkIcon className="w-[22px] h-[22px]" />
         <span className="text-xs font-display font-bold uppercase tracking-wider hidden sm:inline">Tuner</span>
@@ -206,30 +214,9 @@ export default function TunerDropdown() {
             {/* Permission denied warning */}
             {store.permissionDenied && (
               <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-3 py-2">
-                <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
                 <span className="text-xs font-body text-[hsl(var(--semantic-error))]">Microphone access denied. Please allow access in browser settings.</span>
               </div>
             )}
-
-            {/* Start / Stop */}
-            <div className="flex justify-center">
-              <button
-                onClick={() => store.isListening ? store.stopListening() : store.startListening()}
-                className={`
-                  flex items-center justify-center gap-2.5 sm:gap-2 rounded-xl w-3/4 py-3.5 sm:py-2.5 text-base sm:text-sm font-display font-bold transition-all duration-200 active:scale-95
-                  ${store.isListening
-                    ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
-                    : 'bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))] border border-[hsl(var(--semantic-success)/0.3)] hover:bg-[hsl(var(--semantic-success)/0.2)]'
-                  }
-                `}
-              >
-                {store.isListening ? (
-                  <><MicOff className="size-4" /> Stop Tuner</>
-                ) : (
-                  <><Mic className="size-4" /> Start Tuner</>
-                )}
-              </button>
-            </div>
 
             {/* Divider */}
             <div className="border-t border-[hsl(var(--border-subtle))]" />
