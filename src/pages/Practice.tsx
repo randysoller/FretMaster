@@ -53,7 +53,7 @@ function SensitivitySlider({ value, onChange }: { value: number; onChange: (v: n
   return (
     <div className="flex items-center gap-3 min-w-0">
       <SlidersHorizontal className="size-3.5 text-[hsl(var(--text-muted))] shrink-0" />
-      <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase tracking-wider shrink-0 hidden sm:inline">Mic Sensitivity</span>
+      <span className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase tracking-wider shrink-0">Mic Sensitivity</span>
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <input type="range" min={1} max={10} step={1} value={value} onChange={(e) => onChange(Number(e.target.value))} className="volume-slider flex-1 min-w-[80px] max-w-[120px]" title={`Detection sensitivity: ${value}/10 (${label})`} />
         <span className={`text-xs font-display font-bold tabular-nums w-5 text-center ${labelColor}`}>{value}</span>
