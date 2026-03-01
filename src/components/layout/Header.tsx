@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Guitar, BookOpen, PenTool } from 'lucide-react';
+import { Guitar, BookOpen, PenTool, Radio } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 export default function Header() {
   const location = useLocation();
 
   const navLinks = [
+    { to: '/tuner', label: 'Tuner', icon: <Radio className="size-[20px]" />, matchPaths: ['/tuner'] },
     { to: '/library', label: 'Library', icon: <BookOpen className="size-[20px]" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-[20px]" />, matchPaths: ['/editor'] },
   ];
