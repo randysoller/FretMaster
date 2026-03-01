@@ -1,30 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Guitar, BookOpen, PenTool, AudioLines } from 'lucide-react';
+import { Guitar, BookOpen, PenTool, ListMusic } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 export default function Header() {
   const location = useLocation();
 
   const navLinks = [
-    { to: '/tuner', label: 'Tuner', icon: <AudioLines className="size-[20px]" />, matchPaths: ['/tuner'] },
-    { to: '/library', label: 'Library', icon: <BookOpen className="size-[20px]" />, matchPaths: ['/library'] },
-    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[20px]" />, matchPaths: ['/editor'] },
+    { to: '/', label: 'Practice', icon: <Guitar className="size-[18px]" />, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
+    { to: '/library', label: 'Library', icon: <BookOpen className="size-[18px]" />, matchPaths: ['/library'] },
+    { to: '/editor', label: 'Editor', icon: <PenTool className="size-[18px]" />, matchPaths: ['/editor'] },
   ];
 
   return (
     <header className="sticky top-0 z-40 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.85)] backdrop-blur-md">
       <div className="flex h-[58px] items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center group">
-          <Guitar className="size-[28px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
+          <Guitar className="size-[26px] text-[hsl(var(--color-primary))] transition-transform group-hover:rotate-[-8deg]" />
           <span className="ml-2 text-lg font-heading font-semibold text-[hsl(var(--text-default))] tracking-tight hidden sm:inline">
             Guitar Chord Trainer
           </span>
         </Link>
 
-        <nav className="flex items-center gap-[6px]">
-          {/* Metronome dropdown — first position */}
-          <MetronomeDropdown />
-
+        <nav className="flex items-center gap-1 sm:gap-2">
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
             return (
@@ -44,6 +41,9 @@ export default function Header() {
               </Link>
             );
           })}
+
+          {/* Metronome dropdown — replaces the old Progressions nav link */}
+          <MetronomeDropdown />
         </nav>
       </div>
     </header>

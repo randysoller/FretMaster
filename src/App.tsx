@@ -8,7 +8,6 @@ const Practice = lazy(() => import('@/pages/Practice'));
 const ChordLibrary = lazy(() => import('@/pages/ChordLibrary'));
 const ChordEditor = lazy(() => import('@/pages/ChordEditor'));
 const ProgressionPractice = lazy(() => import('@/pages/ProgressionPractice'));
-const Tuner = lazy(() => import('@/pages/Tuner'));
 
 function LoadingFallback() {
   return (
@@ -33,7 +32,6 @@ export default function App() {
             <Route path="/library" element={<ChordLibrary />} />
             <Route path="/editor" element={<ChordEditor />} />
             <Route path="/progressions" element={<ProgressionPractice />} />
-            <Route path="/tuner" element={<Tuner />} />
             <Route path="*" element={<Home />} />
           </Route>
         </Routes>
