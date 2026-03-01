@@ -5,12 +5,12 @@ import { create } from 'zustand';
 const NOTE_STRINGS = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
 
 export const GUITAR_STRINGS = [
-  { num: 6, label: '6th String', note: 'Low E', freq: 82.41, noteName: 'E2' },
-  { num: 5, label: '5th String', note: 'A', freq: 110.00, noteName: 'A2' },
-  { num: 4, label: '4th String', note: 'D', freq: 146.83, noteName: 'D3' },
-  { num: 3, label: '3rd String', note: 'G', freq: 196.00, noteName: 'G3' },
-  { num: 2, label: '2nd String', note: 'B', freq: 246.94, noteName: 'B3' },
-  { num: 1, label: '1st String', note: 'High E', freq: 329.63, noteName: 'E4' },
+  { num: 4, label: '4th String D', freq: 146.83 },
+  { num: 3, label: '3rd String G', freq: 196.00 },
+  { num: 5, label: '5th String A', freq: 110.00 },
+  { num: 2, label: '2nd String B', freq: 246.94 },
+  { num: 6, label: '6th String Low E', freq: 82.41 },
+  { num: 1, label: '1st String High E', freq: 329.63 },
 ];
 
 const IN_TUNE_THRESHOLD = 5; // cents
@@ -25,9 +25,8 @@ let rafId: number | null = null;
 let dataBuffer: Float32Array | null = null;
 
 // Reference tone
-let refOsc: OscillatorNode | null = null;
+let refSource: AudioBufferSourceNode | null = null;
 let refGain: GainNode | null = null;
-let refFilter: BiquadFilterNode | null = null;
 let refTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // ─── Pitch detection ─────────────────────────────────────
@@ -37,7 +36,7 @@ function autoCorrelate(buf: Float32Array, sampleRate: number): number {
   let rms = 0;
   for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
   rms = Math.sqrt(rms / SIZE);
-  if (rms < 0.006) return -1; // noise gate
+  if (rms < 0.002) return -1; // noise gate — lowered for tuner sensitivity
 
   // Trim silence from edges
   let r1 = 0;
@@ -188,7 +187,7 @@ export const useTunerStore = create<TunerState>((set, get) => ({
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       sourceNode = ctx.createMediaStreamSource(mediaStream);
       analyser = ctx.createAnalyser();
-      analyser.fftSize = 4096;
+      analyser.fftSize = 8192;
       analyser.smoothingTimeConstant = 0;
       dataBuffer = new Float32Array(analyser.fftSize);
       sourceNode.connect(analyser);
@@ -228,59 +227,75 @@ export const useTunerStore = create<TunerState>((set, get) => ({
     if (!stringInfo) return;
 
     const ctx = ensureAudioCtx();
-    const now = ctx.currentTime;
+    const sampleRate = ctx.sampleRate;
+    const duration = 3.5;
+    const numSamples = Math.floor(sampleRate * duration);
 
-    // Create plucked-string-like tone
+    // Karplus-Strong plucked string synthesis
+    const buffer = ctx.createBuffer(1, numSamples, sampleRate);
+    const data = buffer.getChannelData(0);
+    const period = Math.round(sampleRate / stringInfo.freq);
+
+    // Initialize delay line with shaped noise burst
+    for (let i = 0; i < period; i++) {
+      // Mix of white noise shaped with a slight body resonance
+      data[i] = (Math.random() * 2 - 1) * 0.85;
+    }
+
+    // Apply short low-pass filter to initial burst for warmth
+    for (let i = 1; i < period; i++) {
+      data[i] = 0.6 * data[i] + 0.4 * data[i - 1];
+    }
+
+    // Karplus-Strong with tuned decay and damping
+    const decay = stringInfo.freq < 120 ? 0.9985 : stringInfo.freq < 200 ? 0.9978 : 0.997;
+    const blend = 0.497; // slightly off 0.5 for tonal color
+    for (let i = period; i < numSamples; i++) {
+      data[i] = decay * (blend * data[i - period] + (1 - blend) * data[i - period + 1]);
+    }
+
+    // Gentle fade out in last 25%
+    const fadeStart = Math.floor(numSamples * 0.75);
+    for (let i = fadeStart; i < numSamples; i++) {
+      const t = (i - fadeStart) / (numSamples - fadeStart);
+      data[i] *= Math.cos(t * Math.PI * 0.5); // cosine fade
+    }
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
     const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(stringInfo.freq * 6, now);
-    filter.frequency.exponentialRampToValueAtTime(stringInfo.freq * 2, now + 0.5);
-    filter.Q.value = 1;
+    gain.gain.value = 0.6;
 
-    // Use sawtooth for rich harmonics
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = stringInfo.freq;
+    // Body resonance filter
+    const bodyFilter = ctx.createBiquadFilter();
+    bodyFilter.type = 'peaking';
+    bodyFilter.frequency.value = stringInfo.freq * 2;
+    bodyFilter.Q.value = 2;
+    bodyFilter.gain.value = 3;
 
-    // Add a second oscillator slightly detuned for thickness
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'triangle';
-    osc2.frequency.value = stringInfo.freq;
-
-    const gain2 = ctx.createGain();
-    gain2.gain.value = 0.3;
-
-    // Envelope: quick pluck attack, medium sustain, gradual decay
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.35, now + 0.005);
-    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.15);
-    gain.gain.exponentialRampToValueAtTime(0.08, now + 1.0);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
-
-    osc.connect(filter);
-    osc2.connect(gain2);
-    gain2.connect(filter);
-    filter.connect(gain);
+    source.connect(bodyFilter);
+    bodyFilter.connect(gain);
     gain.connect(ctx.destination);
+    source.start();
 
-    osc.start(now);
-    osc2.start(now);
-    osc.stop(now + 2.6);
-    osc2.stop(now + 2.6);
-
-    refOsc = osc;
+    refSource = source;
     refGain = gain;
-    refFilter = filter;
-
     set({ playingString: stringNum });
+
+    source.onended = () => {
+      if (get().playingString === stringNum) {
+        set({ playingString: null });
+      }
+      refSource = null;
+      refGain = null;
+    };
 
     refTimeout = setTimeout(() => {
       set({ playingString: null });
-      refOsc = null;
+      refSource = null;
       refGain = null;
-      refFilter = null;
-    }, 2600);
+    }, duration * 1000 + 100);
   },
 
   stopReference: () => {
@@ -293,9 +308,11 @@ export const useTunerStore = create<TunerState>((set, get) => ({
         refGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
       } catch {}
     }
-    refOsc = null;
+    if (refSource) {
+      try { refSource.stop(); } catch {}
+      refSource = null;
+    }
     refGain = null;
-    refFilter = null;
     set({ playingString: null });
   },
 }));

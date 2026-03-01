@@ -193,16 +193,9 @@ export default function TunerDropdown() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3">
-                <span className={`text-sm sm:text-xs font-display font-bold tabular-nums transition-colors duration-200 ${noteColor}`}>
-                  {centsDisplay}
-                </span>
-                {store.hasSignal && (
-                  <span className="text-xs sm:text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
-                    {store.detectedFrequency} Hz
-                  </span>
-                )}
-              </div>
+              <span className={`text-sm sm:text-xs font-display font-bold tabular-nums transition-colors duration-200 ${noteColor}`}>
+                {centsDisplay}
+              </span>
             </div>
 
             {/* Needle Gauge */}
@@ -255,26 +248,18 @@ export default function TunerDropdown() {
                       key={s.num}
                       onClick={() => store.playReferenceString(s.num)}
                       className={`
-                        flex items-center gap-2.5 sm:gap-2 rounded-lg sm:rounded-md px-3 py-3 sm:py-2 text-left transition-all duration-150 active:scale-95
+                        flex items-center justify-between gap-2 rounded-lg sm:rounded-md px-3 py-3 sm:py-2.5 text-left transition-all duration-150 active:scale-95
                         ${isPlaying
                           ? 'bg-[hsl(var(--color-emphasis)/0.15)] border border-[hsl(var(--color-emphasis)/0.4)] ring-1 ring-[hsl(var(--color-emphasis)/0.2)]'
                           : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'
                         }
                       `}
                     >
-                      <span className={`font-display text-lg sm:text-base font-extrabold tabular-nums min-w-[20px] text-center ${isPlaying ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-subtle))]'}`}>
-                        {s.num}
+                      <span className={`text-sm sm:text-xs font-display font-bold leading-tight ${isPlaying ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'}`}>
+                        {s.label}
                       </span>
-                      <div className="flex flex-col min-w-0">
-                        <span className={`text-sm sm:text-xs font-display font-bold leading-tight ${isPlaying ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'}`}>
-                          {s.note}
-                        </span>
-                        <span className="text-[10px] sm:text-[9px] font-body text-[hsl(var(--text-muted))] leading-tight">
-                          {s.freq} Hz
-                        </span>
-                      </div>
                       {isPlaying && (
-                        <div className="ml-auto flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 shrink-0">
                           {[0,1,2].map((i) => (
                             <div key={i} className="w-0.5 rounded-full bg-[hsl(var(--color-emphasis))] animate-pulse" style={{ height: `${8 + i * 3}px`, animationDelay: `${i * 0.15}s` }} />
                           ))}
