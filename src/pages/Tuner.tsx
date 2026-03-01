@@ -113,6 +113,12 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
   const startedRef = useRef(false);
 
+  // Hold last detected note to prevent flickering when signal briefly drops
+  const [displayNote, setDisplayNote] = useState<{ note: string; octave: number; cents: number } | null>(null);
+  const [displayFreq, setDisplayFreq] = useState<number | null>(null);
+  const [displayClosest, setDisplayClosest] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const holdTimerRef = useRef<number>(0);
+
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -121,6 +127,10 @@ export default function Tuner() {
   const bufferRef = useRef<Float32Array | null>(null);
 
   const stopListening = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = 0;
+    }
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = 0;
@@ -143,6 +153,9 @@ export default function Tuner() {
     setFrequency(null);
     setNoteInfo(null);
     setClosestString(null);
+    setDisplayNote(null);
+    setDisplayFreq(null);
+    setDisplayClosest(null);
   }, []);
 
   const startListening = useCallback(async () => {
@@ -176,10 +189,24 @@ export default function Tuner() {
           const info = frequencyToNoteInfo(freq);
           setNoteInfo(info);
           setClosestString(findClosestString(freq));
+          // Update held display immediately
+          setDisplayNote(info);
+          setDisplayFreq(freq);
+          setDisplayClosest(findClosestString(freq));
+          if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = 0; }
         } else {
           setFrequency(null);
           setNoteInfo(null);
           setClosestString(null);
+          // Delay clearing display to prevent flicker
+          if (!holdTimerRef.current) {
+            holdTimerRef.current = window.setTimeout(() => {
+              setDisplayNote(null);
+              setDisplayFreq(null);
+              setDisplayClosest(null);
+              holdTimerRef.current = 0;
+            }, 600);
+          }
         }
 
         rafRef.current = requestAnimationFrame(detect);
@@ -203,8 +230,13 @@ export default function Tuner() {
     };
   }, [startListening, stopListening]);
 
+  // Use held display values for rendering to prevent flicker
+  const shownNote = displayNote;
+  const shownFreq = displayFreq;
+  const shownClosest = displayClosest;
+
   // Determine tuning accuracy
-  const cents = noteInfo?.cents ?? 0;
+  const cents = shownNote?.cents ?? 0;
   const isInTune = Math.abs(cents) <= 5;
   const isClose = Math.abs(cents) <= 15;
 
@@ -212,9 +244,9 @@ export default function Tuner() {
   const meterPosition = Math.max(-50, Math.min(50, cents));
 
   // Determine what string we're comparing against
-  const targetString = selectedString ?? closestString;
-  const centsFromTarget = targetString && frequency
-    ? Math.round(1200 * Math.log2(frequency / targetString.freq))
+  const targetString = selectedString ?? shownClosest;
+  const centsFromTarget = targetString && shownFreq
+    ? Math.round(1200 * Math.log2(shownFreq / targetString.freq))
     : cents;
   const isTargetInTune = Math.abs(centsFromTarget) <= 5;
   const isTargetClose = Math.abs(centsFromTarget) <= 15;
@@ -280,7 +312,7 @@ export default function Tuner() {
             </button>
             {GUITAR_STRINGS.map((gs) => {
               const isActive = selectedString?.string === gs.string;
-              const isDetected = !selectedString && closestString?.string === gs.string && isListening && frequency !== null;
+              const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
               return (
                 <button
                   key={gs.string}
@@ -305,9 +337,9 @@ export default function Tuner() {
 
         {/* Main tuner display */}
         <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
-          {isListening && noteInfo ? (
+          {isListening && shownNote ? (
             <motion.div
-              key={`${noteInfo.note}${noteInfo.octave}`}
+              key={`${shownNote.note}${shownNote.octave}`}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.15 }}
@@ -324,11 +356,11 @@ export default function Tuner() {
                 }`}
                   style={isTargetInTune ? { textShadow: '0 0 30px hsl(142 71% 45% / 0.4)' } : undefined}
                 >
-                  {noteInfo.note}<span className="text-3xl sm:text-4xl opacity-50">{noteInfo.octave}</span>
+                  {shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span>
                 </p>
-                {frequency && (
+                {shownFreq && (
                   <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums">
-                    {frequency.toFixed(1)} Hz
+                    {shownFreq.toFixed(1)} Hz
                   </p>
                 )}
                 {targetString && (
@@ -429,7 +461,7 @@ export default function Tuner() {
           </h3>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
             {GUITAR_STRINGS.map((gs) => {
-              const isDetected = isListening && closestString?.string === gs.string && frequency !== null;
+              const isDetected = isListening && shownClosest?.string === gs.string && shownFreq !== null;
               const isSelected = selectedString?.string === gs.string;
               return (
                 <div
