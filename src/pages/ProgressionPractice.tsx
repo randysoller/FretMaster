@@ -10,6 +10,7 @@ import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import CountdownRing from '@/components/features/CountdownRing';
 import VolumeControl from '@/components/features/VolumeControl';
+import BeatSyncControls from '@/components/features/BeatSyncControls';
 import { useCountdown } from '@/hooks/useCountdown';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -403,6 +404,11 @@ export default function ProgressionPractice() {
             </div>
           );
         })()}
+
+        {/* Beat Sync Controls */}
+        <div className="px-4 sm:px-6 mb-2">
+          <BeatSyncControls />
+        </div>
 
         {/* Progression Timeline */}
         <div className="px-4 sm:px-6 py-2 flex justify-center">

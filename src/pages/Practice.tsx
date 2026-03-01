@@ -12,6 +12,7 @@ import CountdownRing from '@/components/features/CountdownRing';
 import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
+import BeatSyncControls from '@/components/features/BeatSyncControls';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
@@ -237,6 +238,11 @@ export default function Practice() {
           </div>
         );
       })()}
+
+      {/* Beat Sync Controls */}
+      <div className="px-4 sm:px-6 mb-2">
+        <BeatSyncControls />
+      </div>
 
       {/* Main Practice Area */}
       <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
