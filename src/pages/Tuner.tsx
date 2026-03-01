@@ -698,35 +698,34 @@ export default function Tuner() {
           <div className="space-y-6">
             {/* Detected note */}
             <div className="text-center">
-              <motion.p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
-                !shownNote
-                  ? 'text-[hsl(var(--text-muted)/0.25)]'
-                  : isTargetInTune
-                    ? 'text-[hsl(142_71%_45%)]'
-                    : isTargetClose
-                      ? 'text-[hsl(var(--color-emphasis))]'
-                      : 'text-[hsl(var(--text-default))]'
-              }`}
-                animate={inTuneConfirmed ? {
-                  textShadow: [
-                    '0 0 40px hsl(142 71% 55% / 0.6), 0 0 80px hsl(142 71% 45% / 0.25)',
-                    '0 0 80px hsl(142 71% 60% / 0.9), 0 0 160px hsl(142 71% 50% / 0.5), 0 0 240px hsl(142 71% 45% / 0.2)',
-                    '0 0 40px hsl(142 71% 55% / 0.6), 0 0 80px hsl(142 71% 45% / 0.25)',
-                  ],
-                  color: ['hsl(142 71% 45%)', 'hsl(142 80% 65%)', 'hsl(142 71% 45%)'],
-                  scale: [1, 1.1, 1],
-                } : {
-                  textShadow: shownNote && isTargetInTune ? '0 0 30px hsl(142 71% 45% / 0.4)' : '0 0 0px transparent',
-                  scale: 1,
-                }}
-                transition={inTuneConfirmed ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
-              >
-                {shownNote ? (
-                  <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
-                ) : (
-                  <>—</>  
-                )}
-              </motion.p>
+              <div className="relative inline-flex items-center justify-center">
+                {/* Circle border on in-tune chime */}
+                <motion.div
+                  className="absolute rounded-full border-[3px] border-[hsl(142_71%_45%)] pointer-events-none"
+                  style={{ width: 140, height: 140 }}
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={inTuneConfirmed
+                    ? { opacity: 1, scale: 1 }
+                    : { opacity: 0, scale: 0.85 }
+                  }
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                />
+                <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
+                  !shownNote
+                    ? 'text-[hsl(var(--text-muted)/0.25)]'
+                    : isTargetInTune
+                      ? 'text-[hsl(142_71%_45%)]'
+                      : isTargetClose
+                        ? 'text-[hsl(var(--color-emphasis))]'
+                        : 'text-[hsl(var(--text-default))]'
+                }`}>
+                  {shownNote ? (
+                    <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
+                  ) : (
+                    <>—</>  
+                  )}
+                </p>
+              </div>
               <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
                 {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
               </p>
@@ -826,9 +825,8 @@ export default function Tuner() {
               const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
               const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
               const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
-              const shouldPulse = inTuneConfirmed && targetString?.string === gs.string;
               return (
-                <motion.button
+                <button
                   key={gs.string}
                   className={`
                     flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
@@ -841,19 +839,6 @@ export default function Tuner() {
                         : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
                     }
                   `}
-                  animate={shouldPulse ? {
-                    boxShadow: [
-                      '0 0 12px hsl(142 71% 45% / 0.4), inset 0 0 8px hsl(142 71% 45% / 0.15)',
-                      '0 0 36px hsl(142 71% 50% / 0.8), 0 0 60px hsl(142 71% 45% / 0.3), inset 0 0 16px hsl(142 71% 45% / 0.2)',
-                      '0 0 12px hsl(142 71% 45% / 0.4), inset 0 0 8px hsl(142 71% 45% / 0.15)',
-                    ],
-                    scale: [1, 1.12, 1],
-                    borderColor: ['hsl(142 71% 45% / 0.5)', 'hsl(142 80% 60% / 0.9)', 'hsl(142 71% 45% / 0.5)'],
-                  } : {
-                    boxShadow: '0 0 0px transparent',
-                    scale: 1,
-                  }}
-                  transition={shouldPulse ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
                   onClick={() => {
                     setSelectedString(isActive ? null : gs);
                     playReferenceTone(gs);
@@ -893,7 +878,7 @@ export default function Tuner() {
                   {isPlaying && (
                     <Volume2 className="size-3 mt-0.5 text-[hsl(var(--color-primary))] animate-pulse" />
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
