@@ -140,7 +140,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   }
 
   // Collect ALL peaks above minimum threshold — then pick the best fundamental
-  const threshold = 0.45; // lowered from 0.6 for better sensitivity
+  const threshold = 0.35; // lowered for better low-frequency sensitivity (D2, etc.)
   const peaks: { tau: number; val: number }[] = [];
 
   // Skip lag 0, find first zero crossing
@@ -206,8 +206,8 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
 
   const frequency = sampleRate / refinedTau;
 
-  // Guitar range ~60Hz to ~1400Hz
-  if (frequency < 60 || frequency > 1400) return -1;
+  // Guitar range ~50Hz to ~1400Hz (D2 = 73Hz, need headroom for detection)
+  if (frequency < 50 || frequency > 1400) return -1;
 
   return frequency;
 }
@@ -336,8 +336,8 @@ export default function Tuner() {
       const source = ctx.createMediaStreamSource(stream);
       const highPass = ctx.createBiquadFilter();
       highPass.type = 'highpass';
-      highPass.frequency.value = 60;
-      highPass.Q.value = 0.7;
+      highPass.frequency.value = 40;
+      highPass.Q.value = 0.5;
       source.connect(highPass);
 
       const analyser = ctx.createAnalyser();
@@ -350,6 +350,9 @@ export default function Tuner() {
       mediaStreamRef.current = stream;
       sourceRef.current = source;
       bufferRef.current = new Float32Array(analyser.fftSize);
+
+      // Pre-warm chime context during user-gesture-initiated flow
+      getChimeCtx();
 
       setIsListening(true);
       setPermissionDenied(false);
@@ -391,21 +394,26 @@ export default function Tuner() {
           setDisplayClosest(closest);
           if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = 0; }
 
-          // Check if in tune for cowbell confirmation
+          // Check if in tune for chime confirmation — with hysteresis to prevent jitter resets
           const target = selectedStringRef.current ?? closest;
           const centsOff = target ? Math.round(1200 * Math.log2(freq / target.freq)) : info.cents;
-          if (Math.abs(centsOff) <= 5) {
+          const absCents = Math.abs(centsOff);
+          if (absCents <= 5) {
+            // Start or continue the in-tune timer
             if (inTuneStartRef.current === 0) inTuneStartRef.current = performance.now();
             if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 500) {
               inTuneSoundPlayedRef.current = true;
               setInTuneConfirmed(true);
               playCowbellSound();
             }
-          } else {
+          } else if (absCents > 12) {
+            // Only reset the timer if cents drifts beyond hysteresis band (>12¢)
+            // This prevents small jitter from constantly resetting the 0.5s timer
             inTuneStartRef.current = 0;
             inTuneSoundPlayedRef.current = false;
             setInTuneConfirmed(false);
           }
+          // Between 5–12 cents: keep the timer running (hysteresis zone)
         } else {
           setFrequency(null);
           setNoteInfo(null);
