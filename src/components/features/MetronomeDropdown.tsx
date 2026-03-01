@@ -100,7 +100,7 @@ export default function MetronomeDropdown() {
         `}
         title="Metronome"
       >
-        <MetronomeIcon className="size-[30px]" />
+        <MetronomeIcon className="size-[32px]" />
         {store.isPlaying && (
           <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
         )}

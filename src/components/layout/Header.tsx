@@ -31,7 +31,7 @@ export default function Header() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-[2px]">
+        <nav className="flex items-center gap-[4px]">
           {/* Metronome dropdown — in first nav position */}
           <MetronomeDropdown />
 
@@ -52,7 +52,7 @@ export default function Header() {
               }
             `}
           >
-            <TuningForkIcon className="size-[23px]" />
+            <TuningForkIcon className="size-[25px]" />
             <span className="hidden sm:inline">Tuner</span>
             {isTunerActive && (
               <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
