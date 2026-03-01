@@ -220,60 +220,156 @@ export default function Tuner() {
     }
   }, []);
 
-  // Reference tone playback
+  // Reference tone playback — realistic acoustic guitar synthesis
   const playReferenceTone = useCallback((gs: typeof GUITAR_STRINGS[number]) => {
     const ctx = new AudioContext();
-    const duration = 2.2;
+    const duration = 3.0;
     const now = ctx.currentTime;
+    const freq = gs.freq;
+
+    // ─── Master output with compressor for punch ───
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-12, now);
+    compressor.knee.setValueAtTime(6, now);
+    compressor.ratio.setValueAtTime(4, now);
+    compressor.attack.setValueAtTime(0.002, now);
+    compressor.release.setValueAtTime(0.15, now);
+    compressor.connect(ctx.destination);
 
     const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.35, now);
-    masterGain.gain.setTargetAtTime(0.001, now + 0.01, duration * 0.28);
-    masterGain.connect(ctx.destination);
+    masterGain.gain.setValueAtTime(0, now);
+    masterGain.gain.linearRampToValueAtTime(1.0, now + 0.002);
+    masterGain.gain.setTargetAtTime(0.0001, now + 0.005, duration * 0.32);
+    masterGain.connect(compressor);
 
-    // Guitar-like timbre: fundamental + decaying harmonics
-    const harmonicGains = [1.0, 0.55, 0.35, 0.22, 0.12, 0.06];
-    harmonicGains.forEach((g, i) => {
-      const h = i + 1;
-      const partialFreq = gs.freq * h;
-      if (partialFreq > 8000) return;
+    // ─── Body resonance EQ — simulates guitar body ───
+    const bodyLow = ctx.createBiquadFilter();
+    bodyLow.type = 'peaking';
+    bodyLow.frequency.value = 120;
+    bodyLow.Q.value = 2.5;
+    bodyLow.gain.value = 6;
+
+    const bodyMid = ctx.createBiquadFilter();
+    bodyMid.type = 'peaking';
+    bodyMid.frequency.value = 400;
+    bodyMid.Q.value = 1.2;
+    bodyMid.gain.value = 3;
+
+    const bodyHigh = ctx.createBiquadFilter();
+    bodyHigh.type = 'peaking';
+    bodyHigh.frequency.value = 2800;
+    bodyHigh.Q.value = 1.0;
+    bodyHigh.gain.value = -4;
+
+    const airRoll = ctx.createBiquadFilter();
+    airRoll.type = 'lowpass';
+    airRoll.frequency.value = 6000;
+    airRoll.Q.value = 0.7;
+
+    bodyLow.connect(bodyMid);
+    bodyMid.connect(bodyHigh);
+    bodyHigh.connect(airRoll);
+    airRoll.connect(masterGain);
+
+    // ─── Harmonic partials — acoustic guitar spectral envelope ───
+    // Relative amplitudes modeled after real nylon/steel string spectra
+    const harmonics = [
+      { h: 1, amp: 1.00, decay: 0.38 },  // fundamental
+      { h: 2, amp: 0.72, decay: 0.32 },  // strong 2nd
+      { h: 3, amp: 0.50, decay: 0.26 },  // prominent 3rd
+      { h: 4, amp: 0.38, decay: 0.22 },
+      { h: 5, amp: 0.25, decay: 0.18 },
+      { h: 6, amp: 0.18, decay: 0.14 },
+      { h: 7, amp: 0.10, decay: 0.11 },
+      { h: 8, amp: 0.06, decay: 0.09 },
+      { h: 9, amp: 0.03, decay: 0.07 },
+      { h: 10, amp: 0.015, decay: 0.06 },
+    ];
+
+    harmonics.forEach(({ h, amp, decay }) => {
+      const partialFreq = freq * h;
+      if (partialFreq > 10000) return;
 
       const osc = ctx.createOscillator();
-      osc.type = 'sine';
+      // Mix sine + triangle for richer timbre on lower harmonics
+      osc.type = h <= 3 ? 'triangle' : 'sine';
       osc.frequency.value = partialFreq;
+      // Slight inharmonicity (higher partials stretch sharp, like real strings)
+      osc.frequency.value = partialFreq * (1 + 0.00005 * h * h);
 
-      const partialGain = ctx.createGain();
-      const decay = duration * Math.max(0.15, 1 - i * 0.16);
-      partialGain.gain.setValueAtTime(g * 0.3, now);
-      partialGain.gain.setTargetAtTime(0.001, now + 0.005, decay * 0.28);
+      const pGain = ctx.createGain();
+      const attackAmp = amp * 0.65;
+      pGain.gain.setValueAtTime(0, now);
+      pGain.gain.linearRampToValueAtTime(attackAmp, now + 0.001);
+      // Fast initial decay (pluck) then slower sustain decay
+      pGain.gain.setTargetAtTime(attackAmp * 0.5, now + 0.002, 0.03);
+      pGain.gain.setTargetAtTime(0.0001, now + 0.06, duration * decay);
 
-      osc.connect(partialGain);
-      partialGain.connect(masterGain);
+      osc.connect(pGain);
+      pGain.connect(bodyLow);
       osc.start(now);
       osc.stop(now + duration);
     });
 
-    // Slight initial "pluck" transient
-    const noise = ctx.createBufferSource();
-    const noiseLen = Math.floor(ctx.sampleRate * 0.015);
-    const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
-    const noiseData = noiseBuf.getChannelData(0);
-    for (let i = 0; i < noiseLen; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.3;
-    noise.buffer = noiseBuf;
-    const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.15, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-    const noiseFilt = ctx.createBiquadFilter();
-    noiseFilt.type = 'bandpass';
-    noiseFilt.frequency.value = gs.freq * 3;
-    noiseFilt.Q.value = 1.5;
-    noise.connect(noiseFilt);
-    noiseFilt.connect(noiseGain);
-    noiseGain.connect(masterGain);
-    noise.start(now);
+    // ─── Pluck transient — short filtered noise burst ───
+    const pluckLen = Math.floor(ctx.sampleRate * 0.035);
+    const pluckBuf = ctx.createBuffer(1, pluckLen, ctx.sampleRate);
+    const pluckData = pluckBuf.getChannelData(0);
+    for (let i = 0; i < pluckLen; i++) {
+      // Shaped noise burst with quick fade
+      const env = 1 - (i / pluckLen);
+      pluckData[i] = (Math.random() * 2 - 1) * env * env * 0.8;
+    }
+    const pluckSrc = ctx.createBufferSource();
+    pluckSrc.buffer = pluckBuf;
+
+    const pluckFilter = ctx.createBiquadFilter();
+    pluckFilter.type = 'bandpass';
+    pluckFilter.frequency.value = Math.min(freq * 4, 5000);
+    pluckFilter.Q.value = 1.8;
+
+    const pluckGain = ctx.createGain();
+    pluckGain.gain.setValueAtTime(0.55, now);
+    pluckGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    pluckSrc.connect(pluckFilter);
+    pluckFilter.connect(pluckGain);
+    pluckGain.connect(masterGain);
+    pluckSrc.start(now);
+
+    // ─── String thump / body knock — low-freq transient ───
+    const thumpOsc = ctx.createOscillator();
+    thumpOsc.type = 'sine';
+    thumpOsc.frequency.setValueAtTime(freq * 0.5, now);
+    thumpOsc.frequency.exponentialRampToValueAtTime(freq * 0.25, now + 0.08);
+    const thumpGain = ctx.createGain();
+    thumpGain.gain.setValueAtTime(0.25, now);
+    thumpGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    thumpOsc.connect(thumpGain);
+    thumpGain.connect(masterGain);
+    thumpOsc.start(now);
+    thumpOsc.stop(now + 0.15);
+
+    // ─── Finger / fret buzz — high-freq tiny noise ───
+    const buzzLen = Math.floor(ctx.sampleRate * 0.008);
+    const buzzBuf = ctx.createBuffer(1, buzzLen, ctx.sampleRate);
+    const buzzData = buzzBuf.getChannelData(0);
+    for (let i = 0; i < buzzLen; i++) buzzData[i] = (Math.random() * 2 - 1) * 0.15;
+    const buzzSrc = ctx.createBufferSource();
+    buzzSrc.buffer = buzzBuf;
+    const buzzHP = ctx.createBiquadFilter();
+    buzzHP.type = 'highpass';
+    buzzHP.frequency.value = 3000;
+    const buzzGain = ctx.createGain();
+    buzzGain.gain.setValueAtTime(0.2, now);
+    buzzGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+    buzzSrc.connect(buzzHP);
+    buzzHP.connect(buzzGain);
+    buzzGain.connect(masterGain);
+    buzzSrc.start(now);
 
     setPlayingString(gs.string);
-    setTimeout(() => setPlayingString((prev) => prev === gs.string ? null : prev), 1800);
+    setTimeout(() => setPlayingString((prev) => prev === gs.string ? null : prev), 2200);
     setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
   }, []);
 
