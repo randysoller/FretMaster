@@ -203,6 +203,7 @@ export default function Tuner() {
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
+  const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
   const startedRef = useRef(false);
   const inTuneStartRef = useRef<number>(0);
   const inTuneSoundPlayedRef = useRef(false);
@@ -270,6 +271,7 @@ export default function Tuner() {
     setDisplayNote(null);
     setDisplayFreq(null);
     setDisplayClosest(null);
+    setInTuneConfirmed(false);
   }, []);
 
   const startListening = useCallback(async () => {
@@ -317,11 +319,13 @@ export default function Tuner() {
             if (inTuneStartRef.current === 0) inTuneStartRef.current = performance.now();
             if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 1000) {
               inTuneSoundPlayedRef.current = true;
+              setInTuneConfirmed(true);
               playCowbellSound();
             }
           } else {
             inTuneStartRef.current = 0;
             inTuneSoundPlayedRef.current = false;
+            setInTuneConfirmed(false);
           }
         } else {
           setFrequency(null);
@@ -694,7 +698,7 @@ export default function Tuner() {
           <div className="space-y-6">
             {/* Detected note */}
             <div className="text-center">
-              <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
+              <motion.p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
                 !shownNote
                   ? 'text-[hsl(var(--text-muted)/0.25)]'
                   : isTargetInTune
@@ -703,14 +707,25 @@ export default function Tuner() {
                       ? 'text-[hsl(var(--color-emphasis))]'
                       : 'text-[hsl(var(--text-default))]'
               }`}
-                style={shownNote && isTargetInTune ? { textShadow: '0 0 30px hsl(142 71% 45% / 0.4)' } : undefined}
+                animate={inTuneConfirmed ? {
+                  textShadow: [
+                    '0 0 30px hsl(142 71% 45% / 0.4)',
+                    '0 0 60px hsl(142 71% 45% / 0.7), 0 0 120px hsl(142 71% 45% / 0.3)',
+                    '0 0 30px hsl(142 71% 45% / 0.4)',
+                  ],
+                  scale: [1, 1.05, 1],
+                } : {
+                  textShadow: shownNote && isTargetInTune ? '0 0 30px hsl(142 71% 45% / 0.4)' : '0 0 0px transparent',
+                  scale: 1,
+                }}
+                transition={inTuneConfirmed ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
               >
                 {shownNote ? (
                   <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
                 ) : (
                   <>—</>  
                 )}
-              </p>
+              </motion.p>
               <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
                 {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
               </p>
@@ -810,8 +825,9 @@ export default function Tuner() {
               const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
               const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
               const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
+              const shouldPulse = inTuneConfirmed && targetString?.string === gs.string;
               return (
-                <button
+                <motion.button
                   key={gs.string}
                   className={`
                     flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
@@ -824,6 +840,18 @@ export default function Tuner() {
                         : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
                     }
                   `}
+                  animate={shouldPulse ? {
+                    boxShadow: [
+                      '0 0 8px hsl(142 71% 45% / 0.3), inset 0 0 6px hsl(142 71% 45% / 0.1)',
+                      '0 0 24px hsl(142 71% 45% / 0.6), inset 0 0 12px hsl(142 71% 45% / 0.15)',
+                      '0 0 8px hsl(142 71% 45% / 0.3), inset 0 0 6px hsl(142 71% 45% / 0.1)',
+                    ],
+                    scale: [1, 1.06, 1],
+                  } : {
+                    boxShadow: '0 0 0px transparent',
+                    scale: 1,
+                  }}
+                  transition={shouldPulse ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
                   onClick={() => {
                     setSelectedString(isActive ? null : gs);
                     playReferenceTone(gs);
@@ -863,7 +891,7 @@ export default function Tuner() {
                   {isPlaying && (
                     <Volume2 className="size-3 mt-0.5 text-[hsl(var(--color-primary))] animate-pulse" />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </div>
