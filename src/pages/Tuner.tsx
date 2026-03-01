@@ -521,74 +521,6 @@ export default function Tuner() {
           </div>
         )}
 
-        {/* String selector + reference tones (combined) */}
-        <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
-              Strings
-            </h3>
-            <button
-              onClick={() => setSelectedString(null)}
-              className={`rounded-lg px-4 py-2.5 text-sm font-display font-bold transition-all active:scale-95 min-h-[44px] ${
-                !selectedString
-                  ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]'
-                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <Mic className="size-3.5" />
-                Auto-Detect
-              </div>
-            </button>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {GUITAR_STRINGS.map((gs) => {
-              const isActive = selectedString?.string === gs.string;
-              const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
-              const isPlaying = playingString === gs.string;
-              return (
-                <button
-                  key={gs.string}
-                  className={`
-                    flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
-                    ${isActive
-                      ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
-                      : isDetected
-                        ? isTargetInTune
-                          ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
-                          : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
-                        : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
-                    }
-                  `}
-                  onClick={() => {
-                    setSelectedString(isActive ? null : gs);
-                    playReferenceTone(gs);
-                  }}
-                >
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
-                    String {gs.string}
-                  </span>
-                  <span className={`font-display text-lg font-bold ${
-                    isActive
-                      ? 'text-[hsl(var(--color-primary))]'
-                      : isDetected
-                        ? isTargetInTune ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(var(--color-primary))]'
-                        : 'text-[hsl(var(--text-default))]'
-                  }`}>
-                    {gs.note}
-                  </span>
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
-                    {gs.freq.toFixed(1)} Hz
-                  </span>
-                  {isPlaying && (
-                    <Volume2 className="size-3 mt-1 text-[hsl(var(--color-primary))] animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Main tuner display */}
         <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
           <div className="space-y-6">
@@ -678,6 +610,74 @@ export default function Tuner() {
                 </p>
               ) : null}
             </div>
+          </div>
+        </div>
+
+        {/* String selector + reference tones (combined) */}
+        <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
+              Strings
+            </h3>
+            <button
+              onClick={() => setSelectedString(null)}
+              className={`rounded-lg px-4 py-2.5 text-sm font-display font-bold transition-all active:scale-95 min-h-[44px] ${
+                !selectedString
+                  ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]'
+                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Mic className="size-3.5" />
+                Auto-Detect
+              </div>
+            </button>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {GUITAR_STRINGS.map((gs) => {
+              const isActive = selectedString?.string === gs.string;
+              const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
+              const isPlaying = playingString === gs.string;
+              return (
+                <button
+                  key={gs.string}
+                  className={`
+                    flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
+                    ${isActive
+                      ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
+                      : isDetected
+                        ? isTargetInTune
+                          ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
+                          : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
+                        : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
+                    }
+                  `}
+                  onClick={() => {
+                    setSelectedString(isActive ? null : gs);
+                    playReferenceTone(gs);
+                  }}
+                >
+                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                    String {gs.string}
+                  </span>
+                  <span className={`font-display text-lg font-bold ${
+                    isActive
+                      ? 'text-[hsl(var(--color-primary))]'
+                      : isDetected
+                        ? isTargetInTune ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(var(--color-primary))]'
+                        : 'text-[hsl(var(--text-default))]'
+                  }`}>
+                    {gs.note}
+                  </span>
+                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                    {gs.freq.toFixed(1)} Hz
+                  </span>
+                  {isPlaying && (
+                    <Volume2 className="size-3 mt-1 text-[hsl(var(--color-primary))] animate-pulse" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
