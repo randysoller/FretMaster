@@ -506,7 +506,9 @@ export default function Tuner() {
           <span className="text-[hsl(var(--text-default))]">Tune Your </span>
           <span className="text-gradient">Guitar</span>
         </h1>
-
+        <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))]">
+          Play a string and the tuner will detect the pitch.
+        </p>
       </div>
 
       <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
