@@ -709,16 +709,17 @@ export default function Tuner() {
               }`}
                 animate={inTuneConfirmed ? {
                   textShadow: [
-                    '0 0 30px hsl(142 71% 45% / 0.4)',
-                    '0 0 60px hsl(142 71% 45% / 0.7), 0 0 120px hsl(142 71% 45% / 0.3)',
-                    '0 0 30px hsl(142 71% 45% / 0.4)',
+                    '0 0 40px hsl(142 71% 55% / 0.6), 0 0 80px hsl(142 71% 45% / 0.25)',
+                    '0 0 80px hsl(142 71% 60% / 0.9), 0 0 160px hsl(142 71% 50% / 0.5), 0 0 240px hsl(142 71% 45% / 0.2)',
+                    '0 0 40px hsl(142 71% 55% / 0.6), 0 0 80px hsl(142 71% 45% / 0.25)',
                   ],
-                  scale: [1, 1.05, 1],
+                  color: ['hsl(142 71% 45%)', 'hsl(142 80% 65%)', 'hsl(142 71% 45%)'],
+                  scale: [1, 1.1, 1],
                 } : {
                   textShadow: shownNote && isTargetInTune ? '0 0 30px hsl(142 71% 45% / 0.4)' : '0 0 0px transparent',
                   scale: 1,
                 }}
-                transition={inTuneConfirmed ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
+                transition={inTuneConfirmed ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.3 }}
               >
                 {shownNote ? (
                   <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
@@ -842,16 +843,17 @@ export default function Tuner() {
                   `}
                   animate={shouldPulse ? {
                     boxShadow: [
-                      '0 0 8px hsl(142 71% 45% / 0.3), inset 0 0 6px hsl(142 71% 45% / 0.1)',
-                      '0 0 24px hsl(142 71% 45% / 0.6), inset 0 0 12px hsl(142 71% 45% / 0.15)',
-                      '0 0 8px hsl(142 71% 45% / 0.3), inset 0 0 6px hsl(142 71% 45% / 0.1)',
+                      '0 0 12px hsl(142 71% 45% / 0.4), inset 0 0 8px hsl(142 71% 45% / 0.15)',
+                      '0 0 36px hsl(142 71% 50% / 0.8), 0 0 60px hsl(142 71% 45% / 0.3), inset 0 0 16px hsl(142 71% 45% / 0.2)',
+                      '0 0 12px hsl(142 71% 45% / 0.4), inset 0 0 8px hsl(142 71% 45% / 0.15)',
                     ],
-                    scale: [1, 1.06, 1],
+                    scale: [1, 1.12, 1],
+                    borderColor: ['hsl(142 71% 45% / 0.5)', 'hsl(142 80% 60% / 0.9)', 'hsl(142 71% 45% / 0.5)'],
                   } : {
                     boxShadow: '0 0 0px transparent',
                     scale: 1,
                   }}
-                  transition={shouldPulse ? { duration: 1.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
+                  transition={shouldPulse ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } : { duration: 0.2 }}
                   onClick={() => {
                     setSelectedString(isActive ? null : gs);
                     playReferenceTone(gs);
