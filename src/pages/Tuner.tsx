@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, Music } from 'lucide-react';
+import { MicOff, Music } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ─── Constants ───────────────────────────────────────────
@@ -111,6 +111,7 @@ export default function Tuner() {
   const [closestString, setClosestString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
   const [selectedString, setSelectedString] = useState<typeof GUITAR_STRINGS[number] | null>(null);
+  const startedRef = useRef(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -191,23 +192,16 @@ export default function Tuner() {
     }
   }, []);
 
-  const toggleListening = useCallback(() => {
-    if (isListening) {
-      stopListening();
-    } else {
+  // Auto-start listening on mount
+  useEffect(() => {
+    if (!startedRef.current) {
+      startedRef.current = true;
       startListening();
     }
-  }, [isListening, startListening, stopListening]);
-
-  // Cleanup on unmount
-  useEffect(() => {
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (sourceRef.current) sourceRef.current.disconnect();
-      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      if (audioCtxRef.current) audioCtxRef.current.close();
+      stopListening();
     };
-  }, []);
+  }, [startListening, stopListening]);
 
   // Determine tuning accuracy
   const cents = noteInfo?.cents ?? 0;
@@ -244,25 +238,20 @@ export default function Tuner() {
       </div>
 
       <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
-        {/* Mic toggle */}
-        <div className="flex justify-center">
-          <button
-            onClick={toggleListening}
-            className={`
-              flex items-center justify-center gap-3 rounded-xl px-8 py-4 font-display font-bold text-base transition-all duration-200 active:scale-95
-              ${isListening
-                ? 'bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))] border border-[hsl(var(--semantic-success)/0.3)] hover:bg-[hsl(var(--semantic-success)/0.2)]'
-                : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
-              }
-            `}
-          >
-            {isListening ? <Mic className="size-5" /> : <MicOff className="size-5" />}
-            {isListening ? 'Listening...' : 'Start Tuner'}
-            {isListening && (
-              <span className="size-2.5 rounded-full bg-[hsl(var(--semantic-success))] animate-pulse" />
-            )}
-          </button>
-        </div>
+        {/* Listening indicator */}
+        {isListening && (
+          <div className="flex items-center justify-center gap-3 rounded-xl px-6 py-3 bg-[hsl(142_71%_45%/0.08)] border border-[hsl(142_71%_45%/0.2)]">
+            <div className="flex items-center gap-1">
+              {[0,1,2,3,4].map((i) => (
+                <motion.div key={i} className="w-0.5 rounded-full bg-[hsl(142_71%_45%)]" animate={{ height: [4, 14, 4] }} transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.12, ease: 'easeInOut' }} />
+              ))}
+            </div>
+            <span className="text-sm font-body font-medium text-[hsl(142_71%_45%)]">
+              Listening — play a string
+            </span>
+            <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
+          </div>
+        )}
 
         {permissionDenied && (
           <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5 text-center justify-center">
