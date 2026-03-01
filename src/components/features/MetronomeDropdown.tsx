@@ -92,7 +92,7 @@ export default function MetronomeDropdown() {
         className={`
           flex items-center justify-center w-[45px] h-[45px] rounded-lg border transition-all duration-200
           ${store.isPlaying
-            ? 'border-[hsl(var(--color-emphasis)/0.6)] bg-[hsl(var(--color-emphasis)/0.12)] text-[hsl(var(--color-emphasis))]'
+            ? 'border-[hsl(142_71%_45%/0.4)] bg-[hsl(142_71%_45%/0.12)] text-[hsl(142_71%_45%)]'
             : open
               ? 'border-[hsl(var(--color-emphasis)/0.4)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))]'
               : 'border-transparent text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--bg-overlay))]'
@@ -102,7 +102,7 @@ export default function MetronomeDropdown() {
       >
         <MetronomeIcon className="size-[27px]" />
         {store.isPlaying && (
-          <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(var(--color-emphasis))] animate-pulse" />
+          <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
         )}
       </button>
 
