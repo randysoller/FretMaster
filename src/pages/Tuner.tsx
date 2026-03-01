@@ -756,7 +756,7 @@ export default function Tuner() {
                       ? 'text-[hsl(142_71%_45%)]'
                       : isTargetClose
                         ? 'text-[hsl(45_93%_47%)]'
-                        : 'text-[hsl(0_72%_51%)]'
+                        : 'text-[rgb(220,38,38)]'
                 }`}>
                   {shownNote ? (
                     <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
@@ -943,7 +943,11 @@ export default function Tuner() {
                     isActive
                       ? 'text-[hsl(var(--color-primary))]'
                       : isDetected
-                        ? isTargetInTune ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(var(--color-primary))]'
+                        ? stringInTune
+                          ? 'text-[hsl(142_71%_45%)]'
+                          : stringClose
+                            ? 'text-[hsl(45_93%_47%)]'
+                            : 'text-[rgb(220,38,38)]'
                         : 'text-[hsl(var(--text-default))]'
                   }`}>
                     {gs.note}
