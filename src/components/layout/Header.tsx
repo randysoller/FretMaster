@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
+import TunerDropdown from '@/components/features/TunerDropdown';
 
 export default function Header() {
   const location = useLocation();
@@ -23,6 +24,9 @@ export default function Header() {
         <nav className="flex items-center gap-[6px]">
           {/* Metronome dropdown — first position */}
           <MetronomeDropdown />
+
+          {/* Tuner dropdown */}
+          <TunerDropdown />
 
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
