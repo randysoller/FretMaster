@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useProgressionStore, type ProgressionTimerDuration, type SavedProgression } from '@/stores/progressionStore';
+import { useProgressionStore, type SavedProgression } from '@/stores/progressionStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
 import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
@@ -8,15 +8,15 @@ import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import CountdownRing from '@/components/features/CountdownRing';
+
 import VolumeControl from '@/components/features/VolumeControl';
 import BeatSyncControls from '@/components/features/BeatSyncControls';
-import { useCountdown } from '@/hooks/useCountdown';
+
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Play, Music,
-  ChevronDown, X, Plus, Repeat, Timer, Trash2, Mic, MicOff, SlidersHorizontal,
+  ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
   Save, FolderOpen, Upload, Check,
 } from 'lucide-react';
 
@@ -179,15 +179,6 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset,
   );
 }
 
-function TimerOption({ value, selected, onSelect }: { value: ProgressionTimerDuration; selected: boolean; onSelect: () => void }) {
-  const labels: Record<ProgressionTimerDuration, string> = { 0: 'No Timer', 2: '2s', 4: '4s', 8: '8s' };
-  return (
-    <button onClick={onSelect} className={`rounded-lg px-4 py-2.5 text-sm font-display font-bold transition-all duration-200 ${selected ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
-      {labels[value]}
-    </button>
-  );
-}
-
 // ─── Progression Timeline ────────────────────────────────
 
 function ProgressionTimeline({ chords, currentIndex }: { chords: { roman: string; chordSymbol: string }[]; currentIndex: number }) {
@@ -221,10 +212,10 @@ export default function ProgressionPractice() {
 
   const {
     selectedKey, selectedScale, selectedPreset, customDegrees, useCustom,
-    timerPerChord, isPracticing, progressionChords, currentChordIndex,
+    isPracticing, progressionChords, currentChordIndex,
     isRevealed, loopCount, savedProgressions,
     setKey, setScale, setPreset, setCustomDegrees, toggleCustomDegree, setUseCustom,
-    setTimerPerChord, saveProgression, deleteSavedProgression, loadSavedProgression,
+    saveProgression, deleteSavedProgression, loadSavedProgression,
     startProgression, stopProgression, revealChord, nextChord, prevChord,
     getCurrentChord, getResolvedChords,
   } = store;
@@ -249,15 +240,12 @@ export default function ProgressionPractice() {
     if (current?.chordData) playChord(current.chordData);
   }, [revealChord, getCurrentChord, playChord]);
 
-  const { timeLeft, progress, start, reset } = useCountdown({ duration: timerPerChord, onComplete: handleReveal });
-
   const handleDetectionCorrect = useCallback(() => {
     const s = useProgressionStore.getState();
     if (!s.isRevealed) revealChord();
-    reset();
     resetBeatCounter();
     nextChord();
-  }, [revealChord, reset, nextChord]);
+  }, [revealChord, nextChord]);
 
   const { isListening, result: detectionResult, permissionDenied, toggleListening, stopListening, pauseDetection } =
     useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true });
@@ -268,11 +256,10 @@ export default function ProgressionPractice() {
       const s = useProgressionStore.getState();
       if (!s.isPracticing) return;
       if (!s.isRevealed) revealChord();
-      reset();
       nextChord();
     });
     return unsub;
-  }, [revealChord, reset, nextChord]);
+  }, [revealChord, nextChord]);
 
   // Subscribe to auto-reveal before advancing
   useEffect(() => {
@@ -287,10 +274,6 @@ export default function ProgressionPractice() {
   }, [revealChord, playChord]);
 
   useEffect(() => {
-    if (isPracticing && !isRevealed && timerPerChord > 0) start();
-  }, [isPracticing, isRevealed, currentChordIndex, start, timerPerChord]);
-
-  useEffect(() => {
     if (prevLocationKeyRef.current !== location.key && isPracticing) {
       stopListening();
       stopProgression();
@@ -302,10 +285,10 @@ export default function ProgressionPractice() {
     return () => { stopListening(); };
   }, [stopListening]);
 
-  const handleNext = () => { reset(); resetBeatCounter(); nextChord(); };
-  const handlePrev = () => { reset(); resetBeatCounter(); prevChord(); };
+  const handleNext = () => { resetBeatCounter(); nextChord(); };
+  const handlePrev = () => { resetBeatCounter(); prevChord(); };
   const handleBack = () => { stopListening(); stopProgression(); };
-  const handleRestart = () => { reset(); resetBeatCounter(); startProgression(); };
+  const handleRestart = () => { resetBeatCounter(); startProgression(); };
 
   const resolvedChords = getResolvedChords();
   const hasChords = resolvedChords.length > 0;
@@ -428,14 +411,10 @@ export default function ProgressionPractice() {
               <div className="relative min-h-[260px] flex items-center justify-center">
                 <AnimatePresence mode="wait">
                   {!isRevealed ? (
-                    <motion.div key="countdown" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-6">
-                      {timerPerChord > 0 ? (
-                        <CountdownRing progress={progress} timeLeft={timeLeft} size={180} />
-                      ) : (
-                        <div className="min-h-[180px] flex items-center justify-center">
-                          <div className="text-center text-[hsl(var(--text-muted))]"><Eye className="size-10 mx-auto mb-2 opacity-30" /><p className="text-sm font-body">Tap reveal to see the chord</p></div>
-                        </div>
-                      )}
+                    <motion.div key="hidden" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-6">
+                      <div className="min-h-[180px] flex items-center justify-center">
+                        <div className="text-center text-[hsl(var(--text-muted))]"><Eye className="size-10 mx-auto mb-2 opacity-30" /><p className="text-sm font-body">Tap reveal to see the chord</p></div>
+                      </div>
                     </motion.div>
                   ) : (
                     <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
@@ -467,8 +446,8 @@ export default function ProgressionPractice() {
             <button onClick={handlePrev} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Previous"><SkipBack className="size-5" /></button>
             <button onClick={handleRestart} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Restart"><RotateCcw className="size-5" /></button>
             {!isRevealed ? (
-              <button onClick={() => { reset(); revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
-                <Eye className="size-5" /> {timerPerChord > 0 ? 'Reveal Now' : 'Reveal Chord'}
+              <button onClick={() => { revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
+                <Eye className="size-5" /> Reveal Chord
               </button>
             ) : (
               <button onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all">
@@ -578,19 +557,6 @@ export default function ProgressionPractice() {
               {savedProgressions.length === 0 && (
                 <div className="text-center py-4"><p className="text-xs font-body text-[hsl(var(--text-muted))]">No saved progressions yet. Build or select a progression above, then save it here.</p></div>
               )}
-            </div>
-
-            {/* Timer */}
-            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <Timer className="size-4 text-[hsl(var(--color-primary))]" />
-                <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Time Per Chord</h3>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {([0, 2, 4, 8] as ProgressionTimerDuration[]).map((t) => (
-                  <TimerOption key={t} value={t} selected={timerPerChord === t} onSelect={() => setTimerPerChord(t)} />
-                ))}
-              </div>
             </div>
 
             {/* Summary + Start */}
