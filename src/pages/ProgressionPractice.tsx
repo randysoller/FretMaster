@@ -87,9 +87,9 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
     <div>
       <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Key</h3>
       <div className="relative">
-        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-3 text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-base sm:text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <div className="flex items-center gap-3">
-            <span className="font-display font-bold text-base">{value.display} Major</span>
+            <span className="font-display font-bold text-lg sm:text-base">{value.display} Major</span>
             {value.count > 0 && (
               <span className="text-xs text-[hsl(var(--text-muted))]">
                 {value.count} {value.type === 'sharp' ? (value.count === 1 ? 'sharp' : 'sharps') : (value.count === 1 ? 'flat' : 'flats')}
@@ -99,21 +99,21 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
           <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
-          <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden max-h-[360px] overflow-y-auto">
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden max-h-[70vh] sm:max-h-[360px] overflow-y-auto">
             {KEY_SIGNATURES.map((ks) => {
               const isActive = value.display === ks.display;
               return (
                 <button
                   key={ks.display}
                   onClick={() => { onChange(ks); setOpen(false); }}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-body transition-colors flex items-center justify-between ${
+                  className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-base sm:text-sm font-body transition-colors flex items-center justify-between ${
                     isActive
                       ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
                       : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={`font-display font-bold min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
+                    <span className={`font-display font-bold text-base sm:text-sm min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
                     {ks.count === 0 && (
                       <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
                     )}
@@ -144,14 +144,14 @@ function ScaleSelector({ value, onChange }: { value: ScaleDefinition; onChange: 
     <div>
       <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Scale</h3>
       <div className="relative">
-        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-3 text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-base sm:text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <span>{value.name}</span>
           <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
           <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden">
             {SCALES.map((scale) => (
-              <button key={scale.id} onClick={() => { onChange(scale); setOpen(false); }} className={`w-full text-left px-4 py-3 text-sm font-body transition-colors ${scale.id === value.id ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium' : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
+              <button key={scale.id} onClick={() => { onChange(scale); setOpen(false); }} className={`w-full text-left px-4 py-4 sm:py-3 text-base sm:text-sm font-body transition-colors ${scale.id === value.id ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium' : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
                 {scale.name}
               </button>
             ))}
