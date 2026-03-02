@@ -28,8 +28,8 @@ const leftTabs = [
 ] as const;
 
 const rightTabs = [
-  { to: '/library', label: 'Library', icon: BookOpen, matchPaths: ['/library'] },
   { to: '/tuner', label: 'Tuner', icon: TuningForkIcon, matchPaths: ['/tuner'] },
+  { to: '/library', label: 'Library', icon: BookOpen, matchPaths: ['/library'] },
 ] as const;
 
 export default function MobileTabBar() {
