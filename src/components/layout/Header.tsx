@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool } from 'lucide-react';
-import MetronomeDropdown from '@/components/features/MetronomeDropdown';
+
 
 function TuningForkIcon({ className }: { className?: string }) {
   return (
@@ -32,10 +32,6 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-[4px]">
-          {/* Desktop-only nav icons (hidden on mobile — use bottom tab bar instead) */}
-          {/* Metronome dropdown — always visible */}
-          <MetronomeDropdown />
-
           {/* Tuner toggle — hidden on mobile (bottom tab bar handles it) */}
           <button
             onClick={() => {

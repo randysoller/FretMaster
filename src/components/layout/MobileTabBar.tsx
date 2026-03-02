@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, Music } from 'lucide-react';
+import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 function TuningForkIcon({ className }: { className?: string }) {
   return (
@@ -22,9 +23,12 @@ function GuitarIcon({ className }: { className?: string }) {
   );
 }
 
-const tabs = [
+const leftTabs = [
   { to: '/', label: 'Practice', icon: GuitarIcon, matchPaths: ['/', '/chord-practice', '/practice'] },
   { to: '/progressions', label: 'Progressions', icon: Music, matchPaths: ['/progressions'] },
+] as const;
+
+const rightTabs = [
   { to: '/library', label: 'Library', icon: BookOpen, matchPaths: ['/library'] },
   { to: '/tuner', label: 'Tuner', icon: TuningForkIcon, matchPaths: ['/tuner'] },
 ] as const;
@@ -32,32 +36,39 @@ const tabs = [
 export default function MobileTabBar() {
   const { pathname } = useLocation();
 
+  const renderTab = (tab: typeof leftTabs[number] | typeof rightTabs[number]) => {
+    const isActive = tab.matchPaths.some((p) =>
+      p === '/' ? pathname === '/' : pathname.startsWith(p),
+    );
+    const Icon = tab.icon;
+    return (
+      <Link
+        key={tab.to}
+        to={tab.to}
+        className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
+          isActive
+            ? 'text-[hsl(var(--color-primary))]'
+            : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
+        }`}
+      >
+        <Icon className="size-[22px]" />
+        <span className="text-[10px] font-display font-semibold leading-none">{tab.label}</span>
+        {isActive && (
+          <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
+        )}
+      </Link>
+    );
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-lg safe-area-bottom">
-      <div className="grid grid-cols-4 h-[56px]">
-        {tabs.map((tab) => {
-          const isActive = tab.matchPaths.some((p) =>
-            p === '/' ? pathname === '/' : pathname.startsWith(p),
-          );
-          const Icon = tab.icon;
-          return (
-            <Link
-              key={tab.to}
-              to={tab.to}
-              className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                isActive
-                  ? 'text-[hsl(var(--color-primary))]'
-                  : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
-              }`}
-            >
-              <Icon className="size-[22px]" />
-              <span className="text-[10px] font-display font-semibold leading-none">{tab.label}</span>
-              {isActive && (
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
-              )}
-            </Link>
-          );
-        })}
+      <div className="grid grid-cols-5 h-[56px]">
+        {leftTabs.map(renderTab)}
+        {/* Center metronome */}
+        <div className="flex flex-col items-center justify-center">
+          <MetronomeDropdown position="bottom" />
+        </div>
+        {rightTabs.map(renderTab)}
       </div>
     </nav>
   );

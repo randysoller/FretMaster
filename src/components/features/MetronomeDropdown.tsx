@@ -57,7 +57,7 @@ function MetronomeIcon({ className }: { className?: string }) {
   );
 }
 
-export default function MetronomeDropdown() {
+export default function MetronomeDropdown({ position = 'top' }: { position?: 'top' | 'bottom' }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const store = useMetronomeStore();
@@ -87,28 +87,52 @@ export default function MetronomeDropdown() {
   return (
     <div ref={dropdownRef} className="relative">
       {/* Trigger button */}
-      <button
-        onClick={() => setOpen(!open)}
-        className={`
-          flex items-center justify-center w-[45px] h-[45px] rounded-lg border transition-all duration-200
-          ${store.isPlaying
-            ? 'border-[hsl(142_71%_45%/0.4)] bg-[hsl(142_71%_45%/0.12)] text-[hsl(142_71%_45%)]'
-            : open
-              ? 'border-[hsl(var(--color-emphasis)/0.4)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))]'
-              : 'border-transparent text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--bg-overlay))]'
-          }
-        `}
-        title="Metronome"
-      >
-        <MetronomeIcon className="size-[32px]" />
-        {store.isPlaying && (
-          <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
-        )}
-      </button>
+      {position === 'bottom' ? (
+        <button
+          onClick={() => setOpen(!open)}
+          className={`relative flex flex-col items-center justify-center gap-0.5 transition-colors ${
+            store.isPlaying
+              ? 'text-[hsl(142_71%_45%)]'
+              : open
+                ? 'text-[hsl(var(--color-emphasis))]'
+                : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
+          }`}
+          title="Metronome"
+        >
+          <MetronomeIcon className="size-[22px]" />
+          <span className="text-[10px] font-display font-semibold leading-none">Metronome</span>
+          {store.isPlaying && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(142_71%_45%)]" />
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={() => setOpen(!open)}
+          className={`
+            flex items-center justify-center w-[45px] h-[45px] rounded-lg border transition-all duration-200
+            ${store.isPlaying
+              ? 'border-[hsl(142_71%_45%/0.4)] bg-[hsl(142_71%_45%/0.12)] text-[hsl(142_71%_45%)]'
+              : open
+                ? 'border-[hsl(var(--color-emphasis)/0.4)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))]'
+                : 'border-transparent text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--bg-overlay))]'
+            }
+          `}
+          title="Metronome"
+        >
+          <MetronomeIcon className="size-[32px]" />
+          {store.isPlaying && (
+            <span className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
+          )}
+        </button>
+      )}
 
       {/* Dropdown panel */}
       {open && (
-        <div className="fixed left-2 right-2 top-[58px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px] rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden">
+        <div className={`fixed left-2 right-2 z-50 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden ${
+          position === 'bottom'
+            ? 'bottom-[64px] sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-[400px]'
+            : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'
+        }`}>
           {/* Header */}
           <div className="flex items-center justify-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <div className="flex items-center gap-2">
