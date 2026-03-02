@@ -63,8 +63,8 @@ export default function Home() {
             {/* Left: Category + Type */}
             <div className="space-y-4 sm:space-y-6 lg:space-y-8">
               {/* Key Filter */}
-              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500/30" />
+              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500/30" />
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/15">
@@ -155,12 +155,12 @@ export default function Home() {
                   </p>
                 </div> {/* Closing div for the Key Filter content area */}
               </div> {/* Closing div for the Key Filter section (started on line 105) */}
-              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500/30" />
+              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500/30" />
                 <CategorySelector accentIcon={<div className="flex items-center justify-center size-7 rounded-lg bg-emerald-500/15"><Shapes className="size-4 text-emerald-400" /></div>} />
               </div>
-              <div className="relative z-[8] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500/30" />
+              <div className="relative z-[8] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500/30" />
                 <TypeSelector accentIcon={<div className="flex items-center justify-center size-7 rounded-lg bg-violet-500/15"><Layers className="size-4 text-violet-400" /></div>} />
               </div>
             </div>
