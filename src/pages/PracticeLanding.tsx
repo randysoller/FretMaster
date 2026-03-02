@@ -1,7 +1,43 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Music, ChevronRight, ListMusic } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Music, ChevronRight } from 'lucide-react';
+import { motion, useSpring } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
+
+function TiltCard({ children, delay }: { children: React.ReactNode; delay: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
+  const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
+    const y = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
+    rotateY.set(x * 8);
+    rotateX.set(-y * 8);
+  };
+
+  const handleMouseLeave = () => {
+    rotateX.set(0);
+    rotateY.set(0);
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 24, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+      style={{ rotateX, rotateY, transformPerspective: 800 }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="will-change-transform"
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function PracticeLanding() {
   return (
@@ -47,11 +83,7 @@ export default function PracticeLanding() {
       <div className="px-4 sm:px-6 pb-16 -mt-4 sm:-mt-6">
         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Chord Practice Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <TiltCard delay={0.3}>
           <Link
             to="/chord-practice"
             className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-primary)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-primary)/0.12)] active:scale-[0.98]"
@@ -104,14 +136,10 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
-          </motion.div>
+          </TiltCard>
 
           {/* Progression Practice Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 24, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
+          <TiltCard delay={0.45}>
           <Link
             to="/progressions"
             className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-emphasis)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-emphasis)/0.12)] active:scale-[0.98]"
@@ -130,15 +158,15 @@ export default function PracticeLanding() {
                       <line key={y} x1="2" y1={y} x2="32" y2={y} stroke="hsl(var(--bg-base))" strokeOpacity="0.15" strokeWidth="0.6" />
                     ))}
                     {/* I */}
-                    <text x="5" y="16" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="800" fontSize="13" letterSpacing="-0.5">
+                    <text x="5" y="17" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="800" fontSize="17" letterSpacing="-0.5">
                       I
                     </text>
                     {/* IV */}
-                    <text x="4" y="29" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="11" letterSpacing="-0.5" opacity="0.8">
+                    <text x="2" y="31" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="15" letterSpacing="-0.5" opacity="0.85">
                       IV
                     </text>
                     {/* V */}
-                    <text x="20" y="29" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="11" letterSpacing="-0.5" opacity="0.8">
+                    <text x="19" y="31" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="15" letterSpacing="-0.5" opacity="0.85">
                       V
                     </text>
                     {/* Connecting dashes */}
@@ -164,7 +192,7 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
-          </motion.div>
+          </TiltCard>
         </div>
       </div>
     </div>
