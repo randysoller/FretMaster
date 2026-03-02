@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Play, Music,
   ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
-  Save, FolderOpen, Upload, Check, Heart,
+  Save, FolderOpen, Upload, Check, Heart, KeyRound, Waves, ListMusic,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
@@ -81,11 +81,14 @@ function SensitivitySlider({ value, onChange }: { value: number; onChange: (v: n
 
 // ─── Setup View Components ───────────────────────────────
 
-function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: KeySignature) => void }) {
+function KeySelector({ value, onChange, accentIcon }: { value: KeySignature; onChange: (ks: KeySignature) => void; accentIcon?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Key</h3>
+      <div className="flex items-center gap-2.5 mb-3">
+        {accentIcon}
+        <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Select Key</h3>
+      </div>
       <div className="relative">
         <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-xl sm:text-base font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <div className="flex items-center gap-3">
@@ -138,11 +141,14 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
   );
 }
 
-function ScaleSelector({ value, onChange }: { value: ScaleDefinition; onChange: (s: ScaleDefinition) => void }) {
+function ScaleSelector({ value, onChange, accentIcon }: { value: ScaleDefinition; onChange: (s: ScaleDefinition) => void; accentIcon?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
-      <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Scale</h3>
+      <div className="flex items-center gap-2.5 mb-3">
+        {accentIcon}
+        <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Select Scale</h3>
+      </div>
       <div className="relative">
         <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-xl sm:text-base font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <span>{value.name}</span>
@@ -782,17 +788,25 @@ export default function ProgressionPractice() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           <div className="lg:col-span-5 space-y-4">
             <div className="relative z-20 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-              <KeySelector value={selectedKeySignature} onChange={setKeySignature} />
+              <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500/30" />
+              <KeySelector value={selectedKeySignature} onChange={setKeySignature} accentIcon={<div className="flex items-center justify-center size-7 rounded-lg bg-amber-500/15"><KeyRound className="size-4 text-amber-400" /></div>} />
             </div>
             <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
-              <ScaleSelector value={selectedScale} onChange={setScale} />
+              <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500/30" />
+              <ScaleSelector value={selectedScale} onChange={setScale} accentIcon={<div className="flex items-center justify-center size-7 rounded-lg bg-cyan-500/15"><Waves className="size-4 text-cyan-400" /></div>} />
               <ScaleChordsPreview selectedKey={selectedKey} selectedScale={selectedScale} useFlats={useFlats} keyDisplay={selectedKeySignature.display} />
             </div>
           </div>
 
           <div className="lg:col-span-7 space-y-4">
-            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-              <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Choose Progression</h3>
+            <div className="relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+              <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500/30" />
+              <div className="flex items-center gap-2.5 mb-3">
+                <div className="flex items-center justify-center size-7 rounded-lg bg-violet-500/15">
+                  <ListMusic className="size-4 text-violet-400" />
+                </div>
+                <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Choose Progression</h3>
+              </div>
               {/* Tabs */}
               <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--bg-surface))] p-1 mb-4">
                 {([
@@ -878,10 +892,13 @@ export default function ProgressionPractice() {
             </div>
 
             {/* Save / Load */}
-            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
+            <div className="relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
+              <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-rose-500 via-rose-400 to-rose-500/30" />
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <FolderOpen className="size-4 text-[hsl(var(--color-primary))]" />
+                  <div className="flex items-center justify-center size-7 rounded-lg bg-rose-500/15">
+                    <FolderOpen className="size-4 text-rose-400" />
+                  </div>
                   <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">My Progressions</h3>
                   {savedProgressions.length > 0 && <span className="text-[10px] font-display font-bold text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface))] rounded-full px-2 py-0.5">{savedProgressions.length}</span>}
                 </div>
@@ -942,8 +959,14 @@ export default function ProgressionPractice() {
             </div>
 
             {/* Summary + Start */}
-            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
-              <h3 className="font-display text-base font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Ready to Practice</h3>
+            <div className="relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
+              <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-[hsl(var(--color-brand))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-emphasis)/0.3)]" />
+              <div className="flex items-center gap-2.5">
+                <div className="flex items-center justify-center size-7 rounded-lg bg-[hsl(var(--color-primary)/0.15)]">
+                  <Play className="size-4 text-[hsl(var(--color-primary))]" />
+                </div>
+                <h3 className="font-display text-base font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Ready to Practice</h3>
+              </div>
               <div className="space-y-2 text-sm font-body">
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Key</span><span className="text-[hsl(var(--text-default))] font-medium">{selectedKeySignature.display}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Scale</span><span className="text-[hsl(var(--text-default))] font-medium">{selectedScale.name}</span></div>
