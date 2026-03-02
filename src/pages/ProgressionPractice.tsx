@@ -17,12 +17,28 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Play, Music,
   ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
-  Save, FolderOpen, Upload, Check,
+  Save, FolderOpen, Upload, Check, Heart,
 } from 'lucide-react';
 
 // ─── Shared Detection UI ─────────────────────────────────
 
 const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
+const FAVORITES_KEY = 'fretmaster-favorite-progressions';
+
+function getStoredFavorites(): Set<string> {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+function persistFavorites(favs: Set<string>) {
+  try { localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favs])); } catch {}
+}
 
 function getStoredSensitivity(): number {
   try { const v = localStorage.getItem(SENSITIVITY_KEY); if (v) { const n = Number(v); if (n >= 1 && n <= 10) return n; } } catch {} return 5;
@@ -181,9 +197,10 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset,
 
 // ─── By Style Section ────────────────────────────────────
 
-function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset }: {
+function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
   selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
   useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
+  favorites: Set<string>; onToggleFavorite: (id: string) => void;
 }) {
   const [expandedStyle, setExpandedStyle] = useState<string | null>(null);
   const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
@@ -214,6 +231,9 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
                 <span className="text-[10px] font-body text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-base)/0.5)] rounded-full px-2 py-0.5">
                   {style.progressions.length}
                 </span>
+                <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                  {style.bpmRange.min}–{style.bpmRange.max} BPM
+                </span>
               </div>
               <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
             </button>
@@ -229,42 +249,147 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
                   <div className="px-3 pb-3 pt-1 space-y-1.5">
                     {style.progressions.map((preset) => {
                       const isActive = !useCustom && selectedPreset?.id === preset.id;
+                      const isFav = favorites.has(preset.id);
                       return (
-                        <button
-                          key={preset.id}
-                          onClick={() => onSelectPreset(preset)}
-                          className={`w-full text-left rounded-lg border px-4 py-2.5 transition-all duration-200 ${
-                            isActive
-                              ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.1)]'
-                              : 'border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-elevated)/0.5)] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className={`text-xs font-display font-bold mb-0.5 ${
-                                isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                        <div key={preset.id} className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => onSelectPreset(preset)}
+                            className={`flex-1 text-left rounded-lg border px-4 py-2.5 transition-all duration-200 ${
+                              isActive
+                                ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.1)]'
+                                : 'border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-elevated)/0.5)] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className={`text-xs font-display font-bold mb-0.5 ${
+                                  isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                                }`}>
+                                  {preset.name}
+                                </p>
+                                <p className={`text-[11px] font-body ${
+                                  isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                                }`}>
+                                  {preset.romanDisplay}
+                                </p>
+                              </div>
+                              <p className={`text-xs font-display font-bold shrink-0 ${
+                                isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
                               }`}>
-                                {preset.name}
-                              </p>
-                              <p className={`text-[11px] font-body ${
-                                isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
-                              }`}>
-                                {preset.romanDisplay}
+                                {resolveRomanForPreset(preset)}
                               </p>
                             </div>
-                            <p className={`text-xs font-display font-bold shrink-0 ${
-                              isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
-                            }`}>
-                              {resolveRomanForPreset(preset)}
-                            </p>
-                          </div>
-                        </button>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onToggleFavorite(preset.id); }}
+                            className={`flex items-center justify-center size-9 rounded-lg shrink-0 transition-all duration-200 active:scale-90 ${
+                              isFav
+                                ? 'text-[hsl(0_84%_60%)]'
+                                : 'text-[hsl(var(--text-muted)/0.4)] hover:text-[hsl(var(--text-muted))]'
+                            }`}
+                            title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                          >
+                            <Heart className={`size-4 ${isFav ? 'fill-current' : ''}`} />
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Favorites Section ───────────────────────────────────
+
+function FavoritesSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
+  selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
+  useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
+  favorites: Set<string>; onToggleFavorite: (id: string) => void;
+}) {
+  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
+  const resolveRomanForPreset = (preset: ProgressionPreset) => preset.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' – ');
+
+  // Collect all favorited progressions from all styles
+  const favProgressions = useMemo(() => {
+    const items: { preset: ProgressionPreset; styleName: string; emoji: string; bpmRange: { min: number; max: number; default: number } }[] = [];
+    for (const style of STYLE_PROGRESSIONS) {
+      for (const preset of style.progressions) {
+        if (favorites.has(preset.id)) {
+          items.push({ preset, styleName: style.name, emoji: style.emoji, bpmRange: style.bpmRange });
+        }
+      }
+    }
+    return items;
+  }, [favorites]);
+
+  if (favProgressions.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Heart className="size-8 mx-auto mb-3 text-[hsl(var(--text-muted)/0.25)]" />
+        <p className="text-sm font-body text-[hsl(var(--text-muted))]">
+          No favorites yet
+        </p>
+        <p className="text-xs font-body text-[hsl(var(--text-muted)/0.6)] mt-1">
+          Tap the heart icon on any style progression to save it here.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {favProgressions.map(({ preset, styleName, emoji, bpmRange }) => {
+        const isActive = !useCustom && selectedPreset?.id === preset.id;
+        return (
+          <div key={preset.id} className="flex items-center gap-1.5">
+            <button
+              onClick={() => onSelectPreset(preset)}
+              className={`flex-1 text-left rounded-lg border px-4 py-2.5 transition-all duration-200 ${
+                isActive
+                  ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.1)]'
+                  : 'border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-elevated)/0.5)] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-xs">{emoji}</span>
+                    <span className={`text-[10px] font-body ${
+                      isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                    }`}>{styleName}</span>
+                    <span className="text-[10px] font-body text-[hsl(var(--text-muted)/0.5)] tabular-nums">{bpmRange.min}–{bpmRange.max}</span>
+                  </div>
+                  <p className={`text-xs font-display font-bold ${
+                    isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                  }`}>
+                    {preset.name}
+                  </p>
+                  <p className={`text-[11px] font-body ${
+                    isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                  }`}>
+                    {preset.romanDisplay}
+                  </p>
+                </div>
+                <p className={`text-xs font-display font-bold shrink-0 ${
+                  isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
+                }`}>
+                  {resolveRomanForPreset(preset)}
+                </p>
+              </div>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleFavorite(preset.id); }}
+              className="flex items-center justify-center size-9 rounded-lg shrink-0 text-[hsl(0_84%_60%)] transition-all duration-200 active:scale-90"
+              title="Remove from favorites"
+            >
+              <Heart className="size-4 fill-current" />
+            </button>
           </div>
         );
       })}
@@ -318,7 +443,19 @@ export default function ProgressionPractice() {
   const [justSaved, setJustSaved] = useState(false);
   const [showSavedList, setShowSavedList] = useState(false);
 
-  const [progressionTab, setProgressionTab] = useState<'common' | 'style' | 'custom'>('common');
+  const [progressionTab, setProgressionTab] = useState<'common' | 'favorites' | 'style' | 'custom'>('common');
+  const [favorites, setFavorites] = useState<Set<string>>(getStoredFavorites);
+  const favCount = favorites.size;
+
+  const handleToggleFavorite = useCallback((presetId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(presetId)) next.delete(presetId);
+      else next.add(presetId);
+      persistFavorites(next);
+      return next;
+    });
+  }, []);
   const { playChord } = useChordAudio();
   const currentInfo = getCurrentChord();
 
@@ -327,6 +464,18 @@ export default function ProgressionPractice() {
     setSensitivity(v);
     try { localStorage.setItem(SENSITIVITY_KEY, String(v)); } catch {}
   }, []);
+
+  // Auto-set metronome BPM when a style progression is selected
+  const handleStylePresetSelect = useCallback((preset: ProgressionPreset) => {
+    setPreset(preset);
+    // Find which style this preset belongs to and auto-set BPM
+    for (const style of STYLE_PROGRESSIONS) {
+      if (style.progressions.some((p) => p.id === preset.id)) {
+        metronome.setBpm(style.bpmRange.default);
+        break;
+      }
+    }
+  }, [setPreset, metronome]);
 
   const handleReveal = useCallback(() => {
     revealChord();
@@ -590,20 +739,24 @@ export default function ProgressionPractice() {
               {/* Tabs */}
               <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--bg-surface))] p-1 mb-4">
                 {([
-                  { key: 'common' as const, label: 'Common' },
-                  { key: 'style' as const, label: 'By Style' },
-                  { key: 'custom' as const, label: 'Custom' },
+                  { key: 'common' as const, label: 'Common', badge: 0 },
+                  { key: 'favorites' as const, label: 'Favorites', badge: favCount },
+                  { key: 'style' as const, label: 'By Style', badge: 0 },
+                  { key: 'custom' as const, label: 'Custom', badge: 0 },
                 ] as const).map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setProgressionTab(tab.key)}
-                    className={`flex-1 rounded-md px-3 py-2 text-xs font-display font-bold transition-all duration-200 ${
+                    className={`flex-1 rounded-md px-2 py-2 text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1 ${
                       progressionTab === tab.key
                         ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-sm'
                         : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'
                     }`}
                   >
-                    {tab.label}
+                    {tab.key === 'favorites' && <Heart className={`size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.key === 'favorites' ? '' : tab.label}</span>
+                    {tab.badge > 0 && <span className="text-[9px] font-bold bg-[hsl(0_84%_60%/0.15)] text-[hsl(0_84%_60%)] rounded-full px-1.5 py-0.5 leading-none">{tab.badge}</span>}
                   </button>
                 ))}
               </div>
@@ -613,9 +766,14 @@ export default function ProgressionPractice() {
                 <ProgressionPresetSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} customDegrees={customDegrees} useCustom={useCustom} onSelectPreset={setPreset} onToggleDegree={toggleCustomDegree} onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }} />
               )}
 
+              {/* Favorites */}
+              {progressionTab === 'favorites' && (
+                <FavoritesSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
+              )}
+
               {/* By Style */}
               {progressionTab === 'style' && (
-                <StyleProgressionSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={setPreset} />
+                <StyleProgressionSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
               )}
 
               {/* Custom builder */}

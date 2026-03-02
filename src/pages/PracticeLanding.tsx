@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Music, ChevronRight } from 'lucide-react';
+import { Music, ChevronRight, Guitar, ListMusic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
-import chordIcon from '@/assets/chord-icon.png';
-import progressionIcon from '@/assets/progression-icon.png';
 
 export default function PracticeLanding() {
   return (
@@ -65,7 +63,7 @@ export default function PracticeLanding() {
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
-                  <img src={chordIcon} alt="E major open chord" className="size-10 object-contain" />
+                  <Guitar className="size-6 text-[hsl(var(--bg-base))]" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
                   Chords
@@ -102,7 +100,7 @@ export default function PracticeLanding() {
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
-                  <img src={progressionIcon} alt="I-IV-V progression" className="size-10 object-contain" />
+                  <ListMusic className="size-6 text-[hsl(var(--bg-base))]" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
                   Chord Progressions
