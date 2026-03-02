@@ -123,7 +123,30 @@ export default function PracticeLanding() {
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
-                  <ListMusic className="size-6 text-[hsl(var(--bg-base))]" />
+                  {/* I–IV–V Roman numeral graphic */}
+                  <svg width="28" height="34" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Horizontal staff lines for musical context */}
+                    {[10, 18, 26, 34].map((y) => (
+                      <line key={y} x1="2" y1={y} x2="32" y2={y} stroke="hsl(var(--bg-base))" strokeOpacity="0.15" strokeWidth="0.6" />
+                    ))}
+                    {/* I */}
+                    <text x="5" y="16" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="800" fontSize="13" letterSpacing="-0.5">
+                      I
+                    </text>
+                    {/* IV */}
+                    <text x="4" y="29" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="11" letterSpacing="-0.5" opacity="0.8">
+                      IV
+                    </text>
+                    {/* V */}
+                    <text x="20" y="29" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="11" letterSpacing="-0.5" opacity="0.8">
+                      V
+                    </text>
+                    {/* Connecting dashes */}
+                    <line x1="13" y1="12" x2="17" y2="12" stroke="hsl(var(--bg-base))" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.6" />
+                    <line x1="16" y1="25" x2="19" y2="25" stroke="hsl(var(--bg-base))" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.6" />
+                    {/* Small accent dot */}
+                    <circle cx="28" cy="12" r="1.5" fill="hsl(var(--bg-base))" opacity="0.35" />
+                  </svg>
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
                   Chord Progressions
