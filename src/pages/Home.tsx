@@ -58,9 +58,9 @@ export default function Home() {
       {/* Setup Section */}
       <div className="px-4 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4">
         <div className="max-w-5xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
             {/* Left: Category + Type */}
-            <div className="lg:col-span-7 space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8">
               {/* Key Filter */}
               <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3">
@@ -148,7 +148,7 @@ export default function Home() {
             </div>
 
             {/* Right: Summary + Start */}
-            <div className="lg:col-span-5 space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8">
               <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
                 <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
                   Ready to Practice
