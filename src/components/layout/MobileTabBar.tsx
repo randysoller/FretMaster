@@ -50,8 +50,8 @@ export default function MobileTabBar() {
             : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
         }`}
       >
-        <Icon className="size-[26px]" />
-        <span className="text-[10px] font-display font-semibold leading-none">{tab.label}</span>
+        <Icon className="size-[30px]" />
+        <span className="text-[14px] font-display font-semibold leading-none">{tab.label}</span>
         {isActive && (
           <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
         )}

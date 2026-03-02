@@ -99,8 +99,8 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
           }`}
           title="Metronome"
         >
-          <MetronomeIcon className="size-[22px]" />
-          <span className="text-[10px] font-display font-semibold leading-none">Metronome</span>
+          <MetronomeIcon className="size-[26px]" />
+          <span className="text-[14px] font-display font-semibold leading-none">Metronome</span>
           {store.isPlaying && (
             <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(142_71%_45%)]" />
           )}
