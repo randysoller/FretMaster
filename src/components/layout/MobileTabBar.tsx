@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
+import { useProgressionStore } from '@/stores/progressionStore';
 
 function TuningForkIcon({ className }: { className?: string }) {
   return (
@@ -34,6 +35,11 @@ const rightTabs = [
 
 export default function MobileTabBar() {
   const { pathname } = useLocation();
+  const progressionPracticing = useProgressionStore((s) => s.isPracticing);
+
+  // Hide during active practice sessions
+  const isInPractice = pathname === '/practice' || (pathname === '/progressions' && progressionPracticing);
+  if (isInPractice) return null;
 
   const renderTab = (tab: typeof leftTabs[number] | typeof rightTabs[number]) => {
     const isActive = tab.matchPaths.some((p) =>
