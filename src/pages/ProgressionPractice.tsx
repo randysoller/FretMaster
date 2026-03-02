@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type SavedProgression } from '@/stores/progressionStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
-import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
+import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
@@ -179,6 +179,99 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset,
   );
 }
 
+// ─── By Style Section ────────────────────────────────────
+
+function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset }: {
+  selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
+  useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
+}) {
+  const [expandedStyle, setExpandedStyle] = useState<string | null>(null);
+  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
+  const resolveRomanForPreset = (preset: ProgressionPreset) => preset.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' – ');
+
+  return (
+    <div className="space-y-2">
+      {STYLE_PROGRESSIONS.map((style) => {
+        const isExpanded = expandedStyle === style.id;
+        const hasActivePreset = !useCustom && style.progressions.some((p) => p.id === selectedPreset?.id);
+        return (
+          <div key={style.id} className="rounded-lg border border-[hsl(var(--border-subtle))] overflow-hidden transition-colors duration-150">
+            <button
+              onClick={() => setExpandedStyle(isExpanded ? null : style.id)}
+              className={`w-full flex items-center justify-between px-4 py-3 transition-colors duration-150 ${
+                hasActivePreset
+                  ? 'bg-[hsl(var(--color-primary)/0.06)]'
+                  : 'bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))]'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{style.emoji}</span>
+                <span className={`font-display text-sm font-bold ${
+                  hasActivePreset ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                }`}>
+                  {style.name}
+                </span>
+                <span className="text-[10px] font-body text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-base)/0.5)] rounded-full px-2 py-0.5">
+                  {style.progressions.length}
+                </span>
+              </div>
+              <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-3 pb-3 pt-1 space-y-1.5">
+                    {style.progressions.map((preset) => {
+                      const isActive = !useCustom && selectedPreset?.id === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          onClick={() => onSelectPreset(preset)}
+                          className={`w-full text-left rounded-lg border px-4 py-2.5 transition-all duration-200 ${
+                            isActive
+                              ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.1)]'
+                              : 'border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-elevated)/0.5)] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className={`text-xs font-display font-bold mb-0.5 ${
+                                isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                              }`}>
+                                {preset.name}
+                              </p>
+                              <p className={`text-[11px] font-body ${
+                                isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                              }`}>
+                                {preset.romanDisplay}
+                              </p>
+                            </div>
+                            <p className={`text-xs font-display font-bold shrink-0 ${
+                              isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
+                            }`}>
+                              {resolveRomanForPreset(preset)}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Progression Timeline ────────────────────────────────
 
 function ProgressionTimeline({ chords, currentIndex }: { chords: { roman: string; chordSymbol: string }[]; currentIndex: number }) {
@@ -225,6 +318,7 @@ export default function ProgressionPractice() {
   const [justSaved, setJustSaved] = useState(false);
   const [showSavedList, setShowSavedList] = useState(false);
 
+  const [progressionTab, setProgressionTab] = useState<'common' | 'style' | 'custom'>('common');
   const { playChord } = useChordAudio();
   const currentInfo = getCurrentChord();
 
@@ -492,7 +586,71 @@ export default function ProgressionPractice() {
 
           <div className="lg:col-span-7 space-y-4">
             <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-              <ProgressionPresetSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} customDegrees={customDegrees} useCustom={useCustom} onSelectPreset={setPreset} onToggleDegree={toggleCustomDegree} onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }} />
+              <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Choose Progression</h3>
+              {/* Tabs */}
+              <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--bg-surface))] p-1 mb-4">
+                {([
+                  { key: 'common' as const, label: 'Common' },
+                  { key: 'style' as const, label: 'By Style' },
+                  { key: 'custom' as const, label: 'Custom' },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setProgressionTab(tab.key)}
+                    className={`flex-1 rounded-md px-3 py-2 text-xs font-display font-bold transition-all duration-200 ${
+                      progressionTab === tab.key
+                        ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-sm'
+                        : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Common progressions */}
+              {progressionTab === 'common' && (
+                <ProgressionPresetSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} customDegrees={customDegrees} useCustom={useCustom} onSelectPreset={setPreset} onToggleDegree={toggleCustomDegree} onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }} />
+              )}
+
+              {/* By Style */}
+              {progressionTab === 'style' && (
+                <StyleProgressionSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={setPreset} />
+              )}
+
+              {/* Custom builder */}
+              {progressionTab === 'custom' && (() => {
+                const scaleChords = resolveScaleChords(selectedKey, selectedScale);
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">Build Your Own</h4>
+                      {useCustom && customDegrees.length > 0 && (
+                        <button onClick={() => { setCustomDegrees([]); setUseCustom(false); }} className="flex items-center gap-1 text-xs font-body text-[hsl(var(--semantic-error))] hover:underline"><Trash2 className="size-3" /> Clear</button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {scaleChords.map((c, i) => (
+                        <button key={i} onClick={() => toggleCustomDegree(i)} className="flex flex-col items-center gap-0.5 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-3 py-2 hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--color-primary)/0.4)] transition-all duration-150 active:scale-95">
+                          <Plus className="size-3 text-[hsl(var(--color-primary))]" />
+                          <span className="text-sm font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
+                          <span className="text-xs font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {useCustom && customDegrees.length > 0 && (
+                      <div className="flex items-center gap-2 flex-wrap rounded-lg bg-[hsl(var(--bg-overlay))] px-3 py-2 border border-[hsl(var(--color-primary)/0.2)]">
+                        <span className="text-xs text-[hsl(var(--text-muted))] font-body mr-1">Sequence:</span>
+                        {customDegrees.map((d, i) => (
+                          <span key={i} className="text-sm font-display font-bold text-[hsl(var(--color-primary))]">
+                            {scaleChords[d]?.chordSymbol ?? '?'}{i < customDegrees.length - 1 && <span className="text-[hsl(var(--text-muted))] ml-1">–</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Save / Load */}
