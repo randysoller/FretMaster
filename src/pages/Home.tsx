@@ -72,13 +72,13 @@ export default function Home() {
                   )}
                 </div>
                 <div className="relative">
-                  <button onClick={() => setKeyDropdownOpen(!keyDropdownOpen)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-base sm:text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+                  <button onClick={() => setKeyDropdownOpen(!keyDropdownOpen)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-xl sm:text-base font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
                     <div className="flex items-center gap-3">
                       {keyFilter ? (
                         <>
-                          <span className="font-display font-bold text-base">{keyFilter.display} Major</span>
+                          <span className="font-display font-bold text-xl sm:text-base">{keyFilter.display} Major</span>
                           {keyFilter.count > 0 && (
-                            <span className="text-xs text-[hsl(var(--text-muted))]">
+                            <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">
                               {keyFilter.count} {keyFilter.type === 'sharp' ? (keyFilter.count === 1 ? 'sharp' : 'sharps') : (keyFilter.count === 1 ? 'flat' : 'flats')}
                             </span>
                           )}
@@ -93,7 +93,7 @@ export default function Home() {
                     <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden max-h-[70vh] sm:max-h-[360px] overflow-y-auto">
                       <button
                         onClick={() => { setKeyFilter(null); setKeyDropdownOpen(false); }}
-                        className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-base sm:text-sm font-body transition-colors ${
+                        className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-xl sm:text-base font-body transition-colors ${
                           !keyFilter
                             ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
                             : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
@@ -107,25 +107,25 @@ export default function Home() {
                           <button
                             key={ks.display}
                             onClick={() => { setKeyFilter(ks); setKeyDropdownOpen(false); }}
-                            className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-base sm:text-sm font-body transition-colors flex items-center justify-between ${
+                            className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-xl sm:text-base font-body transition-colors flex items-center justify-between ${
                               isActive
                                 ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
                                 : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
                             }`}
                           >
                             <div className="flex items-center gap-3">
-                              <span className={`font-display font-bold text-base sm:text-sm min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
+                              <span className={`font-display font-bold text-xl sm:text-base min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
                               {ks.count === 0 && (
-                                <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
+                                <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
                               )}
                               {ks.count > 0 && (
-                                <span className="text-xs text-[hsl(var(--text-muted))]">
+                                <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">
                                   {ks.count}{ks.type === 'sharp' ? '\u266f' : '\u266d'}
                                 </span>
                               )}
                             </div>
                             {ks.count > 0 && (
-                              <span className={`text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
+                              <span className={`text-[15px] sm:text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
                                 {ks.notes.join('  ')}
                               </span>
                             )}
