@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Music, ChevronRight, Guitar, ListMusic } from 'lucide-react';
+import { Music, ChevronRight, ListMusic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
 
@@ -63,7 +63,30 @@ export default function PracticeLanding() {
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
                 <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
-                  <Guitar className="size-6 text-[hsl(var(--bg-base))]" />
+                  {/* Open G chord diagram */}
+                  <svg width="28" height="34" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Nut */}
+                    <rect x="4" y="6" width="26" height="2.5" rx="0.5" fill="hsl(var(--bg-base))" />
+                    {/* Fret lines */}
+                    {[0, 1, 2, 3].map((f) => (
+                      <line key={f} x1="4" y1={12 + f * 8} x2="30" y2={12 + f * 8} stroke="hsl(var(--bg-base))" strokeOpacity="0.35" strokeWidth="0.8" />
+                    ))}
+                    {/* String lines */}
+                    {[0, 1, 2, 3, 4, 5].map((s) => (
+                      <line key={s} x1={4 + s * 5.2} y1="8" x2={4 + s * 5.2} y2="36" stroke="hsl(var(--bg-base))" strokeOpacity="0.5" strokeWidth={s === 0 ? 1.2 : s <= 2 ? 1 : 0.7} />
+                    ))}
+                    {/* Open string markers: D(3), G(2), B(1) — strings index 2,3,4 from low E */}
+                    {[2, 3, 4].map((s) => (
+                      <circle key={s} cx={4 + s * 5.2} cy="3.5" r="2" stroke="hsl(var(--bg-base))" strokeWidth="1" fill="none" />
+                    ))}
+                    {/* Finger dots: 6th string fret 3, 5th string fret 2, 1st string fret 3 */}
+                    {/* String 6 (index 0) fret 3 — between fret lines 2 and 3 → y center = 12 + 2*8 - 4 = 24 */}
+                    <circle cx={4 + 0 * 5.2} cy="24" r="2.8" fill="hsl(var(--bg-base))" />
+                    {/* String 5 (index 1) fret 2 — between fret lines 1 and 2 → y center = 12 + 1*8 - 4 = 16 */}
+                    <circle cx={4 + 1 * 5.2} cy="16" r="2.8" fill="hsl(var(--bg-base))" />
+                    {/* String 1 (index 5) fret 3 — y center = 24 */}
+                    <circle cx={4 + 5 * 5.2} cy="24" r="2.8" fill="hsl(var(--bg-base))" />
+                  </svg>
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
                   Chords
