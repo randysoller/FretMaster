@@ -32,10 +32,11 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-[4px]">
-          {/* Metronome dropdown — in first nav position */}
+          {/* Desktop-only nav icons (hidden on mobile — use bottom tab bar instead) */}
+          {/* Metronome dropdown — always visible */}
           <MetronomeDropdown />
 
-          {/* Tuner toggle — green when active, click again to turn off */}
+          {/* Tuner toggle — hidden on mobile (bottom tab bar handles it) */}
           <button
             onClick={() => {
               if (isTunerActive) {
@@ -45,7 +46,7 @@ export default function Header() {
               }
             }}
             className={`
-              flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-body font-medium transition-colors
+              hidden sm:flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-body font-medium transition-colors
               ${isTunerActive
                 ? 'bg-[hsl(142_71%_45%/0.12)] text-[hsl(142_71%_45%)]'
                 : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
@@ -59,7 +60,7 @@ export default function Header() {
             )}
           </button>
 
-          <div className="flex items-center gap-[6px]">
+          <div className="hidden sm:flex items-center gap-[6px]">
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
             return (

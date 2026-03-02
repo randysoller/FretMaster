@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
+import MobileTabBar from './MobileTabBar';
 import { preloadMetronomeSamples } from '@/stores/metronomeStore';
 
 export default function AppLayout() {
@@ -28,9 +29,10 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-[hsl(var(--bg-base))]">
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 pb-[56px] sm:pb-0">
         <Outlet />
       </main>
+      <MobileTabBar />
     </div>
   );
 }
