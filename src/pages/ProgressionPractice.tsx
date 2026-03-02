@@ -11,6 +11,8 @@ import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 
 import VolumeControl from '@/components/features/VolumeControl';
 import BeatSyncControls from '@/components/features/BeatSyncControls';
+import StrummingPatternDisplay, { StrummingPatternPreview } from '@/components/features/StrummingPatternDisplay';
+import { getStyleStrumming } from '@/constants/strumming';
 
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -247,6 +249,12 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
                   className="overflow-hidden"
                 >
                   <div className="px-3 pb-3 pt-1 space-y-1.5">
+                    {/* Strumming pattern preview */}
+                    {getStyleStrumming(style.id).length > 0 && (
+                      <div className="mb-2">
+                        <StrummingPatternPreview styleId={style.id} />
+                      </div>
+                    )}
                     {style.progressions.map((preset) => {
                       const isActive = !useCustom && selectedPreset?.id === preset.id;
                       const isFav = favorites.has(preset.id);
@@ -446,6 +454,7 @@ export default function ProgressionPractice() {
   const [progressionTab, setProgressionTab] = useState<'common' | 'favorites' | 'style' | 'custom'>('common');
   const [favorites, setFavorites] = useState<Set<string>>(getStoredFavorites);
   const favCount = favorites.size;
+  const [activeStyleId, setActiveStyleId] = useState<string | null>(null);
 
   const handleToggleFavorite = useCallback((presetId: string) => {
     setFavorites((prev) => {
@@ -468,10 +477,11 @@ export default function ProgressionPractice() {
   // Auto-set metronome BPM when a style progression is selected
   const handleStylePresetSelect = useCallback((preset: ProgressionPreset) => {
     setPreset(preset);
-    // Find which style this preset belongs to and auto-set BPM
+    // Find which style this preset belongs to and auto-set BPM + track style
     for (const style of STYLE_PROGRESSIONS) {
       if (style.progressions.some((p) => p.id === preset.id)) {
         metronome.setBpm(style.bpmRange.default);
+        setActiveStyleId(style.id);
         break;
       }
     }
@@ -635,6 +645,13 @@ export default function ProgressionPractice() {
         <div className="px-4 sm:px-6 mb-2">
           <BeatSyncControls />
         </div>
+
+        {/* Strumming Pattern (visible when style is active and has patterns) */}
+        {activeStyleId && getStyleStrumming(activeStyleId).length > 0 && (
+          <div className="px-4 sm:px-6 mb-2">
+            <StrummingPatternDisplay styleId={activeStyleId} animated compact />
+          </div>
+        )}
 
         {/* Progression Timeline */}
         <div className="px-4 sm:px-6 py-2 flex justify-center">
