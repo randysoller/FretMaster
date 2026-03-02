@@ -19,7 +19,7 @@ const CATEGORY_DESCRIPTIONS: Record<ChordCategory, string> = {
 const CATEGORIES: ChordCategory[] = ['open', 'barre', 'movable'];
 const BARRE_ROOTS: BarreRoot[] = [6, 5, 4];
 
-export default function CategorySelector() {
+export default function CategorySelector({ accentIcon }: { accentIcon?: React.ReactNode }) {
   const { categories, toggleCategory, clearCategories, barreRoots, toggleBarreRoot, clearBarreRoots } = usePracticeStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -62,9 +62,12 @@ export default function CategorySelector() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
-          Shape Category
-        </h3>
+        <div className="flex items-center gap-2.5">
+          {accentIcon}
+          <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+            Shape Category
+          </h3>
+        </div>
         {categories.size > 0 && (
           <button
             onClick={() => { clearCategories(); clearBarreRoots(); }}

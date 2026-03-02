@@ -28,7 +28,7 @@ const TYPE_GROUPS: { label: string; types: ChordType[] }[] = [
   { label: 'Extended', types: ['9th', '11th', '13th'] },
 ];
 
-export default function TypeSelector() {
+export default function TypeSelector({ accentIcon }: { accentIcon?: React.ReactNode }) {
   const { chordTypes, toggleChordType, clearChordTypes } = usePracticeStore();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -66,9 +66,12 @@ export default function TypeSelector() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
-          Chord Type
-        </h3>
+        <div className="flex items-center gap-2.5">
+          {accentIcon}
+          <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+            Chord Type
+          </h3>
+        </div>
         {chordTypes.size > 0 && (
           <button
             onClick={() => { clearChordTypes(); }}
