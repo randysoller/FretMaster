@@ -321,3 +321,39 @@ export const STYLE_STRUMMING: Record<string, StrummingPattern[]> = {
 export function getStyleStrumming(styleId: string): StrummingPattern[] {
   return STYLE_STRUMMING[styleId] ?? [];
 }
+
+// ─── Custom pattern storage ──────────────────────────────
+
+const CUSTOM_STRUM_KEY = 'fretmaster-custom-strum-patterns';
+
+export function getCustomStrumPatterns(): StrummingPattern[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_STRUM_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr;
+    }
+  } catch {}
+  return [];
+}
+
+export function saveCustomStrumPattern(pattern: StrummingPattern): void {
+  const patterns = getCustomStrumPatterns();
+  const idx = patterns.findIndex((p) => p.id === pattern.id);
+  if (idx >= 0) patterns[idx] = pattern;
+  else patterns.push(pattern);
+  try { localStorage.setItem(CUSTOM_STRUM_KEY, JSON.stringify(patterns)); } catch {}
+}
+
+export function deleteCustomStrumPattern(id: string): void {
+  const patterns = getCustomStrumPatterns().filter((p) => p.id !== id);
+  try { localStorage.setItem(CUSTOM_STRUM_KEY, JSON.stringify(patterns)); } catch {}
+}
+
+/** Strum type cycle order for the editor */
+export const STRUM_CYCLE: StrumType[] = ['D', 'Ad', 'U', 'Au', 'mute', 'rest'];
+
+export function nextStrumType(current: StrumType): StrumType {
+  const idx = STRUM_CYCLE.indexOf(current);
+  return STRUM_CYCLE[(idx + 1) % STRUM_CYCLE.length];
+}

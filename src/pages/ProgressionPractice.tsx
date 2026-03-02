@@ -12,7 +12,7 @@ import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import VolumeControl from '@/components/features/VolumeControl';
 import BeatSyncControls from '@/components/features/BeatSyncControls';
 import StrummingPatternDisplay, { StrummingPatternPreview } from '@/components/features/StrummingPatternDisplay';
-import { getStyleStrumming } from '@/constants/strumming';
+import { getStyleStrumming, getCustomStrumPatterns } from '@/constants/strumming';
 
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -646,10 +646,10 @@ export default function ProgressionPractice() {
           <BeatSyncControls />
         </div>
 
-        {/* Strumming Pattern (visible when style is active and has patterns) */}
-        {activeStyleId && getStyleStrumming(activeStyleId).length > 0 && (
+        {/* Strumming Pattern (visible when style is active and has patterns, or custom patterns exist) */}
+        {((activeStyleId && getStyleStrumming(activeStyleId).length > 0) || getCustomStrumPatterns().length > 0) && (
           <div className="px-4 sm:px-6 mb-2">
-            <StrummingPatternDisplay styleId={activeStyleId} animated compact />
+            <StrummingPatternDisplay styleId={activeStyleId ?? ''} animated compact />
           </div>
         )}
 

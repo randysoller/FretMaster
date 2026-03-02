@@ -70,12 +70,12 @@ export default function PracticeLanding() {
                 </h2>
               </div>
 
-              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-3">
+              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed flex-1">
                 Study individual chords with timed reveals, audio playback, and real-time microphone detection. Filter by category, type, and root string.
               </p>
 
               {/* CTA */}
-              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-primary))] group-hover:gap-3 transition-all duration-200">
+              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-primary))] group-hover:gap-3 transition-all duration-200 mt-3">
                 <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
@@ -107,12 +107,12 @@ export default function PracticeLanding() {
                 </h2>
               </div>
 
-              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-3">
+              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed flex-1">
                 Practice chord transitions in any key. Choose from common progressions, chord progressions by style of music, or build your own.
               </p>
 
               {/* CTA */}
-              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-emphasis))] group-hover:gap-3 transition-all duration-200">
+              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-emphasis))] group-hover:gap-3 transition-all duration-200 mt-3">
                 <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
