@@ -280,7 +280,7 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
                                   {preset.romanDisplay}
                                 </p>
                               </div>
-                              <p className={`text-xs font-display font-bold shrink-0 ${
+                              <p className={`text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
                                 isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
                               }`}>
                                 {resolveRomanForPreset(preset)}
@@ -382,7 +382,7 @@ function FavoritesSelector({ selectedKey, selectedScale, selectedPreset, useCust
                     {preset.romanDisplay}
                   </p>
                 </div>
-                <p className={`text-xs font-display font-bold shrink-0 ${
+                <p className={`text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
                   isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
                 }`}>
                   {resolveRomanForPreset(preset)}
