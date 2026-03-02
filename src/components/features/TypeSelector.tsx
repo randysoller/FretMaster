@@ -92,7 +92,7 @@ export default function TypeSelector() {
           `}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-body text-sm font-medium text-[hsl(var(--text-default))] truncate">
+            <span className="font-body text-lg sm:text-sm font-medium text-[hsl(var(--text-default))] truncate">
               {getSummaryText()}
             </span>
             {chordTypes.size > 0 && chordTypes.size < CHORD_TYPES.length && (
@@ -107,12 +107,12 @@ export default function TypeSelector() {
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 max-h-[55vh] sm:max-h-[360px] overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 max-h-[70vh] sm:max-h-[360px] overflow-y-auto">
             {/* All Types option */}
             <button
               onClick={handleToggleAll}
               className={`
-                w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+                w-full flex items-center gap-3 px-4 py-4 sm:py-3 text-left transition-colors
                 ${allTypesSelected
                   ? 'bg-[hsl(var(--color-primary)/0.1)]'
                   : 'hover:bg-[hsl(var(--bg-overlay))]'
@@ -127,10 +127,10 @@ export default function TypeSelector() {
                 {allTypesSelected && <Check className="size-3 text-[hsl(var(--bg-base))]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-display text-sm font-semibold text-[hsl(var(--text-default))]">
+                <span className="font-display text-lg sm:text-sm font-semibold text-[hsl(var(--text-default))]">
                   All Types
                 </span>
-                <p className="text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
+                <p className="text-sm sm:text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
                   Include every chord type
                 </p>
               </div>
@@ -182,7 +182,7 @@ export default function TypeSelector() {
                       key={type}
                       onClick={() => toggleChordType(type)}
                       className={`
-                        w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
+                        w-full flex items-center gap-3 px-4 py-3.5 sm:py-2.5 text-left transition-colors
                         ${isActive ? 'bg-[hsl(var(--color-primary)/0.08)]' : 'hover:bg-[hsl(var(--bg-overlay))]'}
                       `}
                     >
@@ -193,7 +193,7 @@ export default function TypeSelector() {
                       }`}>
                         {isActive && <Check className="size-3 text-[hsl(var(--bg-base))]" />}
                       </div>
-                      <span className={`font-body text-sm font-medium ${
+                      <span className={`font-body text-lg sm:text-sm font-medium ${
                         isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                       }`}>
                         {CHORD_TYPE_LABELS[type]}

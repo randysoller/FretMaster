@@ -87,11 +87,11 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
     <div>
       <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Key</h3>
       <div className="relative">
-        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-base sm:text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-xl sm:text-base font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <div className="flex items-center gap-3">
-            <span className="font-display font-bold text-lg sm:text-base">{value.display} Major</span>
+            <span className="font-display font-bold text-xl sm:text-base">{value.display} Major</span>
             {value.count > 0 && (
-              <span className="text-xs text-[hsl(var(--text-muted))]">
+              <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">
                 {value.count} {value.type === 'sharp' ? (value.count === 1 ? 'sharp' : 'sharps') : (value.count === 1 ? 'flat' : 'flats')}
               </span>
             )}
@@ -106,25 +106,25 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
                 <button
                   key={ks.display}
                   onClick={() => { onChange(ks); setOpen(false); }}
-                  className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-base sm:text-sm font-body transition-colors flex items-center justify-between ${
+                  className={`w-full text-left px-4 py-3.5 sm:py-2.5 text-xl sm:text-base font-body transition-colors flex items-center justify-between ${
                     isActive
                       ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
                       : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={`font-display font-bold text-base sm:text-sm min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
+                    <span className={`font-display font-bold text-xl sm:text-base min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
                     {ks.count === 0 && (
-                      <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
+                      <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
                     )}
                     {ks.count > 0 && (
-                      <span className="text-xs text-[hsl(var(--text-muted))]">
+                      <span className="text-base sm:text-xs text-[hsl(var(--text-muted))]">
                         {ks.count}{ks.type === 'sharp' ? '♯' : '♭'}
                       </span>
                     )}
                   </div>
                   {ks.count > 0 && (
-                    <span className={`text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
+                    <span className={`text-[15px] sm:text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
                       {ks.notes.join('  ')}
                     </span>
                   )}
@@ -144,14 +144,14 @@ function ScaleSelector({ value, onChange }: { value: ScaleDefinition; onChange: 
     <div>
       <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Scale</h3>
       <div className="relative">
-        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-base sm:text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-4 sm:py-3 text-xl sm:text-base font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
           <span>{value.name}</span>
           <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {open && (
           <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden">
             {SCALES.map((scale) => (
-              <button key={scale.id} onClick={() => { onChange(scale); setOpen(false); }} className={`w-full text-left px-4 py-4 sm:py-3 text-base sm:text-sm font-body transition-colors ${scale.id === value.id ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium' : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
+              <button key={scale.id} onClick={() => { onChange(scale); setOpen(false); }} className={`w-full text-left px-4 py-4 sm:py-3 text-xl sm:text-base font-body transition-colors ${scale.id === value.id ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium' : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
                 {scale.name}
               </button>
             ))}
@@ -197,9 +197,9 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, useFlats, selec
           {visiblePresets.map((preset) => {
             const isActive = !useCustom && selectedPreset?.id === preset.id;
             return (
-              <button key={preset.id} onClick={() => onSelectPreset(preset)} className={`text-left rounded-lg border px-4 py-3 transition-all duration-200 ${isActive ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.08)]' : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'}`}>
-                <p className={`text-base font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>{preset.romanDisplay}</p>
-                <p className={`text-sm font-display font-bold ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{resolveRomanForPreset(preset)}</p>
+              <button key={preset.id} onClick={() => onSelectPreset(preset)} className={`text-left rounded-lg border px-4 py-3.5 sm:py-3 transition-all duration-200 ${isActive ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.08)]' : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'}`}>
+                <p className={`text-lg sm:text-base font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>{preset.romanDisplay}</p>
+                <p className={`text-base sm:text-sm font-display font-bold ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{resolveRomanForPreset(preset)}</p>
               </button>
             );
           })}
@@ -265,16 +265,16 @@ function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, select
               }`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-lg">{style.emoji}</span>
-                <span className={`font-display text-sm font-bold ${
+                <span className="text-xl sm:text-lg">{style.emoji}</span>
+                <span className={`font-display text-base sm:text-sm font-bold ${
                   hasActivePreset ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                 }`}>
                   {style.name}
                 </span>
-                <span className="text-[10px] font-body text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-base)/0.5)] rounded-full px-2 py-0.5">
+                <span className="text-sm sm:text-[10px] font-body text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-base)/0.5)] rounded-full px-2 py-0.5">
                   {style.progressions.length}
                 </span>
-                <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                <span className="text-sm sm:text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
                   {style.bpmRange.min}–{style.bpmRange.max} BPM
                 </span>
               </div>
@@ -311,18 +311,18 @@ function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, select
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <p className={`text-xs font-display font-bold mb-0.5 ${
+                                <p className={`text-base sm:text-xs font-display font-bold mb-0.5 ${
                                   isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                                 }`}>
                                   {preset.name}
                                 </p>
-                                <p className={`text-[11px] font-body ${
+                                <p className={`text-sm sm:text-[11px] font-body ${
                                   isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
                                 }`}>
                                   {preset.romanDisplay}
                                 </p>
                               </div>
-                              <p className={`text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
+                              <p className={`text-base sm:text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
                                 isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
                               }`}>
                                 {resolveRomanForPreset(preset)}
@@ -331,7 +331,7 @@ function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, select
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); onToggleFavorite(preset.id); }}
-                            className={`flex items-center justify-center size-9 rounded-lg shrink-0 transition-all duration-200 active:scale-90 ${
+                            className={`flex items-center justify-center size-10 sm:size-9 rounded-lg shrink-0 transition-all duration-200 active:scale-90 ${
                               isFav
                                 ? 'text-[hsl(0_84%_60%)]'
                                 : 'text-[hsl(var(--text-muted)/0.4)] hover:text-[hsl(var(--text-muted))]'
@@ -413,18 +413,18 @@ function FavoritesSelector({ selectedKey, selectedScale, useFlats, selectedPrese
                     }`}>{styleName}</span>
                     <span className="text-[10px] font-body text-[hsl(var(--text-muted)/0.5)] tabular-nums">{bpmRange.min}–{bpmRange.max}</span>
                   </div>
-                  <p className={`text-xs font-display font-bold ${
+                  <p className={`text-base sm:text-xs font-display font-bold ${
                     isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                   }`}>
                     {preset.name}
                   </p>
-                  <p className={`text-[11px] font-body ${
+                  <p className={`text-sm sm:text-[11px] font-body ${
                     isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
                   }`}>
                     {preset.romanDisplay}
                   </p>
                 </div>
-                <p className={`text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
+                <p className={`text-base sm:text-xs font-display font-bold min-w-0 text-right leading-relaxed ${
                   isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'
                 }`}>
                   {resolveRomanForPreset(preset)}
@@ -804,13 +804,13 @@ export default function ProgressionPractice() {
                   <button
                     key={tab.key}
                     onClick={() => setProgressionTab(tab.key)}
-                    className={`flex-1 rounded-md px-2 py-2 text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1 ${
+                    className={`flex-1 rounded-md px-2 py-3 sm:py-2 text-base sm:text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1.5 ${
                       progressionTab === tab.key
                         ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-sm'
                         : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'
                     }`}
                   >
-                    {tab.key === 'favorites' && <Heart className={`size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
+                    {tab.key === 'favorites' && <Heart className={`size-4 sm:size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
                     <span className="hidden sm:inline">{tab.label}</span>
                     <span className="sm:hidden">{tab.key === 'favorites' ? '' : tab.label}</span>
                     {tab.badge > 0 && <span className="text-[9px] font-bold bg-[hsl(0_84%_60%/0.15)] text-[hsl(0_84%_60%)] rounded-full px-1.5 py-0.5 leading-none">{tab.badge}</span>}

@@ -88,7 +88,7 @@ export default function CategorySelector() {
           `}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-body text-sm font-medium text-[hsl(var(--text-default))] truncate">
+            <span className="font-body text-lg sm:text-sm font-medium text-[hsl(var(--text-default))] truncate">
               {getSummaryText()}
             </span>
             {categories.size > 0 && categories.size < CATEGORIES.length && (
@@ -103,12 +103,12 @@ export default function CategorySelector() {
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden overflow-y-auto max-h-[60vh] sm:max-h-[400px] animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-20 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 overflow-hidden overflow-y-auto max-h-[70vh] sm:max-h-[400px] animate-in fade-in slide-in-from-top-2 duration-150">
             {/* All Chords option */}
             <button
               onClick={handleToggleAll}
               className={`
-                w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+                w-full flex items-center gap-3 px-4 py-4 sm:py-3 text-left transition-colors
                 ${allCategoriesSelected && allRootsSelected
                   ? 'bg-[hsl(var(--color-primary)/0.1)]'
                   : 'hover:bg-[hsl(var(--bg-overlay))]'
@@ -123,10 +123,10 @@ export default function CategorySelector() {
                 {allCategoriesSelected && allRootsSelected && <Check className="size-3 text-[hsl(var(--bg-base))]" />}
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-display text-sm font-semibold text-[hsl(var(--text-default))]">
+                <span className="font-display text-lg sm:text-sm font-semibold text-[hsl(var(--text-default))]">
                   All Chords
                 </span>
-                <p className="text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
+                <p className="text-sm sm:text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
                   Include every shape category
                 </p>
               </div>
@@ -142,7 +142,7 @@ export default function CategorySelector() {
                   key={cat}
                   onClick={() => toggleCategory(cat)}
                   className={`
-                    w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
+                    w-full flex items-center gap-3 px-4 py-4 sm:py-3 text-left transition-colors
                     ${isActive ? 'bg-[hsl(var(--color-primary)/0.08)]' : 'hover:bg-[hsl(var(--bg-overlay))]'}
                   `}
                 >
@@ -157,12 +157,12 @@ export default function CategorySelector() {
                     {CATEGORY_ICONS[cat]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className={`font-display text-sm font-semibold ${
+                    <span className={`font-display text-lg sm:text-sm font-semibold ${
                       isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
                     }`}>
                       {CATEGORY_LABELS[cat]}
                     </span>
-                    <p className="text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
+                    <p className="text-sm sm:text-[11px] text-[hsl(var(--text-muted))] leading-snug mt-0.5">
                       {CATEGORY_DESCRIPTIONS[cat]}
                     </p>
                   </div>
