@@ -61,14 +61,8 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
             {/* Left: Category + Type */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-6 lg:space-y-8">
-              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-                <CategorySelector />
-              </div>
-              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-                <TypeSelector />
-              </div>
               {/* Key Filter */}
-              <div className="relative z-[8] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+              <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Filter by Key</h3>
                   {keyFilter && (
@@ -122,7 +116,7 @@ export default function Home() {
                             <div className="flex items-center gap-3">
                               <span className={`font-display font-bold min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
                               {ks.count === 0 && (
-                                <span className="text-xs text-[hsl(var(--text-muted))]">\u2014 no sharps or flats</span>
+                                <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
                               )}
                               {ks.count > 0 && (
                                 <span className="text-xs text-[hsl(var(--text-muted))]">
@@ -144,6 +138,12 @@ export default function Home() {
                 <p className="mt-2 text-[11px] font-body text-[hsl(var(--text-muted))]">
                   {keyFilter ? `Showing only chords with roots in the ${keyFilter.display} major scale` : 'Showing chords in all keys'}
                 </p>
+              </div>
+              <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <CategorySelector />
+              </div>
+              <div className="relative z-[8] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <TypeSelector />
               </div>
             </div>
 

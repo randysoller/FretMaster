@@ -115,7 +115,7 @@ function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: 
                   <div className="flex items-center gap-3">
                     <span className={`font-display font-bold min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
                     {ks.count === 0 && (
-                      <span className="text-xs text-[hsl(var(--text-muted))]">— no sharps or flats</span>
+                      <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
                     )}
                     {ks.count > 0 && (
                       <span className="text-xs text-[hsl(var(--text-muted))]">
