@@ -804,10 +804,10 @@ export default function ProgressionPractice() {
                   <button
                     key={tab.key}
                     onClick={() => setProgressionTab(tab.key)}
-                    className={`flex-1 rounded-md px-2 py-3 sm:py-2 text-base sm:text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                    className={`flex-1 rounded-md px-2 py-3 sm:py-2 text-base sm:text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1.5 border ${
                       progressionTab === tab.key
-                        ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-sm'
-                        : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))]'
+                        ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border-[hsl(var(--color-primary)/0.4)] shadow-sm'
+                        : 'text-[hsl(var(--text-muted))] border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--border-default)/0.8)]'
                     }`}
                   >
                     {tab.key === 'favorites' && <Heart className={`size-4 sm:size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
