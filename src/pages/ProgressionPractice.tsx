@@ -198,7 +198,7 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, useFlats, selec
             const isActive = !useCustom && selectedPreset?.id === preset.id;
             return (
               <button key={preset.id} onClick={() => onSelectPreset(preset)} className={`text-left rounded-lg border px-4 py-3.5 sm:py-3 transition-all duration-200 ${isActive ? 'border-[hsl(var(--color-primary)/0.6)] bg-[hsl(var(--color-primary)/0.08)]' : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))] hover:border-[hsl(var(--border-default))]'}`}>
-                <p className={`text-lg sm:text-base font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>{preset.romanDisplay}</p>
+                <p className={`text-lg sm:text-base font-body mb-0.5 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-subtle))]'}`}>{preset.romanDisplay}</p>
                 <p className={`text-base sm:text-sm font-display font-bold ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{resolveRomanForPreset(preset)}</p>
               </button>
             );
@@ -274,7 +274,7 @@ function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, select
                 <span className="text-sm sm:text-[10px] font-body text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-base)/0.5)] rounded-full px-2 py-0.5">
                   {style.progressions.length}
                 </span>
-                <span className="text-sm sm:text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                <span className="text-sm sm:text-[10px] font-body text-[hsl(var(--text-subtle))] tabular-nums">
                   {style.bpmRange.min}–{style.bpmRange.max} BPM
                 </span>
               </div>
@@ -317,7 +317,7 @@ function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, select
                                   {preset.name}
                                 </p>
                                 <p className={`text-sm sm:text-[11px] font-body ${
-                                  isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                                  isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-subtle))]'
                                 }`}>
                                   {preset.romanDisplay}
                                 </p>
@@ -411,7 +411,7 @@ function FavoritesSelector({ selectedKey, selectedScale, useFlats, selectedPrese
                     <span className={`text-[10px] font-body ${
                       isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
                     }`}>{styleName}</span>
-                    <span className="text-[10px] font-body text-[hsl(var(--text-muted)/0.5)] tabular-nums">{bpmRange.min}–{bpmRange.max}</span>
+                    <span className="text-[10px] font-body text-[hsl(var(--text-subtle)/0.7)] tabular-nums">{bpmRange.min}–{bpmRange.max}</span>
                   </div>
                   <p className={`text-base sm:text-xs font-display font-bold ${
                     isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
@@ -419,7 +419,7 @@ function FavoritesSelector({ selectedKey, selectedScale, useFlats, selectedPrese
                     {preset.name}
                   </p>
                   <p className={`text-sm sm:text-[11px] font-body ${
-                    isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+                    isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-subtle))]'
                   }`}>
                     {preset.romanDisplay}
                   </p>
