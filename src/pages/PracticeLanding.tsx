@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { Guitar, ListMusic, Music, ChevronRight } from 'lucide-react';
+import { Music, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
+import chordIcon from '@/assets/chord-icon.png';
+import progressionIcon from '@/assets/progression-icon.png';
 
 export default function PracticeLanding() {
   return (
@@ -34,9 +36,9 @@ export default function PracticeLanding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.1, ease: 'easeOut' }}
             className="font-display text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-balance">
-            <span className="text-[hsl(var(--text-default))]">How Do You Want to</span>
+            <span className="text-[hsl(var(--text-default))]">What Do You Want to</span>
             <br />
-            <span className="text-gradient">Practice Today?</span>
+            <span className="text-gradient">Play Today?</span>
           </motion.h1>
 
           <motion.p
@@ -67,22 +69,22 @@ export default function PracticeLanding() {
 
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
-              <div className="flex items-center gap-4 mb-3">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-primary)/0.18)] transition-all duration-300">
-                  <Guitar className="size-6 text-[hsl(var(--color-primary))]" />
+              <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-primary)/0.18)] transition-all duration-300 overflow-hidden">
+                  <img src={chordIcon} alt="Chord diagram" className="size-10 object-contain" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
-                  Chord Practice
+                  Chords
                 </h2>
               </div>
 
-              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-4 flex-1">
+              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-3">
                 Study individual chords with timed reveals, audio playback, and real-time microphone detection. Filter by category, type, and root string.
               </p>
 
               {/* CTA */}
               <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-primary))] group-hover:gap-3 transition-all duration-200">
-                <span>Start Chord Practice</span>
+                <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
@@ -104,22 +106,22 @@ export default function PracticeLanding() {
 
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
-              <div className="flex items-center gap-4 mb-3">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-emphasis)/0.18)] transition-all duration-300">
-                  <ListMusic className="size-6 text-[hsl(var(--color-emphasis))]" />
+              <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-emphasis)/0.18)] transition-all duration-300 overflow-hidden">
+                  <img src={progressionIcon} alt="I-IV-V progression" className="size-10 object-contain" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
-                  Progression Practice
+                  Chord Progressions
                 </h2>
               </div>
 
-              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-4 flex-1">
-                Practice chord transitions in any key and scale. Choose from common progressions or build your own, with a built-in metronome and tap-tempo.
+              <p className="font-body text-sm text-[hsl(var(--text-subtle))] leading-relaxed mb-3">
+                Practice chord transitions in any key. Choose from common progressions, chord progressions by style of music, or build your own.
               </p>
 
               {/* CTA */}
               <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-emphasis))] group-hover:gap-3 transition-all duration-200">
-                <span>Start Progressions</span>
+                <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
