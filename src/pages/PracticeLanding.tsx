@@ -19,7 +19,7 @@ export default function PracticeLanding() {
           <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--bg-base)/0.4)] via-[hsl(var(--bg-base)/0.75)] to-[hsl(var(--bg-base))]" />
         </div>
 
-        <div className="relative px-4 sm:px-6 py-10 sm:py-16 md:py-20 text-center max-w-3xl mx-auto">
+        <div className="relative px-4 sm:px-6 py-8 sm:py-12 md:py-16 text-center max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -41,18 +41,12 @@ export default function PracticeLanding() {
             <span className="text-gradient">Play Today?</span>
           </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-            className="mt-3 sm:mt-4 font-body text-sm sm:text-base text-[hsl(var(--text-subtle))] max-w-lg mx-auto text-pretty">
-            Master individual chords or work through full progressions — pick a mode and start building your skills.
-          </motion.p>
+
         </div>
       </div>
 
       {/* Mode Cards */}
-      <div className="px-4 sm:px-6 pb-16 -mt-2 sm:-mt-4">
+      <div className="px-4 sm:px-6 pb-16 -mt-4 sm:-mt-6">
         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Chord Practice Card */}
           <motion.div
@@ -70,8 +64,8 @@ export default function PracticeLanding() {
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-primary)/0.18)] transition-all duration-300 overflow-hidden">
-                  <img src={chordIcon} alt="Chord diagram" className="size-10 object-contain" />
+                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
+                  <img src={chordIcon} alt="E major open chord" className="size-10 object-contain" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
                   Chords
@@ -107,7 +101,7 @@ export default function PracticeLanding() {
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.2)] shrink-0 group-hover:scale-110 group-hover:bg-[hsl(var(--color-emphasis)/0.18)] transition-all duration-300 overflow-hidden">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
                   <img src={progressionIcon} alt="I-IV-V progression" className="size-10 object-contain" />
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
