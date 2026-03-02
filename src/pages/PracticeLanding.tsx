@@ -1,27 +1,23 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, ChevronRight } from 'lucide-react';
-import { motion, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import heroImg from '@/assets/hero-guitar.jpg';
 
-function TiltCard({ children, delay }: { children: React.ReactNode; delay: number }) {
+function SpotlightCard({ children, delay }: { children: React.ReactNode; delay: number }) {
   const ref = useRef<HTMLDivElement>(null);
-  const rotateX = useSpring(0, { stiffness: 300, damping: 30 });
-  const rotateY = useSpring(0, { stiffness: 300, damping: 30 });
+  const mouseX = useMotionValue(-200);
+  const mouseY = useMotionValue(-200);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2);
-    const y = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2);
-    rotateY.set(x * 8);
-    rotateX.set(-y * 8);
+    mouseX.set(e.clientX - rect.left);
+    mouseY.set(e.clientY - rect.top);
   };
 
-  const handleMouseLeave = () => {
-    rotateX.set(0);
-    rotateY.set(0);
-  };
+  const spotlight = useMotionTemplate`radial-gradient(320px circle at ${mouseX}px ${mouseY}px, hsl(var(--color-primary) / 0.12), transparent 70%)`;
 
   return (
     <motion.div
@@ -29,11 +25,15 @@ function TiltCard({ children, delay }: { children: React.ReactNode; delay: numbe
       initial={{ opacity: 0, y: 24, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
-      style={{ rotateX, rotateY, transformPerspective: 800 }}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="will-change-transform"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="relative"
     >
+      <motion.div
+        className="pointer-events-none absolute -inset-px rounded-2xl z-10 transition-opacity duration-300"
+        style={{ background: spotlight, opacity: isHovered ? 1 : 0 }}
+      />
       {children}
     </motion.div>
   );
@@ -83,7 +83,7 @@ export default function PracticeLanding() {
       <div className="px-4 sm:px-6 pb-16 -mt-4 sm:-mt-6">
         <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {/* Chord Practice Card */}
-          <TiltCard delay={0.3}>
+          <SpotlightCard delay={0.3}>
           <Link
             to="/chord-practice"
             className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-primary)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-primary)/0.12)] active:scale-[0.98]"
@@ -136,10 +136,10 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
-          </TiltCard>
+          </SpotlightCard>
 
           {/* Progression Practice Card */}
-          <TiltCard delay={0.45}>
+          <SpotlightCard delay={0.45}>
           <Link
             to="/progressions"
             className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-emphasis)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-emphasis)/0.12)] active:scale-[0.98]"
@@ -153,27 +153,22 @@ export default function PracticeLanding() {
                 <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
                   {/* I–IV–V Roman numeral graphic */}
                   <svg width="28" height="34" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Horizontal staff lines for musical context */}
-                    {[10, 18, 26, 34].map((y) => (
-                      <line key={y} x1="2" y1={y} x2="32" y2={y} stroke="hsl(var(--bg-base))" strokeOpacity="0.15" strokeWidth="0.6" />
-                    ))}
-                    {/* I */}
-                    <text x="5" y="17" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="800" fontSize="17" letterSpacing="-0.5">
+                    {/* I — large, centered at top */}
+                    <text x="17" y="17" fill="hsl(var(--bg-base))" fontFamily="Georgia, serif" fontWeight="800" fontSize="19" textAnchor="middle">
                       I
                     </text>
-                    {/* IV */}
-                    <text x="2" y="31" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="15" letterSpacing="-0.5" opacity="0.85">
+                    {/* Thin separator */}
+                    <line x1="9" y1="22" x2="25" y2="22" stroke="hsl(var(--bg-base))" strokeWidth="1" strokeLinecap="round" strokeOpacity="0.3" />
+                    {/* IV — bottom left */}
+                    <text x="12" y="36" fill="hsl(var(--bg-base))" fontFamily="Georgia, serif" fontWeight="700" fontSize="13" textAnchor="middle">
                       IV
                     </text>
-                    {/* V */}
-                    <text x="19" y="31" fill="hsl(var(--bg-base))" fontFamily="serif" fontWeight="700" fontSize="15" letterSpacing="-0.5" opacity="0.85">
+                    {/* Middle dot separator */}
+                    <circle cx="20" cy="33" r="1" fill="hsl(var(--bg-base))" opacity="0.4" />
+                    {/* V — bottom right */}
+                    <text x="27" y="36" fill="hsl(var(--bg-base))" fontFamily="Georgia, serif" fontWeight="700" fontSize="13" textAnchor="middle">
                       V
                     </text>
-                    {/* Connecting dashes */}
-                    <line x1="13" y1="12" x2="17" y2="12" stroke="hsl(var(--bg-base))" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.6" />
-                    <line x1="16" y1="25" x2="19" y2="25" stroke="hsl(var(--bg-base))" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.6" />
-                    {/* Small accent dot */}
-                    <circle cx="28" cy="12" r="1.5" fill="hsl(var(--bg-base))" opacity="0.35" />
                   </svg>
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-[hsl(var(--text-default))]">
@@ -192,7 +187,7 @@ export default function PracticeLanding() {
               </div>
             </div>
           </Link>
-          </TiltCard>
+          </SpotlightCard>
         </div>
       </div>
     </div>
