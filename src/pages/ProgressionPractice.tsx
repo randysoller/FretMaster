@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type SavedProgression } from '@/stores/progressionStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
-import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords, resolvePresetChordSymbols } from '@/constants/scales';
-import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
+import { SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords, resolvePresetChordSymbols, KEY_SIGNATURES } from '@/constants/scales';
+import type { NoteName, ScaleDefinition, ProgressionPreset, KeySignature } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
 import ChordDiagram from '@/components/features/ChordDiagram';
@@ -81,16 +81,58 @@ function SensitivitySlider({ value, onChange }: { value: number; onChange: (v: n
 
 // ─── Setup View Components ───────────────────────────────
 
-function KeySelector({ value, onChange }: { value: NoteName; onChange: (k: NoteName) => void }) {
+function KeySelector({ value, onChange }: { value: KeySignature; onChange: (ks: KeySignature) => void }) {
+  const [open, setOpen] = useState(false);
   return (
     <div>
       <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider mb-3">Select Key</h3>
-      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-        {NOTE_NAMES.map((note) => (
-          <button key={note} onClick={() => onChange(note)} className={`relative flex flex-col items-center justify-center rounded-lg py-2.5 px-2 font-display text-sm font-bold transition-all duration-200 ${value === note ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] glow-primary scale-105' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'}`}>
-            <span>{note}</span>
-          </button>
-        ))}
+      <div className="relative">
+        <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-3 text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+          <div className="flex items-center gap-3">
+            <span className="font-display font-bold text-base">{value.display} Major</span>
+            {value.count > 0 && (
+              <span className="text-xs text-[hsl(var(--text-muted))]">
+                {value.count} {value.type === 'sharp' ? (value.count === 1 ? 'sharp' : 'sharps') : (value.count === 1 ? 'flat' : 'flats')}
+              </span>
+            )}
+          </div>
+          <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden max-h-[360px] overflow-y-auto">
+            {KEY_SIGNATURES.map((ks) => {
+              const isActive = value.display === ks.display;
+              return (
+                <button
+                  key={ks.display}
+                  onClick={() => { onChange(ks); setOpen(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-sm font-body transition-colors flex items-center justify-between ${
+                    isActive
+                      ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
+                      : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`font-display font-bold min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
+                    {ks.count === 0 && (
+                      <span className="text-xs text-[hsl(var(--text-muted))]">— no sharps or flats</span>
+                    )}
+                    {ks.count > 0 && (
+                      <span className="text-xs text-[hsl(var(--text-muted))]">
+                        {ks.count}{ks.type === 'sharp' ? '♯' : '♭'}
+                      </span>
+                    )}
+                  </div>
+                  {ks.count > 0 && (
+                    <span className={`text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
+                      {ks.notes.join('  ')}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -120,11 +162,11 @@ function ScaleSelector({ value, onChange }: { value: ScaleDefinition; onChange: 
   );
 }
 
-function ScaleChordsPreview({ selectedKey, selectedScale }: { selectedKey: NoteName; selectedScale: ScaleDefinition }) {
-  const chords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
+function ScaleChordsPreview({ selectedKey, selectedScale, useFlats, keyDisplay }: { selectedKey: NoteName; selectedScale: ScaleDefinition; useFlats: boolean; keyDisplay: string }) {
+  const chords = useMemo(() => resolveScaleChords(selectedKey, selectedScale, useFlats), [selectedKey, selectedScale, useFlats]);
   return (
     <div>
-      <h4 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-2">Chords in {selectedKey} {selectedScale.name.replace(' Scale', '')}</h4>
+      <h4 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-2">Chords in {keyDisplay} {selectedScale.name.replace(' Scale', '')}</h4>
       <div className="flex flex-wrap gap-2">
         {chords.map((c, i) => (
           <div key={i} className="flex flex-col items-center rounded-md bg-[hsl(var(--bg-surface))] px-3 py-2 min-w-[52px]">
@@ -137,15 +179,15 @@ function ScaleChordsPreview({ selectedKey, selectedScale }: { selectedKey: NoteN
   );
 }
 
-function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset, customDegrees, useCustom, onSelectPreset, onToggleDegree, onClearCustom }: {
-  selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
+function ProgressionPresetSelector({ selectedKey, selectedScale, useFlats, selectedPreset, customDegrees, useCustom, onSelectPreset, onToggleDegree, onClearCustom }: {
+  selectedKey: NoteName; selectedScale: ScaleDefinition; useFlats: boolean; selectedPreset: ProgressionPreset | null;
   customDegrees: number[]; useCustom: boolean;
   onSelectPreset: (p: ProgressionPreset) => void; onToggleDegree: (d: number) => void; onClearCustom: () => void;
 }) {
   const [showAll, setShowAll] = useState(false);
-  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
+  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale, useFlats), [selectedKey, selectedScale, useFlats]);
   const visiblePresets = showAll ? COMMON_PROGRESSIONS : COMMON_PROGRESSIONS.slice(0, 6);
-  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale, useFlats);
 
   return (
     <div className="space-y-4">
@@ -199,13 +241,13 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset,
 
 // ─── By Style Section ────────────────────────────────────
 
-function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
-  selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
+function StyleProgressionSelector({ selectedKey, selectedScale, useFlats, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
+  selectedKey: NoteName; selectedScale: ScaleDefinition; useFlats: boolean; selectedPreset: ProgressionPreset | null;
   useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
   favorites: Set<string>; onToggleFavorite: (id: string) => void;
 }) {
   const [expandedStyle, setExpandedStyle] = useState<string | null>(null);
-  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale, useFlats);
 
   return (
     <div className="space-y-2">
@@ -314,12 +356,12 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
 
 // ─── Favorites Section ───────────────────────────────────
 
-function FavoritesSelector({ selectedKey, selectedScale, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
-  selectedKey: NoteName; selectedScale: ScaleDefinition; selectedPreset: ProgressionPreset | null;
+function FavoritesSelector({ selectedKey, selectedScale, useFlats, selectedPreset, useCustom, onSelectPreset, favorites, onToggleFavorite }: {
+  selectedKey: NoteName; selectedScale: ScaleDefinition; useFlats: boolean; selectedPreset: ProgressionPreset | null;
   useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
   favorites: Set<string>; onToggleFavorite: (id: string) => void;
 }) {
-  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale, useFlats);
 
   // Collect all favorited progressions from all styles
   const favProgressions = useMemo(() => {
@@ -435,10 +477,10 @@ export default function ProgressionPractice() {
   const prevLocationKeyRef = useRef(location.key);
 
   const {
-    selectedKey, selectedScale, selectedPreset, customDegrees, useCustom,
+    selectedKey, selectedScale, selectedKeySignature, useFlats, selectedPreset, customDegrees, useCustom,
     isPracticing, progressionChords, currentChordIndex,
     isRevealed, loopCount, savedProgressions,
-    setKey, setScale, setPreset, setCustomDegrees, toggleCustomDegree, setUseCustom,
+    setKey, setKeySignature, setScale, setPreset, setCustomDegrees, toggleCustomDegree, setUseCustom,
     saveProgression, deleteSavedProgression, loadSavedProgression,
     startProgression, stopProgression, revealChord, nextChord, prevChord,
     getCurrentChord, getResolvedChords,
@@ -560,7 +602,7 @@ export default function ProgressionPractice() {
           </button>
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-xs font-body text-[hsl(var(--text-muted))]">
-              <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{NOTE_DISPLAY[selectedKey]} {selectedScale.name.replace(' Scale', '')}</span>
+              <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{selectedKeySignature.display} {selectedScale.name.replace(' Scale', '')}</span>
             </div>
             <div className="flex items-center gap-1 text-xs font-body text-[hsl(var(--text-muted))]">
               <Repeat className="size-3" />
@@ -740,11 +782,11 @@ export default function ProgressionPractice() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           <div className="lg:col-span-5 space-y-4">
             <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
-              <KeySelector value={selectedKey} onChange={setKey} />
+              <KeySelector value={selectedKeySignature} onChange={setKeySignature} />
             </div>
             <div className="relative z-10 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
               <ScaleSelector value={selectedScale} onChange={setScale} />
-              <ScaleChordsPreview selectedKey={selectedKey} selectedScale={selectedScale} />
+              <ScaleChordsPreview selectedKey={selectedKey} selectedScale={selectedScale} useFlats={useFlats} keyDisplay={selectedKeySignature.display} />
             </div>
           </div>
 
@@ -778,22 +820,22 @@ export default function ProgressionPractice() {
 
               {/* Common progressions */}
               {progressionTab === 'common' && (
-                <ProgressionPresetSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} customDegrees={customDegrees} useCustom={useCustom} onSelectPreset={setPreset} onToggleDegree={toggleCustomDegree} onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }} />
+                <ProgressionPresetSelector selectedKey={selectedKey} selectedScale={selectedScale} useFlats={useFlats} selectedPreset={selectedPreset} customDegrees={customDegrees} useCustom={useCustom} onSelectPreset={setPreset} onToggleDegree={toggleCustomDegree} onClearCustom={() => { setCustomDegrees([]); setUseCustom(false); }} />
               )}
 
               {/* Favorites */}
               {progressionTab === 'favorites' && (
-                <FavoritesSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
+                <FavoritesSelector selectedKey={selectedKey} selectedScale={selectedScale} useFlats={useFlats} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
               )}
 
               {/* By Style */}
               {progressionTab === 'style' && (
-                <StyleProgressionSelector selectedKey={selectedKey} selectedScale={selectedScale} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
+                <StyleProgressionSelector selectedKey={selectedKey} selectedScale={selectedScale} useFlats={useFlats} selectedPreset={selectedPreset} useCustom={useCustom} onSelectPreset={handleStylePresetSelect} favorites={favorites} onToggleFavorite={handleToggleFavorite} />
               )}
 
               {/* Custom builder */}
               {progressionTab === 'custom' && (() => {
-                const scaleChords = resolveScaleChords(selectedKey, selectedScale);
+                const scaleChords = resolveScaleChords(selectedKey, selectedScale, useFlats);
                 return (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -894,7 +936,7 @@ export default function ProgressionPractice() {
             <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4">
               <h3 className="font-display text-base font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Ready to Practice</h3>
               <div className="space-y-2 text-sm font-body">
-                <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Key</span><span className="text-[hsl(var(--text-default))] font-medium">{NOTE_DISPLAY[selectedKey]}</span></div>
+                <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Key</span><span className="text-[hsl(var(--text-default))] font-medium">{selectedKeySignature.display}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Scale</span><span className="text-[hsl(var(--text-default))] font-medium">{selectedScale.name}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Progression</span><span className="text-[hsl(var(--text-default))] font-medium text-right max-w-[60%]">{resolvedChords.map((c) => c.chordSymbol).join(' \u2013 ') || 'None selected'}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Chords</span><span className="text-[hsl(var(--color-primary))] font-display font-bold">{resolvedChords.length}</span></div>

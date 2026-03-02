@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePracticeStore } from '@/stores/practiceStore';
 import CategorySelector from '@/components/features/CategorySelector';
 import TypeSelector from '@/components/features/TypeSelector';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
-import { Play, Music, AlertCircle } from 'lucide-react';
+import { KEY_SIGNATURES } from '@/constants/scales';
+import type { KeySignature } from '@/constants/scales';
+import { Play, Music, AlertCircle, ChevronDown, X } from 'lucide-react';
 import heroImg from '@/assets/hero-guitar.jpg';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { startPractice, getAvailableCount, categories, chordTypes, barreRoots } = usePracticeStore();
+  const { startPractice, getAvailableCount, categories, chordTypes, barreRoots, keyFilter, setKeyFilter } = usePracticeStore();
   const availableCount = getAvailableCount();
+  const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
 
   const handleStart = () => {
     if (availableCount === 0) return;
@@ -63,6 +67,84 @@ export default function Home() {
               <div className="relative z-[9] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
                 <TypeSelector />
               </div>
+              {/* Key Filter */}
+              <div className="relative z-[8] rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Filter by Key</h3>
+                  {keyFilter && (
+                    <button onClick={() => setKeyFilter(null)} className="flex items-center gap-1 text-xs font-body text-[hsl(var(--semantic-error))] hover:underline">
+                      <X className="size-3" /> Clear
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <button onClick={() => setKeyDropdownOpen(!keyDropdownOpen)} className="w-full flex items-center justify-between rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-4 py-3 text-sm font-body text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
+                    <div className="flex items-center gap-3">
+                      {keyFilter ? (
+                        <>
+                          <span className="font-display font-bold text-base">{keyFilter.display} Major</span>
+                          {keyFilter.count > 0 && (
+                            <span className="text-xs text-[hsl(var(--text-muted))]">
+                              {keyFilter.count} {keyFilter.type === 'sharp' ? (keyFilter.count === 1 ? 'sharp' : 'sharps') : (keyFilter.count === 1 ? 'flat' : 'flats')}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[hsl(var(--text-muted))]">All Keys</span>
+                      )}
+                    </div>
+                    <ChevronDown className={`size-4 text-[hsl(var(--text-muted))] transition-transform ${keyDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {keyDropdownOpen && (
+                    <div className="absolute z-20 mt-1 w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl overflow-hidden max-h-[360px] overflow-y-auto">
+                      <button
+                        onClick={() => { setKeyFilter(null); setKeyDropdownOpen(false); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm font-body transition-colors ${
+                          !keyFilter
+                            ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
+                            : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                        }`}
+                      >
+                        All Keys
+                      </button>
+                      {KEY_SIGNATURES.map((ks) => {
+                        const isActive = keyFilter?.display === ks.display;
+                        return (
+                          <button
+                            key={ks.display}
+                            onClick={() => { setKeyFilter(ks); setKeyDropdownOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-sm font-body transition-colors flex items-center justify-between ${
+                              isActive
+                                ? 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] font-medium'
+                                : 'text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className={`font-display font-bold min-w-[36px] ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{ks.display}</span>
+                              {ks.count === 0 && (
+                                <span className="text-xs text-[hsl(var(--text-muted))]">\u2014 no sharps or flats</span>
+                              )}
+                              {ks.count > 0 && (
+                                <span className="text-xs text-[hsl(var(--text-muted))]">
+                                  {ks.count}{ks.type === 'sharp' ? '\u266f' : '\u266d'}
+                                </span>
+                              )}
+                            </div>
+                            {ks.count > 0 && (
+                              <span className={`text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.7)]' : 'text-[hsl(var(--text-muted)/0.6)]'}`}>
+                                {ks.notes.join('  ')}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2 text-[11px] font-body text-[hsl(var(--text-muted))]">
+                  {keyFilter ? `Showing only chords with roots in the ${keyFilter.display} major scale` : 'Showing chords in all keys'}
+                </p>
+              </div>
             </div>
 
             {/* Right: Summary + Start */}
@@ -87,6 +169,12 @@ export default function Home() {
                       {chordTypes.size === 0
                         ? 'All Types'
                         : [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-body">
+                    <span className="text-[hsl(var(--text-muted))]">Key</span>
+                    <span className="text-[hsl(var(--text-default))] font-medium">
+                      {keyFilter ? `${keyFilter.display} Major` : 'All Keys'}
                     </span>
                   </div>
                   {(categories.has('barre') || categories.has('movable') || categories.size === 0 || categories.size === 3) && barreRoots.size > 0 && barreRoots.size < 3 && (

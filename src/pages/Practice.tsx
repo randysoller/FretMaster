@@ -67,7 +67,7 @@ export default function Practice() {
   const navigate = useNavigate();
   const {
     isPracticing, isRevealed, currentIndex, practiceChords, totalPracticed,
-    categories, chordTypes, barreRoots,
+    categories, chordTypes, barreRoots, keyFilter,
     getCurrentChord, revealChord, nextChord, prevChord, stopPractice, startPractice,
   } = usePracticeStore();
 
@@ -146,6 +146,9 @@ export default function Practice() {
             <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">
               {categories.size === 0 || categories.size === 3 ? 'All Chords' : [...categories].map((c) => CATEGORY_LABELS[c]).join(', ')}
             </span>
+            {keyFilter && (
+              <><span className="text-[hsl(var(--border-default))]">·</span><span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{keyFilter.display} Major</span></>
+            )}
             {barreRoots.size > 0 && (
               <><span className="text-[hsl(var(--border-default))]">·</span><span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{[...barreRoots].map((r) => BARRE_ROOT_LABELS[r]).join(', ')}</span></>
             )}

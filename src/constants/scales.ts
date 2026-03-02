@@ -9,6 +9,11 @@ export const NOTE_NAMES = [
   'C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B',
 ] as const;
 
+/** Flat-friendly note names for display in flat keys */
+export const FLAT_NOTE_NAMES = [
+  'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'Cb',
+] as const;
+
 export type NoteName = (typeof NOTE_NAMES)[number];
 
 /** Display-friendly enharmonic names for keys */
@@ -26,6 +31,44 @@ export const NOTE_DISPLAY: Record<NoteName, string> = {
   Bb: 'B♭',
   B: 'B',
 };
+
+// ─── Key Signatures (Circle of Fifths order) ─────────────
+
+export interface KeySignature {
+  /** Display name for the key */
+  display: string;
+  /** Internal NoteName mapping (semitone reference) */
+  noteName: NoteName;
+  /** Whether to use flat note names when resolving chords */
+  useFlats: boolean;
+  /** Signature type */
+  type: 'none' | 'sharp' | 'flat';
+  /** Number of sharps or flats */
+  count: number;
+  /** The individual sharp/flat note names */
+  notes: string[];
+}
+
+export const KEY_SIGNATURES: KeySignature[] = [
+  // No sharps/flats
+  { display: 'C',  noteName: 'C',  useFlats: false, type: 'none',  count: 0, notes: [] },
+  // Sharp keys
+  { display: 'G',  noteName: 'G',  useFlats: false, type: 'sharp', count: 1, notes: ['F♯'] },
+  { display: 'D',  noteName: 'D',  useFlats: false, type: 'sharp', count: 2, notes: ['F♯', 'C♯'] },
+  { display: 'A',  noteName: 'A',  useFlats: false, type: 'sharp', count: 3, notes: ['F♯', 'C♯', 'G♯'] },
+  { display: 'E',  noteName: 'E',  useFlats: false, type: 'sharp', count: 4, notes: ['F♯', 'C♯', 'G♯', 'D♯'] },
+  { display: 'B',  noteName: 'B',  useFlats: false, type: 'sharp', count: 5, notes: ['F♯', 'C♯', 'G♯', 'D♯', 'A♯'] },
+  { display: 'F♯', noteName: 'F#', useFlats: false, type: 'sharp', count: 6, notes: ['F♯', 'C♯', 'G♯', 'D♯', 'A♯', 'E♯'] },
+  { display: 'C♯', noteName: 'C#', useFlats: false, type: 'sharp', count: 7, notes: ['F♯', 'C♯', 'G♯', 'D♯', 'A♯', 'E♯', 'B♯'] },
+  // Flat keys
+  { display: 'F',  noteName: 'F',  useFlats: true,  type: 'flat',  count: 1, notes: ['B♭'] },
+  { display: 'B♭', noteName: 'Bb', useFlats: true,  type: 'flat',  count: 2, notes: ['B♭', 'E♭'] },
+  { display: 'E♭', noteName: 'Eb', useFlats: true,  type: 'flat',  count: 3, notes: ['B♭', 'E♭', 'A♭'] },
+  { display: 'A♭', noteName: 'Ab', useFlats: true,  type: 'flat',  count: 4, notes: ['B♭', 'E♭', 'A♭', 'D♭'] },
+  { display: 'D♭', noteName: 'C#', useFlats: true,  type: 'flat',  count: 5, notes: ['B♭', 'E♭', 'A♭', 'D♭', 'G♭'] },
+  { display: 'G♭', noteName: 'F#', useFlats: true,  type: 'flat',  count: 6, notes: ['B♭', 'E♭', 'A♭', 'D♭', 'G♭', 'C♭'] },
+  { display: 'C♭', noteName: 'B',  useFlats: true,  type: 'flat',  count: 7, notes: ['B♭', 'E♭', 'A♭', 'D♭', 'G♭', 'C♭', 'F♭'] },
+];
 
 export type ChordQuality = 'maj' | 'min' | 'dim' | 'aug' | 'dom7' | 'maj7' | 'min7' | 'halfDim7' | 'dim7' | 'sus4';
 
@@ -145,7 +188,8 @@ export const QUALITY_SUFFIX: Record<ChordQuality, string> = {
  */
 export function resolveScaleChords(
   key: NoteName,
-  scale: ScaleDefinition
+  scale: ScaleDefinition,
+  useFlats?: boolean,
 ): {
   roman: string;
   chordSymbol: string;
@@ -154,13 +198,15 @@ export function resolveScaleChords(
   degreeIndex: number;
 }[] {
   const rootIdx = NOTE_NAMES.indexOf(key);
+  const nameSource = useFlats ? FLAT_NOTE_NAMES : NOTE_NAMES;
   return scale.degrees.map((deg, i) => {
     const noteIdx = (rootIdx + deg.interval) % 12;
-    const noteName = NOTE_NAMES[noteIdx];
+    const noteDisplay = nameSource[noteIdx];
+    const noteName = NOTE_NAMES[noteIdx]; // internal reference
     const suffix = QUALITY_SUFFIX[deg.quality];
     return {
       roman: deg.roman,
-      chordSymbol: `${noteName}${suffix}`,
+      chordSymbol: `${noteDisplay}${suffix}`,
       noteName,
       quality: deg.quality,
       degreeIndex: i,
@@ -188,11 +234,12 @@ export function resolvePresetChordSymbols(
   preset: ProgressionPreset,
   key: NoteName,
   selectedScale: ScaleDefinition,
+  useFlats?: boolean,
 ): string {
   const scale = preset.scaleId
     ? SCALES.find((s) => s.id === preset.scaleId) ?? selectedScale
     : selectedScale;
-  const chords = resolveScaleChords(key, scale);
+  const chords = resolveScaleChords(key, scale, useFlats);
   return preset.degrees.map((d) => chords[d]?.chordSymbol ?? '?').join(' \u2013 ');
 }
 
@@ -203,11 +250,12 @@ export function resolvePresetChords(
   preset: ProgressionPreset,
   key: NoteName,
   selectedScale: ScaleDefinition,
+  useFlats?: boolean,
 ) {
   const scale = preset.scaleId
     ? SCALES.find((s) => s.id === preset.scaleId) ?? selectedScale
     : selectedScale;
-  return resolveScaleChords(key, scale);
+  return resolveScaleChords(key, scale, useFlats);
 }
 
 /** Music-style categorized chord progressions.

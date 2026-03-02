@@ -3,6 +3,8 @@ import type { ChordCategory, ChordData, ChordType, TimerDuration, BarreRoot } fr
 import { CHORDS } from '@/constants/chords';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
+import type { KeySignature } from '@/constants/scales';
+import { NOTE_NAMES } from '@/constants/scales';
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -21,7 +23,18 @@ function getEffectiveChords(): ChordData[] {
   return [...standardChords, ...converted];
 }
 
-function filterChords(categories: Set<ChordCategory>, types: Set<ChordType>, barreRoots: Set<BarreRoot>): ChordData[] {
+/** Map a chord symbol to its root note semitone index (0-11) */
+function getChordRootSemitone(symbol: string): number {
+  const match = symbol.match(/^([A-G])([#b]?)/);
+  if (!match) return -1;
+  const noteBase: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  let semitone = noteBase[match[1]] ?? -1;
+  if (match[2] === '#') semitone = (semitone + 1) % 12;
+  if (match[2] === 'b') semitone = (semitone + 11) % 12;
+  return semitone;
+}
+
+function filterChords(categories: Set<ChordCategory>, types: Set<ChordType>, barreRoots: Set<BarreRoot>, keyFilter: KeySignature | null): ChordData[] {
   const allCats = categories.size === 0 || categories.size === 3;
   const allRoots = barreRoots.size === 0 || barreRoots.size === 3;
   return getEffectiveChords().filter((chord) => {
@@ -29,7 +42,17 @@ function filterChords(categories: Set<ChordCategory>, types: Set<ChordType>, bar
     const matchType = types.size === 0 || types.has(chord.type);
     const hasRootFilter = categories.has('barre') || categories.has('movable') || allCats;
     const matchRoot = allRoots || !hasRootFilter || !chord.rootString || barreRoots.has(chord.rootString);
-    return matchCategory && matchType && matchRoot;
+    // Key filter: match chords whose root note belongs to the selected key's scale
+    let matchKey = true;
+    if (keyFilter) {
+      const rootIdx = NOTE_NAMES.indexOf(keyFilter.noteName);
+      // Major scale intervals
+      const majorIntervals = [0, 2, 4, 5, 7, 9, 11];
+      const scaleNotes = new Set(majorIntervals.map((i) => (rootIdx + i) % 12));
+      const chordRoot = getChordRootSemitone(chord.symbol);
+      matchKey = chordRoot >= 0 && scaleNotes.has(chordRoot);
+    }
+    return matchCategory && matchType && matchRoot && matchKey;
   });
 }
 
@@ -38,6 +61,7 @@ interface PracticeState {
   chordTypes: Set<ChordType>;
   timerDuration: TimerDuration;
   barreRoots: Set<BarreRoot>;
+  keyFilter: KeySignature | null;
   currentIndex: number;
   isRevealed: boolean;
   isPracticing: boolean;
@@ -51,6 +75,7 @@ interface PracticeState {
   setTimerDuration: (dur: TimerDuration) => void;
   toggleBarreRoot: (root: BarreRoot) => void;
   clearBarreRoots: () => void;
+  setKeyFilter: (ks: KeySignature | null) => void;
   startPractice: () => void;
   stopPractice: () => void;
   revealChord: () => void;
@@ -65,6 +90,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   chordTypes: new Set<ChordType>(),
   timerDuration: 0,
   barreRoots: new Set<BarreRoot>(),
+  keyFilter: null,
   currentIndex: 0,
   isRevealed: false,
   isPracticing: false,
@@ -97,10 +123,11 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     return { barreRoots: next };
   }),
   clearBarreRoots: () => set({ barreRoots: new Set<BarreRoot>() }),
+  setKeyFilter: (ks) => set({ keyFilter: ks }),
 
   startPractice: () => {
-    const { categories, chordTypes, barreRoots } = get();
-    const filtered = filterChords(categories, chordTypes, barreRoots);
+    const { categories, chordTypes, barreRoots, keyFilter } = get();
+    const filtered = filterChords(categories, chordTypes, barreRoots, keyFilter);
     const shuffled = shuffleArray(filtered);
     set({
       practiceChords: shuffled,
@@ -148,7 +175,7 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
   },
 
   getAvailableCount: () => {
-    const { categories, chordTypes, barreRoots } = get();
-    return filterChords(categories, chordTypes, barreRoots).length;
+    const { categories, chordTypes, barreRoots, keyFilter } = get();
+    return filterChords(categories, chordTypes, barreRoots, keyFilter).length;
   },
 }));

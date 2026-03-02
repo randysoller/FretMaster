@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { NoteName } from '@/constants/scales';
 import type { ScaleDefinition, ProgressionPreset } from '@/constants/scales';
-import { SCALES, COMMON_PROGRESSIONS, resolveScaleChords, resolvePresetChords, QUALITY_SUFFIX } from '@/constants/scales';
+import { SCALES, COMMON_PROGRESSIONS, resolveScaleChords, resolvePresetChords, QUALITY_SUFFIX, KEY_SIGNATURES } from '@/constants/scales';
+import type { KeySignature } from '@/constants/scales';
 import { CHORDS } from '@/constants/chords';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
@@ -115,6 +116,8 @@ export type ProgressionTimerDuration = 0 | 2 | 4 | 8;
 interface ProgressionState {
   // Setup
   selectedKey: NoteName;
+  selectedKeySignature: KeySignature;
+  useFlats: boolean;
   selectedScale: ScaleDefinition;
   selectedPreset: ProgressionPreset | null;
   customDegrees: number[];
@@ -133,6 +136,7 @@ interface ProgressionState {
 
   // Actions
   setKey: (key: NoteName) => void;
+  setKeySignature: (ks: KeySignature) => void;
   setScale: (scale: ScaleDefinition) => void;
   setPreset: (preset: ProgressionPreset) => void;
   setCustomDegrees: (degrees: number[]) => void;
@@ -153,6 +157,8 @@ interface ProgressionState {
 
 export const useProgressionStore = create<ProgressionState>((set, get) => ({
   selectedKey: 'C',
+  selectedKeySignature: KEY_SIGNATURES[0],
+  useFlats: false,
   selectedScale: SCALES[0],
   selectedPreset: COMMON_PROGRESSIONS[0],
   customDegrees: [],
@@ -166,6 +172,7 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   loopCount: 0,
 
   setKey: (key) => set({ selectedKey: key }),
+  setKeySignature: (ks) => set({ selectedKey: ks.noteName, selectedKeySignature: ks, useFlats: ks.useFlats }),
   setScale: (scale) => set({ selectedScale: scale }),
   setPreset: (preset) => set({ selectedPreset: preset, useCustom: false }),
   setCustomDegrees: (degrees) => set({ customDegrees: degrees }),
@@ -211,12 +218,12 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
   },
 
   getResolvedChords: () => {
-    const { selectedKey, selectedScale, selectedPreset, customDegrees, useCustom } = get();
+    const { selectedKey, selectedScale, selectedPreset, customDegrees, useCustom, useFlats } = get();
     // Respect preset's scaleId override (e.g. Minor Blues forces natural-minor)
     const effectiveScale = (!useCustom && selectedPreset?.scaleId)
       ? (SCALES.find((s) => s.id === selectedPreset.scaleId) ?? selectedScale)
       : selectedScale;
-    const scaleChords = resolveScaleChords(selectedKey, effectiveScale);
+    const scaleChords = resolveScaleChords(selectedKey, effectiveScale, useFlats);
     const degrees = useCustom ? customDegrees : (selectedPreset?.degrees ?? []);
 
     return degrees.map((degIdx) => {
