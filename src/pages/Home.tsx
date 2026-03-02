@@ -167,10 +167,16 @@ export default function Home() {
 
             {/* Right: Summary + Start */}
             <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-              <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
-                <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
-                  Ready to Practice
-                </h3>
+              <div className="relative rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6 space-y-4 sm:space-y-5">
+                <div className="absolute top-0 left-0 w-full h-[3px] rounded-t-xl bg-gradient-to-r from-[hsl(var(--color-brand))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-emphasis)/0.3)]" />
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center justify-center size-7 rounded-lg bg-[hsl(var(--color-primary)/0.15)]">
+                    <Play className="size-4 text-[hsl(var(--color-primary))]" />
+                  </div>
+                  <h3 className="font-display text-base sm:text-lg font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">
+                    Ready to Practice
+                  </h3>
+                </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm font-body">
