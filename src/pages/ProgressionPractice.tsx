@@ -804,16 +804,25 @@ export default function ProgressionPractice() {
                   <button
                     key={tab.key}
                     onClick={() => setProgressionTab(tab.key)}
-                    className={`flex-1 rounded-md px-2 py-3 sm:py-2 text-base sm:text-xs font-display font-bold transition-all duration-200 flex items-center justify-center gap-1.5 border ${
+                    className={`relative flex-1 rounded-md px-2 py-3 sm:py-2 text-base sm:text-xs font-display font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 overflow-hidden ${
                       progressionTab === tab.key
-                        ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border-[hsl(var(--color-primary)/0.4)] shadow-sm'
-                        : 'text-[hsl(var(--text-muted))] border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--border-default)/0.8)]'
+                        ? 'text-[hsl(var(--color-primary))]'
+                        : 'text-[hsl(var(--text-muted))] border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--border-default)/0.8)]'
                     }`}
                   >
-                    {tab.key === 'favorites' && <Heart className={`size-4 sm:size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
-                    <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden">{tab.key === 'favorites' ? '' : tab.label}</span>
-                    {tab.badge > 0 && <span className="text-[9px] font-bold bg-[hsl(0_84%_60%/0.15)] text-[hsl(0_84%_60%)] rounded-full px-1.5 py-0.5 leading-none">{tab.badge}</span>}
+                    {progressionTab === tab.key && (
+                      <motion.div
+                        layoutId="progression-tab-indicator"
+                        className="absolute inset-0 rounded-md bg-[hsl(var(--color-primary)/0.15)] border border-[hsl(var(--color-primary)/0.4)] shadow-sm"
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      {tab.key === 'favorites' && <Heart className={`size-4 sm:size-3 ${favCount > 0 ? 'fill-current text-[hsl(0_84%_60%)]' : ''}`} />}
+                      <span className="hidden sm:inline">{tab.label}</span>
+                      <span className="sm:hidden">{tab.key === 'favorites' ? '' : tab.label}</span>
+                      {tab.badge > 0 && <span className="text-[9px] font-bold bg-[hsl(0_84%_60%/0.15)] text-[hsl(0_84%_60%)] rounded-full px-1.5 py-0.5 leading-none">{tab.badge}</span>}
+                    </span>
                   </button>
                 ))}
               </div>
