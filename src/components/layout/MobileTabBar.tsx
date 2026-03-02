@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, Music } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 function TuningForkIcon({ className }: { className?: string }) {
@@ -24,8 +24,7 @@ function GuitarIcon({ className }: { className?: string }) {
 }
 
 const leftTabs = [
-  { to: '/', label: 'Practice', icon: GuitarIcon, matchPaths: ['/', '/chord-practice', '/practice'] },
-  { to: '/progressions', label: 'Progressions', icon: Music, matchPaths: ['/progressions'] },
+  { to: '/', label: 'Practice', icon: GuitarIcon, matchPaths: ['/', '/chord-practice', '/practice', '/progressions'] },
 ] as const;
 
 const rightTabs = [
@@ -51,7 +50,7 @@ export default function MobileTabBar() {
             : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
         }`}
       >
-        <Icon className="size-[22px]" />
+        <Icon className="size-[26px]" />
         <span className="text-[10px] font-display font-semibold leading-none">{tab.label}</span>
         {isActive && (
           <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
@@ -62,7 +61,7 @@ export default function MobileTabBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-lg safe-area-bottom">
-      <div className="grid grid-cols-5 h-[56px]">
+      <div className="grid grid-cols-4 h-[56px]">
         {leftTabs.map(renderTab)}
         {/* Center metronome */}
         <div className="flex flex-col items-center justify-center">

@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool } from 'lucide-react';
+import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
 
 function TuningForkIcon({ className }: { className?: string }) {
@@ -57,6 +58,7 @@ export default function Header() {
           </button>
 
           <div className="hidden sm:flex items-center gap-[6px]">
+          <MetronomeDropdown position="top" />
           {navLinks.map((link) => {
             const isActive = link.matchPaths.includes(location.pathname);
             return (
