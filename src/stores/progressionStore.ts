@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { NoteName } from '@/constants/scales';
 import type { ScaleDefinition, ProgressionPreset } from '@/constants/scales';
-import { SCALES, COMMON_PROGRESSIONS, resolveScaleChords, QUALITY_SUFFIX } from '@/constants/scales';
+import { SCALES, COMMON_PROGRESSIONS, resolveScaleChords, resolvePresetChords, QUALITY_SUFFIX } from '@/constants/scales';
 import { CHORDS } from '@/constants/chords';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
@@ -212,7 +212,11 @@ export const useProgressionStore = create<ProgressionState>((set, get) => ({
 
   getResolvedChords: () => {
     const { selectedKey, selectedScale, selectedPreset, customDegrees, useCustom } = get();
-    const scaleChords = resolveScaleChords(selectedKey, selectedScale);
+    // Respect preset's scaleId override (e.g. Minor Blues forces natural-minor)
+    const effectiveScale = (!useCustom && selectedPreset?.scaleId)
+      ? (SCALES.find((s) => s.id === selectedPreset.scaleId) ?? selectedScale)
+      : selectedScale;
+    const scaleChords = resolveScaleChords(selectedKey, effectiveScale);
     const degrees = useCustom ? customDegrees : (selectedPreset?.degrees ?? []);
 
     return degrees.map((degIdx) => {

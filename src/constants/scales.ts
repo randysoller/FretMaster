@@ -176,6 +176,38 @@ export interface ProgressionPreset {
   degrees: number[];
   /** Roman numeral display */
   romanDisplay: string;
+  /** Optional: force resolution against a specific scale (overrides user's selected scale) */
+  scaleId?: string;
+}
+
+/**
+ * Resolve chord symbols for a preset, respecting an optional scaleId override.
+ * Falls back to the user's selected scale when no override is present.
+ */
+export function resolvePresetChordSymbols(
+  preset: ProgressionPreset,
+  key: NoteName,
+  selectedScale: ScaleDefinition,
+): string {
+  const scale = preset.scaleId
+    ? SCALES.find((s) => s.id === preset.scaleId) ?? selectedScale
+    : selectedScale;
+  const chords = resolveScaleChords(key, scale);
+  return preset.degrees.map((d) => chords[d]?.chordSymbol ?? '?').join(' \u2013 ');
+}
+
+/**
+ * Resolve full chord info array for a preset, respecting scaleId override.
+ */
+export function resolvePresetChords(
+  preset: ProgressionPreset,
+  key: NoteName,
+  selectedScale: ScaleDefinition,
+) {
+  const scale = preset.scaleId
+    ? SCALES.find((s) => s.id === preset.scaleId) ?? selectedScale
+    : selectedScale;
+  return resolveScaleChords(key, scale);
 }
 
 /** Music-style categorized chord progressions.
@@ -198,7 +230,7 @@ export const STYLE_PROGRESSIONS: StyleCategory[] = [
     progressions: [
       { id: 'blues-12bar', name: '12-Bar Blues', degrees: [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], romanDisplay: 'I-I-I-I-IV-IV-I-I-V-IV-I-V' },
       { id: 'blues-quick-change', name: 'Quick Change Blues', degrees: [0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], romanDisplay: 'I-IV-I-I-IV-IV-I-I-V-IV-I-V' },
-      { id: 'blues-minor', name: 'Minor Blues', degrees: [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 0], romanDisplay: 'i-i-i-i-iv-iv-i-i-v-iv-i-i' },
+      { id: 'blues-minor', name: 'Minor Blues', degrees: [0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 0], romanDisplay: 'i-i-i-i-iv-iv-i-i-v-iv-i-i', scaleId: 'natural-minor' },
       { id: 'blues-8bar', name: '8-Bar Blues', degrees: [0, 4, 3, 3, 0, 4, 0, 4], romanDisplay: 'I-V-IV-IV-I-V-I-V' },
     ],
   },

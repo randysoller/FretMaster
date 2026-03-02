@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type SavedProgression } from '@/stores/progressionStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
-import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords } from '@/constants/scales';
+import { NOTE_NAMES, NOTE_DISPLAY, SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords, resolvePresetChordSymbols } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
@@ -145,7 +145,7 @@ function ProgressionPresetSelector({ selectedKey, selectedScale, selectedPreset,
   const [showAll, setShowAll] = useState(false);
   const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
   const visiblePresets = showAll ? COMMON_PROGRESSIONS : COMMON_PROGRESSIONS.slice(0, 6);
-  const resolveRomanForPreset = (preset: ProgressionPreset) => preset.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' – ');
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
 
   return (
     <div className="space-y-4">
@@ -205,8 +205,7 @@ function StyleProgressionSelector({ selectedKey, selectedScale, selectedPreset, 
   favorites: Set<string>; onToggleFavorite: (id: string) => void;
 }) {
   const [expandedStyle, setExpandedStyle] = useState<string | null>(null);
-  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
-  const resolveRomanForPreset = (preset: ProgressionPreset) => preset.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' – ');
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
 
   return (
     <div className="space-y-2">
@@ -320,8 +319,7 @@ function FavoritesSelector({ selectedKey, selectedScale, selectedPreset, useCust
   useCustom: boolean; onSelectPreset: (p: ProgressionPreset) => void;
   favorites: Set<string>; onToggleFavorite: (id: string) => void;
 }) {
-  const scaleChords = useMemo(() => resolveScaleChords(selectedKey, selectedScale), [selectedKey, selectedScale]);
-  const resolveRomanForPreset = (preset: ProgressionPreset) => preset.degrees.map((d) => scaleChords[d]?.chordSymbol ?? '?').join(' – ');
+  const resolveRomanForPreset = (preset: ProgressionPreset) => resolvePresetChordSymbols(preset, selectedKey, selectedScale);
 
   // Collect all favorited progressions from all styles
   const favProgressions = useMemo(() => {
@@ -878,7 +876,7 @@ export default function ProgressionPractice() {
                       <div key={sp.id} className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] px-4 py-3 group hover:border-[hsl(var(--color-primary)/0.3)] transition-colors">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-display font-bold text-[hsl(var(--text-default))] truncate">{sp.name}</p>
-                          <p className="text-xs font-body text-[hsl(var(--text-muted))] truncate mt-0.5"><span className="text-[hsl(var(--color-primary))] font-medium">{sp.key} {scaleName}</span><span className="mx-1.5">\u00b7</span>{chordNames}</p>
+                          <p className="text-xs font-body text-[hsl(var(--text-muted))] truncate mt-0.5"><span className="text-[hsl(var(--color-primary))] font-medium">{sp.key} {scaleName}</span><span className="mx-1.5">{'\u00b7'}</span>{chordNames}</p>
                         </div>
                         <button onClick={() => { loadSavedProgression(sp); setShowSavedList(false); }} className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-display font-bold bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.2)] transition-colors"><Upload className="size-3" /> Load</button>
                         <button onClick={() => deleteSavedProgression(sp.id)} className="flex items-center justify-center size-7 rounded-md text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:bg-[hsl(var(--semantic-error)/0.1)] opacity-0 group-hover:opacity-100 transition-all duration-150" title="Delete"><Trash2 className="size-3.5" /></button>
@@ -898,7 +896,7 @@ export default function ProgressionPractice() {
               <div className="space-y-2 text-sm font-body">
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Key</span><span className="text-[hsl(var(--text-default))] font-medium">{NOTE_DISPLAY[selectedKey]}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Scale</span><span className="text-[hsl(var(--text-default))] font-medium">{selectedScale.name}</span></div>
-                <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Progression</span><span className="text-[hsl(var(--text-default))] font-medium text-right max-w-[60%]">{resolvedChords.map((c) => c.chordSymbol).join(' – ') || 'None selected'}</span></div>
+                <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Progression</span><span className="text-[hsl(var(--text-default))] font-medium text-right max-w-[60%]">{resolvedChords.map((c) => c.chordSymbol).join(' \u2013 ') || 'None selected'}</span></div>
                 <div className="flex justify-between"><span className="text-[hsl(var(--text-muted))]">Chords</span><span className="text-[hsl(var(--color-primary))] font-display font-bold">{resolvedChords.length}</span></div>
                 {missingCount > 0 && <div className="flex items-center gap-2 mt-1 text-xs text-[hsl(var(--semantic-warning))]"><span>⚠ {missingCount} chord{missingCount > 1 ? 's' : ''} not in library</span></div>}
               </div>
