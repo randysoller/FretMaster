@@ -200,7 +200,7 @@ export default function CategorySelector() {
                   key={String(root)}
                   onClick={() => toggleBarreRoot(root)}
                   className={`
-                    rounded-md px-3 py-1.5 text-sm font-body font-medium transition-all duration-150
+                    rounded-md px-4 py-3 sm:px-3 sm:py-1.5 text-lg sm:text-sm font-body font-medium transition-all duration-150
                     ${isActive
                       ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md'
                       : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
