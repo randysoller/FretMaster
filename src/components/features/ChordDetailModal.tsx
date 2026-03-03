@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ChordData } from '@/types/chord';
 import { CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { X, Volume2, Guitar, Edit3 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
@@ -101,30 +102,37 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
           </button>
         </div>
 
-        {/* Diagram + Play */}
+        {/* Diagram + Tablature + Play */}
         <div className="flex flex-col items-center gap-4 px-6 pt-5 pb-4">
-          <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-5">
-            {chord.isCustom ? (
-              <CustomChordDiagram
-                key={`detail-${chord.id}-${(chord.customBarres ?? []).length}`}
-                chord={{
-                  id: chord.id,
-                  name: chord.name,
-                  symbol: chord.symbol,
-                  baseFret: chord.baseFret,
-                  numFrets: chord.numFrets ?? 5,
-                  mutedStrings: new Set(chord.customMutedStrings ?? []),
-                  openStrings: new Set(chord.customOpenStrings ?? []),
-                  openDiamonds: new Set(chord.customOpenDiamonds ?? []),
-                  markers: chord.customMarkers ?? [],
-                  barres: chord.customBarres ?? [],
-                  createdAt: 0,
-                  updatedAt: 0,
-                }}
-                size="lg"
-              />
-            ) : (
-              <ChordDiagram chord={chord} size="lg" />
+          <div className="flex items-center gap-4">
+            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-5">
+              {chord.isCustom ? (
+                <CustomChordDiagram
+                  key={`detail-${chord.id}-${(chord.customBarres ?? []).length}`}
+                  chord={{
+                    id: chord.id,
+                    name: chord.name,
+                    symbol: chord.symbol,
+                    baseFret: chord.baseFret,
+                    numFrets: chord.numFrets ?? 5,
+                    mutedStrings: new Set(chord.customMutedStrings ?? []),
+                    openStrings: new Set(chord.customOpenStrings ?? []),
+                    openDiamonds: new Set(chord.customOpenDiamonds ?? []),
+                    markers: chord.customMarkers ?? [],
+                    barres: chord.customBarres ?? [],
+                    createdAt: 0,
+                    updatedAt: 0,
+                  }}
+                  size="lg"
+                />
+              ) : (
+                <ChordDiagram chord={chord} size="lg" />
+              )}
+            </div>
+            {!chord.isCustom && (
+              <div className="shrink-0">
+                <ChordTablature chord={chord} size="lg" />
+              </div>
             )}
           </div>
           <div className="flex items-center gap-3">
