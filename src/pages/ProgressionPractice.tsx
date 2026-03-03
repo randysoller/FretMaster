@@ -172,12 +172,12 @@ function ScaleChordsPreview({ selectedKey, selectedScale, useFlats, keyDisplay }
   const chords = useMemo(() => resolveScaleChords(selectedKey, selectedScale, useFlats), [selectedKey, selectedScale, useFlats]);
   return (
     <div>
-      <h4 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-2">Chords in {keyDisplay} {selectedScale.name.replace(' Scale', '')}</h4>
-      <div className="flex flex-wrap gap-2">
+      <h4 className="font-display text-sm sm:text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-3 sm:mb-2">Chords in {keyDisplay} {selectedScale.name.replace(' Scale', '')}</h4>
+      <div className="flex flex-wrap gap-2.5 sm:gap-2">
         {chords.map((c, i) => (
-          <div key={i} className="flex flex-col items-center rounded-md bg-[hsl(var(--bg-surface))] px-3 py-2 min-w-[52px]">
-            <span className="text-sm font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
-            <span className="text-sm font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
+          <div key={i} className="flex flex-col items-center rounded-lg sm:rounded-md bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-subtle)/0.5)] px-5 py-3 sm:px-3 sm:py-2 min-w-[64px] sm:min-w-[52px]">
+            <span className="text-base sm:text-sm font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
+            <span className="text-lg sm:text-sm font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
           </div>
         ))}
       </div>
