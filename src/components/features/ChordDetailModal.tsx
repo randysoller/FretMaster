@@ -70,9 +70,9 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-start justify-between p-6 pb-0">
+        <div className="flex items-start justify-between p-3 pb-0 sm:p-6 sm:pb-0">
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="font-display text-3xl font-extrabold text-[hsl(var(--text-default))]">
@@ -105,9 +105,9 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
         </div>
 
         {/* Diagram + Tablature + Play */}
-        <div className="flex flex-col items-center gap-4 px-6 pt-5 pb-4">
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-5">
+        <div className="flex flex-col items-center gap-2 px-3 pt-2 pb-2 sm:gap-4 sm:px-6 sm:pt-5 sm:pb-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.6)] p-2 sm:p-5">
               {chord.isCustom ? (
                 <CustomChordDiagram
                   key={`detail-${chord.id}-${(chord.customBarres ?? []).length}`}
@@ -153,7 +153,7 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
               Edit
             </button>
           </div>
-          <div className="flex items-center gap-4 text-xs font-body text-[hsl(var(--text-muted))]">
+          <div className="flex items-center gap-4 text-xs font-body text-[hsl(var(--text-muted))] hidden sm:flex">
             <span className="flex items-center gap-1.5">
               <span className="inline-block size-2.5 rounded-sm bg-[hsl(var(--color-primary))]" />
               Finger
@@ -166,7 +166,7 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
         </div>
 
         {/* Finger Position Details */}
-        <div className="mx-6 mb-6 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.4)] overflow-hidden">
+        <div className="mx-3 mb-3 sm:mx-6 sm:mb-6 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.4)] overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface)/0.5)]">
             <Guitar className="size-3.5 text-[hsl(var(--color-primary))]" />
             <span className="font-display text-xs font-semibold text-[hsl(var(--text-subtle))] uppercase tracking-wider">
