@@ -406,7 +406,7 @@ export default function ChordLibrary() {
                     <p className="text-[10px] sm:text-xs font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
                       {getChordCategoryLabel(chord)}
                     </p>
-                    <p className="text-[10px] font-body text-[hsl(var(--text-muted)/0.6)] mt-0.5">
+                    <p className="text-xs font-body text-[hsl(var(--text-subtle))] mt-0.5">
                       {chord.name}
                     </p>
                   </div>
