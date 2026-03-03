@@ -813,11 +813,9 @@ export default function TunerPanel() {
                 <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
                   {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
                 </p>
-                {targetString && shownNote && (
-                  <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
-                    Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
-                  </p>
-                )}
+                <p className={`mt-1 text-xs font-body text-[hsl(var(--text-muted))] h-4 transition-opacity duration-200 ${targetString && shownNote ? 'opacity-100' : 'opacity-0'}`}>
+                  {targetString ? `Target: ${targetString.note} (${targetString.freq.toFixed(1)} Hz)` : '\u00A0'}
+                </p>
               </div>
 
               {/* Segmented cents meter */}
@@ -908,8 +906,8 @@ export default function TunerPanel() {
                 </div>
               </div>
 
-              {/* Status text */}
-              <div className="text-center">
+              {/* Status text — fixed height to prevent layout shift */}
+              <div className="text-center h-7 flex items-center justify-center">
                 {shownNote && isTargetInTune ? (
                   <motion.p
                     initial={{ opacity: 0, scale: 0.8 }}
