@@ -5,6 +5,7 @@ import { CHORDS } from '@/constants/chords';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS, getChordCategoryLabel } from '@/types/chord';
 import type { ChordCategory, ChordType, BarreRoot } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { Search, Filter, X, Volume2, Edit3 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
@@ -326,7 +327,7 @@ export default function ChordLibrary() {
           {/* Chord Grid */}
           {filteredChords.length > 0 ? (
             <motion.div
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
               initial="hidden"
               animate="visible"
               key={`${[...filterCategories].join(',')}-${[...filterTypes].join(',')}-${[...filterBarreRoots].join(',')}-${searchQuery}`}
@@ -346,59 +347,74 @@ export default function ChordLibrary() {
                     hidden: { opacity: 0, y: 20 },
                     visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
                   }}
-                  className="group relative rounded-lg sm:rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-2 sm:p-4 flex flex-col items-center gap-1.5 sm:gap-3 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.03] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.98] transition-all duration-200 cursor-pointer"
+                  className="group relative rounded-lg sm:rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.01] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.99] transition-all duration-200 cursor-pointer"
                 >
-                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1">
+                  {/* Action buttons */}
+                  <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 z-10">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
-                      className="size-6 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
                       title="Edit chord"
                     >
-                      <Edit3 className="size-2.5 sm:size-3" />
+                      <Edit3 className="size-3" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); playChord(chord); }}
-                      className="size-6 sm:size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                      className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
                       title="Play chord"
                     >
-                      <Volume2 className="size-3 sm:size-3.5" />
+                      <Volume2 className="size-3.5" />
                     </button>
                   </div>
                   {(chord as any).isCustom && !(chord as any).sourceChordId && (
-                    <span className="absolute top-1 left-1 sm:top-2 sm:left-2 rounded px-1 sm:px-1.5 py-0.5 text-[6px] sm:text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]">
+                    <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] z-10">
                       Custom
                     </span>
                   )}
-                  <div className="text-center mt-1 sm:mt-0">
-                    <h3 className="font-display text-sm sm:text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors leading-tight">
+
+                  {/* Left: Chord Diagram */}
+                  <div className="shrink-0">
+                    {(chord as any).isCustom ? (
+                      <CustomChordDiagram
+                        key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
+                        chord={{
+                          id: chord.id,
+                          name: chord.name,
+                          symbol: chord.symbol,
+                          baseFret: chord.baseFret,
+                          numFrets: (chord as any).numFrets ?? 5,
+                          mutedStrings: new Set((chord as any).customMutedStrings ?? []),
+                          openStrings: new Set((chord as any).customOpenStrings ?? []),
+                          openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
+                          markers: (chord as any).customMarkers ?? [],
+                          barres: (chord as any).customBarres ?? [],
+                          createdAt: 0,
+                          updatedAt: 0,
+                        }}
+                        size="sm"
+                      />
+                    ) : (
+                      <ChordDiagram chord={chord} size="sm" />
+                    )}
+                  </div>
+
+                  {/* Center: Name + Category */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <h3 className="font-display text-base sm:text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors leading-tight truncate">
                       {chord.symbol}
                     </h3>
-                    <p className="text-[8px] sm:text-[10px] font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
+                    <p className="text-[10px] sm:text-xs font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
                       {getChordCategoryLabel(chord)}
                     </p>
+                    <p className="text-[10px] font-body text-[hsl(var(--text-muted)/0.6)] mt-0.5">
+                      {chord.name}
+                    </p>
                   </div>
-                  {(chord as any).isCustom ? (
-                    <CustomChordDiagram
-                      key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
-                      chord={{
-                        id: chord.id,
-                        name: chord.name,
-                        symbol: chord.symbol,
-                        baseFret: chord.baseFret,
-                        numFrets: (chord as any).numFrets ?? 5,
-                        mutedStrings: new Set((chord as any).customMutedStrings ?? []),
-                        openStrings: new Set((chord as any).customOpenStrings ?? []),
-                        openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
-                        markers: (chord as any).customMarkers ?? [],
-                        barres: (chord as any).customBarres ?? [],
-                        createdAt: 0,
-                        updatedAt: 0,
-                      }}
-                      size="sm"
-                    />
-                  ) : (
-                    <ChordDiagram chord={chord} size="sm" />
-                  )}
+
+                  {/* Right: Tablature */}
+                  <div className="shrink-0">
+                    <ChordTablature chord={chord} size="sm" />
+                  </div>
                 </motion.div>
               ))}
             </motion.div>
