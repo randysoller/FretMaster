@@ -6,6 +6,7 @@ import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult } from '@/hooks/useChordDetection';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
+import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
@@ -252,11 +253,18 @@ export default function Practice() {
                   </motion.div>
                 ) : (
                   <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-3 sm:gap-6 w-full">
-                    <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis w-fit mx-auto max-w-[90vw] sm:max-w-none">
-                      {(chord as any).isCustom ? (
-                        <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
-                      ) : (
-                        <ChordDiagram chord={chord} size="lg" />
+                    <div className="flex items-center gap-3 sm:gap-5 w-fit mx-auto max-w-[90vw] sm:max-w-none">
+                      <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis">
+                        {(chord as any).isCustom ? (
+                          <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
+                        ) : (
+                          <ChordDiagram chord={chord} size="lg" />
+                        )}
+                      </div>
+                      {!(chord as any).isCustom && (
+                        <div className="shrink-0">
+                          <ChordTablature chord={chord} size="lg" />
+                        </div>
                       )}
                     </div>
                   </motion.div>
