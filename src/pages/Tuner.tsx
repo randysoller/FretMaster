@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Music, Volume2, ChevronDown, X } from 'lucide-react';
+import { Mic, MicOff, Music, Volume2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useSwipeDown } from '@/hooks/useSwipeDown';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -696,12 +695,6 @@ export default function Tuner() {
     setTimeout(() => navigate(-1), 300);
   }, [isDismissing, navigate]);
 
-  // Swipe-down to close on mobile
-  const swipeHandlers = useSwipeDown({
-    threshold: 60,
-    onSwipeDown: handleDismiss,
-  });
-
   // Auto-start listening on mount
   useEffect(() => {
     if (!startedRef.current) {
@@ -738,15 +731,9 @@ export default function Tuner() {
   return (
     <motion.div
       className="stage-gradient min-h-[calc(100vh-58px)]"
-      {...swipeHandlers}
       animate={isDismissing ? { y: '100%', opacity: 0 } : { y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Swipe indicator — mobile only */}
-      <div className="flex flex-col items-center pt-2 gap-0.5 sm:hidden">
-        <div className="w-10 h-1 rounded-full bg-[hsl(var(--color-emphasis))]" />
-        <ChevronDown className="size-3.5 text-[hsl(var(--color-emphasis))]" strokeWidth={3} />
-      </div>
       {/* Header */}
       <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">
         {/* Close button */}

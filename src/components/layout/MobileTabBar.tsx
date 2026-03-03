@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 
@@ -34,16 +34,26 @@ const rightTabs = [
 
 export default function MobileTabBar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   const renderTab = (tab: typeof leftTabs[number] | typeof rightTabs[number]) => {
     const isActive = tab.matchPaths.some((p) =>
       p === '/' ? pathname === '/' : pathname.startsWith(p),
     );
     const Icon = tab.icon;
+
+    const handleClick = (e: React.MouseEvent) => {
+      if (isActive) {
+        e.preventDefault();
+        navigate(-1);
+      }
+    };
+
     return (
       <Link
         key={tab.to}
         to={tab.to}
+        onClick={handleClick}
         className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
           isActive
             ? 'text-[hsl(var(--color-primary))]'

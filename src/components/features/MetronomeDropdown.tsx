@@ -4,7 +4,6 @@ import {
   Gauge, Play, Minus, Plus, Volume2, Volume1, VolumeX,
   ChevronUp, ChevronDown, X,
 } from 'lucide-react';
-import { useSwipeDown } from '@/hooks/useSwipeDown';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function getTempoMarking(bpm: number): string {
@@ -76,12 +75,6 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
   const presetBpms = [60, 80, 100, 120, 140, 160];
   const VolumeIcon = store.volume === 0 ? VolumeX : store.volume < 0.5 ? Volume1 : Volume2;
 
-  // Swipe-down to close on mobile
-  const swipeHandlers = useSwipeDown({
-    threshold: 50,
-    onSwipeDown: () => setOpen(false),
-  });
-
   // Close on click outside
   useEffect(() => {
     if (!open) return;
@@ -138,7 +131,6 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
       <AnimatePresence>
       {open && (
         <motion.div
-          {...swipeHandlers}
           initial={{ opacity: 0, y: position === 'bottom' ? 40 : -40 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: position === 'bottom' ? 60 : -60 }}
@@ -148,11 +140,6 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
             ? 'bottom-[64px] sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-[400px]'
             : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'
         }`}>
-          {/* Swipe indicator — mobile only */}
-          <div className="flex flex-col items-center pt-2 gap-0.5 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-[hsl(var(--color-emphasis))]" />
-            <ChevronDown className="size-3.5 text-[hsl(var(--color-emphasis))]" strokeWidth={3} />
-          </div>
           {/* Header */}
           <div className="flex items-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <button
