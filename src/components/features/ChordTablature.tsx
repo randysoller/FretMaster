@@ -19,9 +19,9 @@ export default function ChordTablature({ chord, size = 'sm' }: ChordTablaturePro
   const reversedRootIdx = 5 - rootIdx;
 
   const textSizes = {
-    sm: { label: 'text-[10px]', fret: 'text-[11px]', gap: 'gap-[1px]', lineH: 'h-[14px]', dashW: 'w-3', labelW: 'w-3', py: 'py-1 px-1.5', rounded: 'rounded-md' },
-    md: { label: 'text-xs', fret: 'text-xs', gap: 'gap-[2px]', lineH: 'h-[18px]', dashW: 'w-5', labelW: 'w-4', py: 'py-1.5 px-2', rounded: 'rounded-lg' },
-    lg: { label: 'text-sm', fret: 'text-sm', gap: 'gap-[3px]', lineH: 'h-[22px]', dashW: 'w-6', labelW: 'w-5', py: 'py-2 px-3', rounded: 'rounded-lg' },
+    sm: { label: 'text-[10px]', fret: 'text-[13px]', gap: 'gap-[1px]', lineH: 'h-[14px]', dashW: 'w-3', labelW: 'w-3', py: 'py-1 px-1.5', rounded: 'rounded-md' },
+    md: { label: 'text-xs', fret: 'text-[14px]', gap: 'gap-[2px]', lineH: 'h-[18px]', dashW: 'w-5', labelW: 'w-4', py: 'py-1.5 px-2', rounded: 'rounded-lg' },
+    lg: { label: 'text-sm', fret: 'text-base', gap: 'gap-[3px]', lineH: 'h-[22px]', dashW: 'w-6', labelW: 'w-5', py: 'py-2 px-3', rounded: 'rounded-lg' },
   };
 
   const cfg = textSizes[size];
