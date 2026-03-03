@@ -1,3 +1,4 @@
+
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Music, ChevronRight } from 'lucide-react';
@@ -86,15 +87,15 @@ export default function PracticeLanding() {
           <SpotlightCard delay={0.3}>
           <Link
             to="/chord-practice"
-            className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-primary)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-primary)/0.12)] active:scale-[0.98]"
+            className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-emerald-500/50 hover:shadow-[0_0_40px_rgba(16,185,129,0.12)] active:scale-[0.98]"
           >
             {/* Accent glow */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--color-brand))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-emphasis))] opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500/30 opacity-60 group-hover:opacity-100 transition-opacity" />
 
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-emerald-500 shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
                   {/* Open G chord diagram */}
                   <svg width="28" height="34" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Nut */}
@@ -130,7 +131,7 @@ export default function PracticeLanding() {
               </p>
 
               {/* CTA */}
-              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-primary))] group-hover:gap-3 transition-all duration-200 mt-3">
+              <div className="flex items-center gap-2 text-sm font-display font-bold text-emerald-400 group-hover:gap-3 transition-all duration-200 mt-3">
                 <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
@@ -142,15 +143,15 @@ export default function PracticeLanding() {
           <SpotlightCard delay={0.45}>
           <Link
             to="/progressions"
-            className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-[hsl(var(--color-emphasis)/0.5)] hover:shadow-[0_0_40px_hsl(var(--color-emphasis)/0.12)] active:scale-[0.98]"
+            className="group relative flex flex-col h-full rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.7)] backdrop-blur-sm overflow-hidden transition-all duration-300 hover:border-violet-500/50 hover:shadow-[0_0_40px_rgba(139,92,246,0.12)] active:scale-[0.98]"
           >
             {/* Accent glow */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[hsl(var(--color-emphasis))] via-[hsl(var(--color-primary))] to-[hsl(var(--color-brand))] opacity-60 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-violet-400 to-violet-500/30 opacity-60 group-hover:opacity-100 transition-opacity" />
 
             <div className="flex flex-col flex-1 p-5 sm:p-6">
               {/* Icon + Title */}
               <div className="flex items-center gap-4 mb-2">
-                <div className="flex items-center justify-center size-12 rounded-xl bg-[hsl(var(--color-primary))] shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
+                <div className="flex items-center justify-center size-12 rounded-xl bg-violet-500 shrink-0 group-hover:scale-110 group-hover:brightness-110 transition-all duration-300 overflow-hidden">
                   {/* I–IV–V Roman numeral graphic */}
                   <svg width="28" height="34" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* I — large, centered at top */}
@@ -181,7 +182,7 @@ export default function PracticeLanding() {
               </p>
 
               {/* CTA */}
-              <div className="flex items-center gap-2 text-sm font-display font-bold text-[hsl(var(--color-emphasis))] group-hover:gap-3 transition-all duration-200 mt-3">
+              <div className="flex items-center gap-2 text-sm font-display font-bold text-violet-400 group-hover:gap-3 transition-all duration-200 mt-3">
                 <span>Start</span>
                 <ChevronRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
               </div>
