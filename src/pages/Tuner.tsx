@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Mic, MicOff, Music, Volume2, X, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTunerStore } from '@/stores/tunerStore';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -102,22 +102,19 @@ const TUNING_PRESETS: TuningPreset[] = [
   },
 ];
 
-const GUITAR_STRINGS = TUNING_PRESETS[0].strings;
-
 // ─── Pitch detection utilities ───────────────────────────
 
 function frequencyToNoteInfo(freq: number): { note: string; octave: number; cents: number; noteIndex: number } {
   const semitoneOffset = 12 * Math.log2(freq / 440);
   const roundedSemitone = Math.round(semitoneOffset);
   const cents = Math.round((semitoneOffset - roundedSemitone) * 100);
-  const rawIndex = roundedSemitone + 9; // A = index 9
+  const rawIndex = roundedSemitone + 9;
   const noteIndex = ((rawIndex % 12) + 12) % 12;
   const octave = Math.floor((roundedSemitone + 9) / 12) + 4;
   return { note: NOTE_STRINGS[noteIndex], octave, cents, noteIndex };
 }
 
 function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
-  // Check signal level
   let rms = 0;
   for (let i = 0; i < buffer.length; i++) {
     rms += buffer[i] * buffer[i];
@@ -128,7 +125,6 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   const size = buffer.length;
   const halfSize = Math.floor(size / 2);
 
-  // Normalized Square Difference Function (NSDF) — YIN-style for reliable pitch detection
   const nsdf = new Float32Array(halfSize);
   for (let tau = 0; tau < halfSize; tau++) {
     let acf = 0;
@@ -140,17 +136,14 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  // Collect ALL peaks above minimum threshold — then pick the best fundamental
-  const threshold = 0.35; // lowered for better low-frequency sensitivity (D2, etc.)
+  const threshold = 0.35;
   const peaks: { tau: number; val: number }[] = [];
 
-  // Skip lag 0, find first zero crossing
   let firstZero = 1;
   while (firstZero < halfSize - 1 && nsdf[firstZero] > 0) {
     firstZero++;
   }
 
-  // Search positive regions after first zero crossing
   let idx = firstZero;
   while (idx < halfSize - 1) {
     while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
@@ -170,7 +163,6 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
 
   if (peaks.length === 0) return -1;
 
-  // Pick the first peak above threshold (fundamental) — avoids octave errors
   let bestTau = -1;
   let bestVal = -Infinity;
   for (const p of peaks) {
@@ -181,7 +173,6 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     }
   }
 
-  // Fallback: strongest peak if none above threshold
   if (bestTau <= 0) {
     for (const p of peaks) {
       if (p.val > bestVal) {
@@ -193,7 +184,6 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
 
   if (bestTau <= 0 || bestVal < 0.2) return -1;
 
-  // Parabolic interpolation for sub-sample accuracy
   let refinedTau = bestTau;
   if (bestTau > 0 && bestTau < halfSize - 1) {
     const prev = nsdf[bestTau - 1];
@@ -206,10 +196,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   }
 
   const frequency = sampleRate / refinedTau;
-
-  // Guitar range ~50Hz to ~1400Hz (D2 = 73Hz, need headroom for detection)
   if (frequency < 50 || frequency > 1400) return -1;
-
   return frequency;
 }
 
@@ -228,8 +215,8 @@ function findClosestString(freq: number, strings: GuitarString[]): GuitarString 
 
 // ─── Component ───────────────────────────────────────────
 
-export default function Tuner() {
-  const navigate = useNavigate();
+export default function TunerPanel() {
+  const { isOpen, close } = useTunerStore();
   const [isListening, setIsListening] = useState(false);
   const [selectedTuning, setSelectedTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [tuningDropdownOpen, setTuningDropdownOpen] = useState(false);
@@ -241,7 +228,6 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
-  const [isDismissing, setIsDismissing] = useState(false);
   const [sensitivity, setSensitivity] = useState(() => {
     const saved = localStorage.getItem('tuner-mic-sensitivity');
     return saved !== null ? Number(saved) : 50;
@@ -253,14 +239,12 @@ export default function Tuner() {
   const selectedStringRef = useRef<GuitarString | null>(null);
   const selectedTuningRef = useRef<TuningPreset>(TUNING_PRESETS[0]);
 
-  // Hold last detected note to prevent flickering when signal briefly drops
   const [displayNote, setDisplayNote] = useState<{ note: string; octave: number; cents: number } | null>(null);
   const [displayFreq, setDisplayFreq] = useState<number | null>(null);
   const [displayClosest, setDisplayClosest] = useState<GuitarString | null>(null);
   const holdTimerRef = useRef<number>(0);
   const smoothedFreqRef = useRef<number | null>(null);
 
-  // Keep refs in sync so the detect loop can access current values
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
   useEffect(() => { selectedTuningRef.current = selectedTuning; }, [selectedTuning]);
   useEffect(() => {
@@ -268,7 +252,6 @@ export default function Tuner() {
     localStorage.setItem('tuner-mic-sensitivity', String(sensitivity));
   }, [sensitivity]);
 
-  // Close tuning dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (tuningDropdownRef.current && !tuningDropdownRef.current.contains(e.target as Node)) {
@@ -279,7 +262,6 @@ export default function Tuner() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Active strings based on selected tuning
   const activeStrings = useMemo(() => selectedTuning.strings, [selectedTuning]);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -335,7 +317,6 @@ export default function Tuner() {
       });
       const ctx = new AudioContext();
 
-      // High-pass filter to remove rumble below guitar range
       const source = ctx.createMediaStreamSource(stream);
       const highPass = ctx.createBiquadFilter();
       highPass.type = 'highpass';
@@ -345,7 +326,7 @@ export default function Tuner() {
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 8192;
-      analyser.smoothingTimeConstant = 0; // no smoothing — clean time-domain data for NSDF
+      analyser.smoothingTimeConstant = 0;
       highPass.connect(analyser);
 
       audioCtxRef.current = ctx;
@@ -354,7 +335,6 @@ export default function Tuner() {
       sourceRef.current = source;
       bufferRef.current = new Float32Array(analyser.fftSize);
 
-      // Pre-warm chime context during user-gesture-initiated flow
       getChimeCtx();
 
       setIsListening(true);
@@ -363,7 +343,6 @@ export default function Tuner() {
       const detect = () => {
         if (!analyserRef.current || !bufferRef.current || !audioCtxRef.current) return;
 
-        // Map sensitivity (0–100) to RMS threshold: high sensitivity → low threshold
         const s = sensitivityRef.current;
         const rmsThreshold = 0.05 * Math.pow(0.02, s / 100);
         (globalThis as any).__tunerRmsThreshold = rmsThreshold;
@@ -372,18 +351,14 @@ export default function Tuner() {
         const rawFreq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
 
         if (rawFreq > 0) {
-          // Smooth frequency with adaptive weight to reduce display jitter
           let freq = rawFreq;
           if (smoothedFreqRef.current !== null) {
             const ratio = rawFreq / smoothedFreqRef.current;
             if (ratio > 0.97 && ratio < 1.03) {
-              // Small deviation: smooth heavily to stabilize meter
               freq = smoothedFreqRef.current * 0.75 + rawFreq * 0.25;
             } else if (ratio > 0.93 && ratio < 1.07) {
-              // Medium deviation: moderate smoothing
               freq = smoothedFreqRef.current * 0.5 + rawFreq * 0.5;
             }
-            // Large deviation: no smoothing, jump to new note immediately
           }
           smoothedFreqRef.current = freq;
           setFrequency(freq);
@@ -391,18 +366,15 @@ export default function Tuner() {
           setNoteInfo(info);
           const closest = findClosestString(freq, selectedTuningRef.current.strings);
           setClosestString(closest);
-          // Update held display immediately
           setDisplayNote(info);
           setDisplayFreq(freq);
           setDisplayClosest(closest);
           if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = 0; }
 
-          // Check if in tune for chime confirmation — with hysteresis to prevent jitter resets
           const target = selectedStringRef.current ?? closest;
           const centsOff = target ? Math.round(1200 * Math.log2(freq / target.freq)) : info.cents;
           const absCents = Math.abs(centsOff);
           if (absCents <= 5) {
-            // Start or continue the in-tune timer
             if (inTuneStartRef.current === 0) inTuneStartRef.current = performance.now();
             if (!inTuneSoundPlayedRef.current && performance.now() - inTuneStartRef.current >= 500) {
               inTuneSoundPlayedRef.current = true;
@@ -410,18 +382,14 @@ export default function Tuner() {
               playCowbellSound();
             }
           } else if (absCents > 12) {
-            // Only reset the timer if cents drifts beyond hysteresis band (>12¢)
-            // This prevents small jitter from constantly resetting the 0.5s timer
             inTuneStartRef.current = 0;
             inTuneSoundPlayedRef.current = false;
             setInTuneConfirmed(false);
           }
-          // Between 5–12 cents: keep the timer running (hysteresis zone)
         } else {
           setFrequency(null);
           setNoteInfo(null);
           setClosestString(null);
-          // Delay clearing display to prevent flicker (shorter hold for responsiveness)
           if (!holdTimerRef.current) {
             holdTimerRef.current = window.setTimeout(() => {
               setDisplayNote(null);
@@ -443,7 +411,6 @@ export default function Tuner() {
     }
   }, []);
 
-  // Dedicated AudioContext for chime — created on first user gesture
   const chimeCtxRef = useRef<AudioContext | null>(null);
   const getChimeCtx = useCallback(() => {
     if (!chimeCtxRef.current || chimeCtxRef.current.state === 'closed') {
@@ -455,7 +422,6 @@ export default function Tuner() {
     return chimeCtxRef.current;
   }, []);
 
-  // Bright chime "in tune" confirmation sound
   const playCowbellSound = useCallback(() => {
     try {
       const ctx = getChimeCtx();
@@ -520,14 +486,12 @@ export default function Tuner() {
     }
   }, [getChimeCtx]);
 
-  // Reference tone playback — realistic acoustic guitar synthesis
   const playReferenceTone = useCallback((gs: GuitarString) => {
     const ctx = new AudioContext();
     const duration = 3.0;
     const now = ctx.currentTime;
     const freq = gs.freq;
 
-    // ─── Master output with compressor for punch ───
     const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-12, now);
     compressor.knee.setValueAtTime(6, now);
@@ -542,7 +506,6 @@ export default function Tuner() {
     masterGain.gain.setTargetAtTime(0.0001, now + 0.005, duration * 0.32);
     masterGain.connect(compressor);
 
-    // ─── Body resonance EQ — simulates guitar body ───
     const bodyLow = ctx.createBiquadFilter();
     bodyLow.type = 'peaking';
     bodyLow.frequency.value = 120;
@@ -571,12 +534,10 @@ export default function Tuner() {
     bodyHigh.connect(airRoll);
     airRoll.connect(masterGain);
 
-    // ─── Harmonic partials — acoustic guitar spectral envelope ───
-    // Relative amplitudes modeled after real nylon/steel string spectra
     const harmonics = [
-      { h: 1, amp: 1.00, decay: 0.38 },  // fundamental
-      { h: 2, amp: 0.72, decay: 0.32 },  // strong 2nd
-      { h: 3, amp: 0.50, decay: 0.26 },  // prominent 3rd
+      { h: 1, amp: 1.00, decay: 0.38 },
+      { h: 2, amp: 0.72, decay: 0.32 },
+      { h: 3, amp: 0.50, decay: 0.26 },
       { h: 4, amp: 0.38, decay: 0.22 },
       { h: 5, amp: 0.25, decay: 0.18 },
       { h: 6, amp: 0.18, decay: 0.14 },
@@ -591,17 +552,13 @@ export default function Tuner() {
       if (partialFreq > 10000) return;
 
       const osc = ctx.createOscillator();
-      // Mix sine + triangle for richer timbre on lower harmonics
       osc.type = h <= 3 ? 'triangle' : 'sine';
-      osc.frequency.value = partialFreq;
-      // Slight inharmonicity (higher partials stretch sharp, like real strings)
       osc.frequency.value = partialFreq * (1 + 0.00005 * h * h);
 
       const pGain = ctx.createGain();
       const attackAmp = amp * 0.65;
       pGain.gain.setValueAtTime(0, now);
       pGain.gain.linearRampToValueAtTime(attackAmp, now + 0.001);
-      // Fast initial decay (pluck) then slower sustain decay
       pGain.gain.setTargetAtTime(attackAmp * 0.5, now + 0.002, 0.03);
       pGain.gain.setTargetAtTime(0.0001, now + 0.06, duration * decay);
 
@@ -611,12 +568,10 @@ export default function Tuner() {
       osc.stop(now + duration);
     });
 
-    // ─── Pluck transient — short filtered noise burst ───
     const pluckLen = Math.floor(ctx.sampleRate * 0.035);
     const pluckBuf = ctx.createBuffer(1, pluckLen, ctx.sampleRate);
     const pluckData = pluckBuf.getChannelData(0);
     for (let i = 0; i < pluckLen; i++) {
-      // Shaped noise burst with quick fade
       const env = 1 - (i / pluckLen);
       pluckData[i] = (Math.random() * 2 - 1) * env * env * 0.8;
     }
@@ -637,7 +592,6 @@ export default function Tuner() {
     pluckGain.connect(masterGain);
     pluckSrc.start(now);
 
-    // ─── String thump / body knock — low-freq transient ───
     const thumpOsc = ctx.createOscillator();
     thumpOsc.type = 'sine';
     thumpOsc.frequency.setValueAtTime(freq * 0.5, now);
@@ -650,7 +604,6 @@ export default function Tuner() {
     thumpOsc.start(now);
     thumpOsc.stop(now + 0.15);
 
-    // ─── Finger / fret buzz — high-freq tiny noise ───
     const buzzLen = Math.floor(ctx.sampleRate * 0.008);
     const buzzBuf = ctx.createBuffer(1, buzzLen, ctx.sampleRate);
     const buzzData = buzzBuf.getChannelData(0);
@@ -673,7 +626,6 @@ export default function Tuner() {
     setTimeout(() => ctx.close(), (duration + 0.5) * 1000);
   }, []);
 
-  // Warm up chime context on first user interaction so it's ready for auto-play
   useEffect(() => {
     const warmUp = () => {
       getChimeCtx();
@@ -688,395 +640,384 @@ export default function Tuner() {
     };
   }, [getChimeCtx]);
 
-  // Animated dismiss handler
-  const handleDismiss = useCallback(() => {
-    if (isDismissing) return;
-    setIsDismissing(true);
-    setTimeout(() => navigate(-1), 300);
-  }, [isDismissing, navigate]);
-
-  // Auto-start listening on mount
+  // Auto-start listening when panel opens
   useEffect(() => {
-    if (!startedRef.current) {
+    if (isOpen && !startedRef.current) {
       startedRef.current = true;
       startListening();
     }
-    return () => {
+    if (!isOpen && startedRef.current) {
+      startedRef.current = false;
       stopListening();
-    };
-  }, [startListening, stopListening]);
+    }
+  }, [isOpen, startListening, stopListening]);
 
-  // Use held display values for rendering to prevent flicker
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { stopListening(); };
+  }, [stopListening]);
+
   const shownNote = displayNote;
   const shownFreq = displayFreq;
   const shownClosest = displayClosest;
 
-  // Determine tuning accuracy
   const cents = shownNote?.cents ?? 0;
   const isInTune = Math.abs(cents) <= 5;
   const isClose = Math.abs(cents) <= 15;
 
-  // For meter display
-  const meterPosition = Math.max(-50, Math.min(50, cents));
-
-  // Determine what string we're comparing against
   const targetString = selectedString ?? shownClosest;
   const centsFromTarget = targetString && shownFreq
     ? Math.round(1200 * Math.log2(shownFreq / targetString.freq))
     : cents;
   const isTargetInTune = Math.abs(centsFromTarget) <= 5;
   const isTargetClose = Math.abs(centsFromTarget) <= 15;
-  const targetMeterPosition = Math.max(-50, Math.min(50, centsFromTarget));
+
+  if (!isOpen) return null;
 
   return (
     <motion.div
-      className="stage-gradient min-h-[calc(100vh-58px)]"
-      animate={isDismissing ? { y: '100%', opacity: 0 } : { y: 0, opacity: 1 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      initial={{ opacity: 0, y: 80 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 80 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      className="fixed inset-0 z-50 flex flex-col bg-[hsl(var(--bg-base))]"
     >
-      {/* Header */}
-      <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">
-        {/* Close button */}
-        <button
-          onClick={handleDismiss}
-          className="absolute top-8 left-4 sm:left-6 flex items-center justify-center size-10 sm:size-8 rounded-lg hover:bg-[hsl(var(--color-primary)/0.12)] transition-colors active:scale-90 z-10"
-          title="Close tuner"
-        >
-          <X className="size-6 text-[hsl(var(--color-primary))]" />
-        </button>
-        <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-4">
-          <Music className="size-3.5 text-[hsl(var(--color-primary))]" />
-          <span className="text-xs font-body font-medium text-[hsl(var(--color-primary))]">Guitar Tuner</span>
-        </div>
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight">
-          <span className="text-[hsl(var(--text-default))]">Tune Your </span>
-          <span className="text-gradient">Guitar</span>
-        </h1>
+      {/* Scrollable tuner content */}
+      <div className="flex-1 overflow-y-auto stage-gradient">
+        {/* Header */}
+        <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">
+          {/* Close button */}
+          <button
+            onClick={() => { stopListening(); close(); }}
+            className="absolute top-8 left-4 sm:left-6 flex items-center justify-center size-10 sm:size-8 rounded-lg hover:bg-[hsl(var(--color-primary)/0.12)] transition-colors active:scale-90 z-10"
+            title="Close tuner"
+          >
+            <X className="size-6 text-[hsl(var(--color-primary))]" />
+          </button>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-4">
+            <Music className="size-3.5 text-[hsl(var(--color-primary))]" />
+            <span className="text-xs font-body font-medium text-[hsl(var(--color-primary))]">Guitar Tuner</span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold leading-tight">
+            <span className="text-[hsl(var(--text-default))]">Tune Your </span>
+            <span className="text-gradient">Guitar</span>
+          </h1>
 
-        {/* Tuning preset selector */}
-        <div className="mt-4 flex justify-center">
-          <div ref={tuningDropdownRef} className="relative">
-            <button
-              onClick={() => setTuningDropdownOpen((o) => !o)}
-              className="inline-flex items-center gap-3 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm px-5 py-3 min-h-[48px] transition-all hover:bg-[hsl(var(--bg-overlay))] active:scale-95"
-            >
-              <span className="font-display text-base font-bold text-[hsl(var(--text-default))]">
-                {selectedTuning.label}
-              </span>
-              <span className="text-sm font-body text-[hsl(var(--text-muted))]">
-                {selectedTuning.strings.map((s) => s.display).join(' ')}
-              </span>
-              <ChevronDown className={`size-7 text-[hsl(var(--color-primary))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} strokeWidth={3} />
-            </button>
-
-            {tuningDropdownOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.15 }}
-                className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-72 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))] backdrop-blur-xl shadow-xl overflow-hidden"
+          {/* Tuning preset selector */}
+          <div className="mt-4 flex justify-center">
+            <div ref={tuningDropdownRef} className="relative">
+              <button
+                onClick={() => setTuningDropdownOpen((o) => !o)}
+                className="inline-flex items-center gap-3 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm px-5 py-3 min-h-[48px] transition-all hover:bg-[hsl(var(--bg-overlay))] active:scale-95"
               >
-                {TUNING_PRESETS.map((preset) => {
-                  const isActive = selectedTuning.name === preset.name;
-                  return (
-                    <button
-                      key={preset.name}
-                      onClick={() => {
-                        setSelectedTuning(preset);
-                        setSelectedString(null);
-                        setTuningDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-5 py-3.5 min-h-[48px] transition-colors ${
-                        isActive
-                          ? 'bg-[hsl(var(--color-primary)/0.1)]'
-                          : 'hover:bg-[hsl(var(--bg-overlay))]'
-                      }`}
-                    >
-                      <div className="text-left">
-                        <p className={`font-display text-base font-bold ${
-                          isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
-                        }`}>
-                          {preset.label}
-                        </p>
-                        <p className="text-sm font-body text-[hsl(var(--text-muted))]">
-                          {preset.strings.map((s) => s.note).join(' – ')}
-                        </p>
-                      </div>
-                      {isActive && (
-                        <span className="size-2 rounded-full bg-[hsl(var(--color-primary))]" />
-                      )}
-                    </button>
-                  );
-                })}
-              </motion.div>
-            )}
-          </div>
-        </div>
-
-        <p className="mt-3 text-sm font-body text-[hsl(var(--text-muted))]">
-          Play a string and the tuner will detect the pitch.
-        </p>
-      </div>
-
-      <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
-        {permissionDenied && (
-          <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5 text-center justify-center">
-            <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
-            <span className="text-xs sm:text-sm font-body text-[hsl(var(--semantic-error))]">
-              Microphone access denied. Please allow mic access in browser settings.
-            </span>
-          </div>
-        )}
-
-        {/* Main tuner display */}
-        <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
-          <div className="space-y-6">
-            {/* Detected note */}
-            <div className="text-center">
-              <div className="relative inline-flex items-center justify-center">
-                {/* Circle border on in-tune chime */}
-                <motion.div
-                  className="absolute rounded-full border-[3px] border-[hsl(142_71%_45%)] pointer-events-none"
-                  style={{ width: 140, height: 140 }}
-                  initial={{ opacity: 0, scale: 0.85 }}
-                  animate={Math.abs(centsFromTarget) <= 2 && shownNote
-                    ? { opacity: 1, scale: 1 }
-                    : { opacity: 0, scale: 0.85 }
-                  }
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
-                />
-                <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
-                  !shownNote
-                    ? 'text-[hsl(var(--text-muted)/0.25)]'
-                    : isTargetInTune
-                      ? 'text-[hsl(142_71%_45%)]'
-                      : isTargetClose
-                        ? 'text-[hsl(45_93%_47%)]'
-                        : 'text-[rgb(220,38,38)]'
-                }`}>
-                  {shownNote ? (
-                    <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
-                  ) : (
-                    <>—</>  
-                  )}
-                </p>
-              </div>
-              <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
-                {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
-              </p>
-              {targetString && shownNote && (
-                <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
-                  Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
-                </p>
-              )}
-
-            </div>
-
-            {/* Segmented cents meter */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-center gap-[2px] px-1">
-                {Array.from({ length: 41 }, (_, i) => {
-                  const segCents = (i - 20) * 2.5;
-                  const isCenter = i === 20;
-                  const absSegCents = Math.abs(segCents);
-
-                  // Zone colors
-                  let hue: string;
-                  if (absSegCents <= 5) hue = '142 71% 45%';
-                  else if (absSegCents <= 15) hue = '45 93% 47%';
-                  else hue = '0 72% 51%';
-
-                  // Fill logic: light segments from center toward current offset
-                  const cur = shownNote ? centsFromTarget : 0;
-                  const hasSignal = !!shownNote;
-                  let lit = false;
-                  if (hasSignal) {
-                    if (isCenter && Math.abs(cur) < 2.5) {
-                      lit = true;
-                    } else if (cur > 0 && segCents > 0 && segCents <= cur + 1.25) {
-                      lit = true;
-                    } else if (cur < 0 && segCents < 0 && segCents >= cur - 1.25) {
-                      lit = true;
-                    }
-                    // Always light center when within green zone
-                    if (isCenter && Math.abs(cur) <= 5) lit = true;
-                  }
-
-                  return (
-                    <div
-                      key={i}
-                      className="rounded-sm transition-all duration-150"
-                      style={{
-                        width: isCenter ? 6 : 4,
-                        height: isCenter ? 84 : absSegCents <= 5 ? 68 : absSegCents <= 15 ? 60 : 52,
-                        backgroundColor: lit
-                          ? `hsl(${hue})`
-                          : `hsl(${hue} / 0.12)`,
-                        boxShadow: lit
-                          ? `0 0 8px hsl(${hue} / 0.5), 0 0 2px hsl(${hue} / 0.3)`
-                          : 'none',
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              {/* Labels */}
-              <div className="flex justify-between items-center text-[10px] font-body text-[hsl(var(--text-muted))]">
-                <span>♭ Flat</span>
-                <span className={`font-display text-sm font-bold tabular-nums transition-colors duration-300 ${
-                  !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
-                }`}>
-                  {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
+                <span className="font-display text-base font-bold text-[hsl(var(--text-default))]">
+                  {selectedTuning.label}
                 </span>
-                <span>Sharp ♯</span>
-              </div>
-            </div>
+                <span className="text-sm font-body text-[hsl(var(--text-muted))]">
+                  {selectedTuning.strings.map((s) => s.display).join(' ')}
+                </span>
+                <ChevronDown className={`size-7 text-[hsl(var(--color-primary))] transition-transform duration-200 ${tuningDropdownOpen ? 'rotate-180' : ''}`} strokeWidth={3} />
+              </button>
 
-            {/* Mic sensitivity */}
-            <div className="space-y-2 !mt-8">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
-                  <Mic className="size-3.5" />
-                  Mic Sensitivity
-                </label>
-                <span className="text-xs font-body tabular-nums text-[hsl(var(--text-muted))]">{sensitivity}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={1}
-                value={sensitivity}
-                onChange={(e) => setSensitivity(Number(e.target.value))}
-                className="w-full h-2 rounded-full appearance-none cursor-pointer
-                  bg-[hsl(var(--bg-surface))]
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
-                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[hsl(var(--color-primary))]
-                  [&::-webkit-slider-thumb]:shadow-[0_0_6px_hsl(var(--color-primary)/0.4)]
-                  [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-150
-                  [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:active:scale-95
-                  [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-[hsl(var(--color-primary))] [&::-moz-range-thumb]:border-none"
-              />
-              <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted)/0.5)]">
-                <span>Low</span>
-                <span>High</span>
-              </div>
-            </div>
-
-            {/* Status text */}
-            <div className="text-center">
-              {shownNote && isTargetInTune ? (
-                <motion.p
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
-                  style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
+              {tuningDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute z-50 top-full mt-1 left-1/2 -translate-x-1/2 w-72 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))] backdrop-blur-xl shadow-xl overflow-hidden"
                 >
-                  In Tune ✓
-                </motion.p>
-              ) : shownNote ? (
-                <p className="font-body text-sm text-[hsl(var(--text-muted))]">
-                  {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
-                </p>
-              ) : null}
+                  {TUNING_PRESETS.map((preset) => {
+                    const isActive = selectedTuning.name === preset.name;
+                    return (
+                      <button
+                        key={preset.name}
+                        onClick={() => {
+                          setSelectedTuning(preset);
+                          setSelectedString(null);
+                          setTuningDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-5 py-3.5 min-h-[48px] transition-colors ${
+                          isActive
+                            ? 'bg-[hsl(var(--color-primary)/0.1)]'
+                            : 'hover:bg-[hsl(var(--bg-overlay))]'
+                        }`}
+                      >
+                        <div className="text-left">
+                          <p className={`font-display text-base font-bold ${
+                            isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                          }`}>
+                            {preset.label}
+                          </p>
+                          <p className="text-sm font-body text-[hsl(var(--text-muted))]">
+                            {preset.strings.map((s) => s.note).join(' – ')}
+                          </p>
+                        </div>
+                        {isActive && (
+                          <span className="size-2 rounded-full bg-[hsl(var(--color-primary))]" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
             </div>
           </div>
+
+          <p className="mt-3 text-sm font-body text-[hsl(var(--text-muted))]">
+            Play a string and the tuner will detect the pitch.
+          </p>
         </div>
 
-        {/* String selector + reference tones (combined) */}
-        <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
-              Strings
-            </h3>
-            <button
-              onClick={() => setSelectedString(null)}
-              className={`rounded-lg px-4 py-2.5 text-sm font-display font-bold transition-all active:scale-95 min-h-[44px] ${
-                !selectedString
-                  ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]'
-                  : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <Mic className="size-3.5" />
-                Auto-Detect
-              </div>
-            </button>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {activeStrings.map((gs) => {
-              const isActive = selectedString?.string === gs.string;
-              const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
-              const isPlaying = playingString === gs.string;
-              // Real-time cents offset from this string's target
-              const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
-              const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
-              const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
-              return (
-                <button
-                  key={gs.string}
-                  className={`
-                    flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
-                    ${isActive
-                      ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
-                      : isDetected
-                        ? isTargetInTune
-                          ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
-                          : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
-                        : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
+        <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
+          {permissionDenied && (
+            <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5 text-center justify-center">
+              <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
+              <span className="text-xs sm:text-sm font-body text-[hsl(var(--semantic-error))]">
+                Microphone access denied. Please allow mic access in browser settings.
+              </span>
+            </div>
+          )}
+
+          {/* Main tuner display */}
+          <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
+            <div className="space-y-6">
+              {/* Detected note */}
+              <div className="text-center">
+                <div className="relative inline-flex items-center justify-center">
+                  <motion.div
+                    className="absolute rounded-full border-[3px] border-[hsl(142_71%_45%)] pointer-events-none"
+                    style={{ width: 140, height: 140 }}
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={Math.abs(centsFromTarget) <= 2 && shownNote
+                      ? { opacity: 1, scale: 1 }
+                      : { opacity: 0, scale: 0.85 }
                     }
-                  `}
-                  onClick={() => {
-                    setSelectedString(isActive ? null : gs);
-                    playReferenceTone(gs);
-                  }}
-                >
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
-                    String {gs.string}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                  />
+                  <p className={`font-display text-7xl sm:text-8xl font-extrabold leading-none transition-colors duration-300 ${
+                    !shownNote
+                      ? 'text-[hsl(var(--text-muted)/0.25)]'
+                      : isTargetInTune
+                        ? 'text-[hsl(142_71%_45%)]'
+                        : isTargetClose
+                          ? 'text-[hsl(45_93%_47%)]'
+                          : 'text-[rgb(220,38,38)]'
+                  }`}>
+                    {shownNote ? (
+                      <>{shownNote.note}<span className="text-3xl sm:text-4xl opacity-50">{shownNote.octave}</span></>
+                    ) : (
+                      <>—</>
+                    )}
+                  </p>
+                </div>
+                <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
+                  {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
+                </p>
+                {targetString && shownNote && (
+                  <p className="mt-1 text-xs font-body text-[hsl(var(--text-muted))]">
+                    Target: {targetString.note} ({targetString.freq.toFixed(1)} Hz)
+                  </p>
+                )}
+              </div>
+
+              {/* Segmented cents meter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-[2px] px-1">
+                  {Array.from({ length: 41 }, (_, i) => {
+                    const segCents = (i - 20) * 2.5;
+                    const isCenter = i === 20;
+                    const absSegCents = Math.abs(segCents);
+
+                    let hue: string;
+                    if (absSegCents <= 5) hue = '142 71% 45%';
+                    else if (absSegCents <= 15) hue = '45 93% 47%';
+                    else hue = '0 72% 51%';
+
+                    const cur = shownNote ? centsFromTarget : 0;
+                    const hasSignal = !!shownNote;
+                    let lit = false;
+                    if (hasSignal) {
+                      if (isCenter && Math.abs(cur) < 2.5) {
+                        lit = true;
+                      } else if (cur > 0 && segCents > 0 && segCents <= cur + 1.25) {
+                        lit = true;
+                      } else if (cur < 0 && segCents < 0 && segCents >= cur - 1.25) {
+                        lit = true;
+                      }
+                      if (isCenter && Math.abs(cur) <= 5) lit = true;
+                    }
+
+                    return (
+                      <div
+                        key={i}
+                        className="rounded-sm transition-all duration-150"
+                        style={{
+                          width: isCenter ? 6 : 4,
+                          height: isCenter ? 84 : absSegCents <= 5 ? 68 : absSegCents <= 15 ? 60 : 52,
+                          backgroundColor: lit
+                            ? `hsl(${hue})`
+                            : `hsl(${hue} / 0.12)`,
+                          boxShadow: lit
+                            ? `0 0 8px hsl(${hue} / 0.5), 0 0 2px hsl(${hue} / 0.3)`
+                            : 'none',
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-body text-[hsl(var(--text-muted))]">
+                  <span>♭ Flat</span>
+                  <span className={`font-display text-sm font-bold tabular-nums transition-colors duration-300 ${
+                    !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
+                  }`}>
+                    {shownNote ? `${centsFromTarget > 0 ? '+' : ''}${centsFromTarget} cents` : '0 cents'}
                   </span>
-                  <span className={`font-display text-lg font-bold ${
-                    isActive
-                      ? 'text-[hsl(var(--color-primary))]'
-                      : isDetected
-                        ? stringInTune
+                  <span>Sharp ♯</span>
+                </div>
+              </div>
+
+              {/* Mic sensitivity */}
+              <div className="space-y-2 !mt-8">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
+                    <Mic className="size-3.5" />
+                    Mic Sensitivity
+                  </label>
+                  <span className="text-xs font-body tabular-nums text-[hsl(var(--text-muted))]">{sensitivity}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={sensitivity}
+                  onChange={(e) => setSensitivity(Number(e.target.value))}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer
+                    bg-[hsl(var(--bg-surface))]
+                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+                    [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[hsl(var(--color-primary))]
+                    [&::-webkit-slider-thumb]:shadow-[0_0_6px_hsl(var(--color-primary)/0.4)]
+                    [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-150
+                    [&::-webkit-slider-thumb]:hover:scale-110 [&::-webkit-slider-thumb]:active:scale-95
+                    [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full
+                    [&::-moz-range-thumb]:bg-[hsl(var(--color-primary))] [&::-moz-range-thumb]:border-none"
+                />
+                <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted)/0.5)]">
+                  <span>Low</span>
+                  <span>High</span>
+                </div>
+              </div>
+
+              {/* Status text */}
+              <div className="text-center">
+                {shownNote && isTargetInTune ? (
+                  <motion.p
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
+                    style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
+                  >
+                    In Tune ✓
+                  </motion.p>
+                ) : shownNote ? (
+                  <p className="font-body text-sm text-[hsl(var(--text-muted))]">
+                    {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* String selector + reference tones */}
+          <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
+                Strings
+              </h3>
+              <button
+                onClick={() => setSelectedString(null)}
+                className={`rounded-lg px-4 py-2.5 text-sm font-display font-bold transition-all active:scale-95 min-h-[44px] ${
+                  !selectedString
+                    ? 'bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)]'
+                    : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Mic className="size-3.5" />
+                  Auto-Detect
+                </div>
+              </button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {activeStrings.map((gs) => {
+                const isActive = selectedString?.string === gs.string;
+                const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
+                const isPlaying = playingString === gs.string;
+                const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
+                const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
+                const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
+                return (
+                  <button
+                    key={gs.string}
+                    className={`
+                      flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
+                      ${isActive
+                        ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
+                        : isDetected
+                          ? isTargetInTune
+                            ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
+                            : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
+                          : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
+                      }
+                    `}
+                    onClick={() => {
+                      setSelectedString(isActive ? null : gs);
+                      playReferenceTone(gs);
+                    }}
+                  >
+                    <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                      String {gs.string}
+                    </span>
+                    <span className={`font-display text-lg font-bold ${
+                      isActive
+                        ? 'text-[hsl(var(--color-primary))]'
+                        : isDetected
+                          ? stringInTune
+                            ? 'text-[hsl(142_71%_45%)]'
+                            : stringClose
+                              ? 'text-[hsl(45_93%_47%)]'
+                              : 'text-[rgb(220,38,38)]'
+                          : 'text-[hsl(var(--text-default))]'
+                    }`}>
+                      {gs.note}
+                    </span>
+                    <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                      {gs.freq.toFixed(1)} Hz
+                    </span>
+                    <span className={`text-[10px] font-display font-bold tabular-nums mt-0.5 h-3.5 transition-colors duration-200 ${
+                      stringCents === null
+                        ? 'text-transparent'
+                        : stringInTune
                           ? 'text-[hsl(142_71%_45%)]'
                           : stringClose
-                            ? 'text-[hsl(45_93%_47%)]'
-                            : 'text-[rgb(220,38,38)]'
-                        : 'text-[hsl(var(--text-default))]'
-                  }`}>
-                    {gs.note}
-                  </span>
-                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
-                    {gs.freq.toFixed(1)} Hz
-                  </span>
-                  {/* Real-time cents offset readout */}
-                  <span className={`text-[10px] font-display font-bold tabular-nums mt-0.5 h-3.5 transition-colors duration-200 ${
-                    stringCents === null
-                      ? 'text-transparent'
-                      : stringInTune
-                        ? 'text-[hsl(142_71%_45%)]'
-                        : stringClose
-                          ? 'text-[hsl(var(--color-emphasis))]'
-                          : 'text-[hsl(var(--text-muted)/0.7)]'
-                  }`}>
-                    {stringCents !== null
-                      ? stringInTune
-                        ? '✓'
-                        : `${stringCents > 0 ? '+' : ''}${stringCents}c`
-                      : '—'}
-                  </span>
-                  {isPlaying && (
-                    <Volume2 className="size-3 mt-0.5 text-[hsl(var(--color-primary))] animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
+                            ? 'text-[hsl(var(--color-emphasis))]'
+                            : 'text-[hsl(var(--text-muted)/0.7)]'
+                    }`}>
+                      {stringCents !== null
+                        ? stringInTune
+                          ? '✓'
+                          : `${stringCents > 0 ? '+' : ''}${stringCents}c`
+                        : '—'}
+                    </span>
+                    {isPlaying && (
+                      <Volume2 className="size-3 mt-0.5 text-[hsl(var(--color-primary))] animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-
-
       </div>
     </motion.div>
   );

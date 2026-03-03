@@ -1,7 +1,7 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Guitar, BookOpen, PenTool } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
-
+import { useTunerStore } from '@/stores/tunerStore';
 
 function TuningForkIcon({ className }: { className?: string }) {
   return (
@@ -14,8 +14,7 @@ function TuningForkIcon({ className }: { className?: string }) {
 
 export default function Header() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const isTunerActive = location.pathname === '/tuner';
+  const tunerStore = useTunerStore();
 
   const navLinks = [
     { to: '/library', label: 'Library', icon: <BookOpen className="size-[23px]" />, matchPaths: ['/library'] },
@@ -35,16 +34,10 @@ export default function Header() {
         <nav className="flex items-center gap-[4px]">
           {/* Tuner toggle — hidden on mobile (bottom tab bar handles it) */}
           <button
-            onClick={() => {
-              if (isTunerActive) {
-                navigate(-1);
-              } else {
-                navigate('/tuner');
-              }
-            }}
+            onClick={() => tunerStore.toggle()}
             className={`
               hidden sm:flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-body font-medium transition-colors
-              ${isTunerActive
+              ${tunerStore.isOpen
                 ? 'bg-[hsl(142_71%_45%/0.12)] text-[hsl(142_71%_45%)]'
                 : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
               }
@@ -52,7 +45,7 @@ export default function Header() {
           >
             <TuningForkIcon className="size-[25px]" />
             <span className="hidden sm:inline">Tuner</span>
-            {isTunerActive && (
+            {tunerStore.isOpen && (
               <span className="size-2 rounded-full bg-[hsl(142_71%_45%)] animate-pulse" />
             )}
           </button>

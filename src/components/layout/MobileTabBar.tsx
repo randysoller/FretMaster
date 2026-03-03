@@ -1,6 +1,7 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
+import { useTunerStore } from '@/stores/tunerStore';
 
 function TuningForkIcon({ className }: { className?: string }) {
   return (
@@ -28,13 +29,12 @@ const leftTabs = [
 ] as const;
 
 const rightTabs = [
-  { to: '/tuner', label: 'Tuner', icon: TuningForkIcon, matchPaths: ['/tuner'] },
   { to: '/library', label: 'Library', icon: BookOpen, matchPaths: ['/library'] },
 ] as const;
 
 export default function MobileTabBar() {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const tunerStore = useTunerStore();
 
   const renderTab = (tab: typeof leftTabs[number] | typeof rightTabs[number]) => {
     const isActive = tab.matchPaths.some((p) =>
@@ -42,27 +42,20 @@ export default function MobileTabBar() {
     );
     const Icon = tab.icon;
 
-    const handleClick = (e: React.MouseEvent) => {
-      if (isActive) {
-        e.preventDefault();
-        navigate(-1);
-      }
-    };
-
     return (
       <Link
         key={tab.to}
         to={tab.to}
-        onClick={handleClick}
+        onClick={() => { if (tunerStore.isOpen) tunerStore.close(); }}
         className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
-          isActive
+          isActive && !tunerStore.isOpen
             ? 'text-[hsl(var(--color-primary))]'
             : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
         }`}
       >
         <Icon className="size-[30px]" />
         <span className="text-[14px] font-display font-semibold leading-none">{tab.label}</span>
-        {isActive && (
+        {isActive && !tunerStore.isOpen && (
           <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
         )}
       </Link>
@@ -77,6 +70,21 @@ export default function MobileTabBar() {
         <div className="flex flex-col items-center justify-center">
           <MetronomeDropdown position="bottom" />
         </div>
+        {/* Tuner toggle */}
+        <button
+          onClick={() => tunerStore.toggle()}
+          className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
+            tunerStore.isOpen
+              ? 'text-[hsl(var(--color-primary))]'
+              : 'text-[hsl(var(--text-muted))] active:text-[hsl(var(--text-default))]'
+          }`}
+        >
+          <TuningForkIcon className="size-[30px]" />
+          <span className="text-[14px] font-display font-semibold leading-none">Tuner</span>
+          {tunerStore.isOpen && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] rounded-full bg-[hsl(var(--color-primary))]" />
+          )}
+        </button>
         {rightTabs.map(renderTab)}
       </div>
     </nav>

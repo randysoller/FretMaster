@@ -1,11 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { Outlet } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import Header from './Header';
 import MobileTabBar from './MobileTabBar';
+import TunerPanel from '@/pages/Tuner';
 import { preloadMetronomeSamples } from '@/stores/metronomeStore';
+import { useTunerStore } from '@/stores/tunerStore';
 
 export default function AppLayout() {
   const preloaded = useRef(false);
+  const tunerOpen = useTunerStore((s) => s.isOpen);
 
   useEffect(() => {
     const handler = () => {
@@ -33,6 +37,9 @@ export default function AppLayout() {
         <Outlet />
       </main>
       <MobileTabBar />
+      <AnimatePresence>
+        {tunerOpen && <TunerPanel />}
+      </AnimatePresence>
     </div>
   );
 }
