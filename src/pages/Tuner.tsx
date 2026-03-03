@@ -743,8 +743,9 @@ export default function Tuner() {
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
       {/* Swipe indicator — mobile only */}
-      <div className="flex justify-center pt-3 sm:hidden">
-        <div className="w-10 h-1 rounded-full bg-[hsl(var(--text-muted)/0.3)]" />
+      <div className="flex flex-col items-center pt-2 gap-0.5 sm:hidden">
+        <div className="w-10 h-1 rounded-full bg-[hsl(var(--color-emphasis))]" />
+        <ChevronDown className="size-3.5 text-[hsl(var(--color-emphasis))]" strokeWidth={3} />
       </div>
       {/* Header */}
       <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">

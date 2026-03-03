@@ -149,8 +149,9 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
             : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'
         }`}>
           {/* Swipe indicator — mobile only */}
-          <div className="flex justify-center pt-2 pb-0 sm:hidden">
-            <div className="w-10 h-1 rounded-full bg-[hsl(var(--text-muted)/0.3)]" />
+          <div className="flex flex-col items-center pt-2 gap-0.5 sm:hidden">
+            <div className="w-10 h-1 rounded-full bg-[hsl(var(--color-emphasis))]" />
+            <ChevronDown className="size-3.5 text-[hsl(var(--color-emphasis))]" strokeWidth={3} />
           </div>
           {/* Header */}
           <div className="flex items-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
