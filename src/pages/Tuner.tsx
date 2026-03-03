@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Music, Volume2, X } from 'lucide-react';
+import { Mic, MicOff, Music, Volume2, X, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // ─── Constants ───────────────────────────────────────────
