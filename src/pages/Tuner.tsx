@@ -998,9 +998,9 @@ export default function TunerPanel() {
                       }}
                     />
                     </div>
-                    <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))]">
-                      <span className="sm:hidden">String {gs.string}</span>
-                      <span className="hidden sm:inline">String {gs.string}</span>
+                    <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))] text-center leading-tight">
+                      <span className="block">String</span>
+                      <span className="block">{gs.string}</span>
                     </span>
                     <span className={`font-display text-[22px] sm:text-[28px] font-bold leading-tight ${
                       isActive
