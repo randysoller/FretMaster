@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ChordData } from '@/types/chord';
 import { CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
@@ -9,9 +9,13 @@ import { X, Volume2, Guitar, Edit3 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { useCustomChordStore } from '@/stores/customChordStore';
 
+type ExtendedChordData = ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number };
+
 interface ChordDetailModalProps {
-  chord: (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number }) | null;
+  chord: ExtendedChordData | null;
   onClose: () => void;
+  filteredChords?: ExtendedChordData[];
+  onNavigate?: (chord: ExtendedChordData) => void;
 }
 
 const STRING_NAMES = ['E (6th)', 'A (5th)', 'D (4th)', 'G (3rd)', 'B (2nd)', 'e (1st)'];
@@ -28,11 +32,91 @@ function getFingerLabel(finger: number): string {
   return names[finger] ?? String(finger);
 }
 
-export default function ChordDetailModal({ chord, onClose }: ChordDetailModalProps) {
+export default function ChordDetailModal({ chord, onClose, filteredChords, onNavigate }: ChordDetailModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { playChord } = useChordAudio();
   const { editChord: editCustomChord, editStandardChord } = useCustomChordStore();
+
+  // ─── Mobile swipe navigation ───
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const swipingRef = useRef(false);
+
+  const currentIndex = chord && filteredChords
+    ? filteredChords.findIndex((c) => c.id === chord.id)
+    : -1;
+  const hasNext = filteredChords ? currentIndex < filteredChords.length - 1 : false;
+  const hasPrev = currentIndex > 0;
+
+  const goNext = useCallback(() => {
+    if (hasNext && filteredChords && onNavigate) {
+      onNavigate(filteredChords[currentIndex + 1]);
+    }
+  }, [hasNext, filteredChords, onNavigate, currentIndex]);
+
+  const goPrev = useCallback(() => {
+    if (hasPrev && filteredChords && onNavigate) {
+      onNavigate(filteredChords[currentIndex - 1]);
+    }
+  }, [hasPrev, filteredChords, onNavigate, currentIndex]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only enable swipe on mobile (< 640px)
+    if (window.innerWidth >= 640) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    swipingRef.current = false;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || window.innerWidth >= 640) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+
+    // If mostly vertical, don't interfere with scrolling
+    if (!swipingRef.current && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    // Lock into horizontal swipe after 10px horizontal movement
+    if (Math.abs(dx) > 10) {
+      swipingRef.current = true;
+    }
+
+    if (swipingRef.current) {
+      // Dampen swipe if no chord in that direction
+      const maxOffset = (!hasNext && dx < 0) || (!hasPrev && dx > 0) ? 40 : 200;
+      const clamped = Math.max(-maxOffset, Math.min(maxOffset, dx));
+      // Apply rubber-band effect at edges
+      const dampened = (!hasNext && dx < 0) || (!hasPrev && dx > 0)
+        ? clamped * 0.3
+        : clamped;
+      setSwipeOffset(dampened);
+    }
+  }, [hasNext, hasPrev]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!touchStartRef.current || !swipingRef.current) {
+      touchStartRef.current = null;
+      setSwipeOffset(0);
+      return;
+    }
+
+    const threshold = 60;
+    if (swipeOffset < -threshold && hasNext) {
+      goNext();
+    } else if (swipeOffset > threshold && hasPrev) {
+      goPrev();
+    }
+
+    setSwipeOffset(0);
+    touchStartRef.current = null;
+    swipingRef.current = false;
+  }, [swipeOffset, hasNext, hasPrev, goNext, goPrev]);
 
   const handleEdit = () => {
     if (!chord) return;
@@ -58,6 +142,11 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
     };
   }, [chord, onClose]);
 
+  // Reset swipe offset when chord changes
+  useEffect(() => {
+    setSwipeOffset(0);
+  }, [chord?.id]);
+
   if (!chord) return null;
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -70,7 +159,17 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200">
+      <div
+        ref={contentRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
+          transition: swipeOffset !== 0 ? 'none' : 'transform 0.25s ease-out',
+        }}
+        className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
+      >
         {/* Header */}
         <div className="flex items-start justify-between p-3 pb-0 sm:p-6 sm:pb-0">
           <div>
@@ -164,6 +263,21 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
             </span>
           </div>
         </div>
+
+        {/* Mobile swipe indicator */}
+        {filteredChords && filteredChords.length > 1 && (
+          <div className="flex items-center justify-between px-3 pb-1 sm:hidden">
+            <span className={`text-[10px] font-body ${hasPrev ? 'text-[hsl(var(--text-muted))]' : 'text-transparent'}`}>
+              ← Swipe right
+            </span>
+            <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+              {currentIndex + 1} / {filteredChords.length}
+            </span>
+            <span className={`text-[10px] font-body ${hasNext ? 'text-[hsl(var(--text-muted))]' : 'text-transparent'}`}>
+              Swipe left →
+            </span>
+          </div>
+        )}
 
         {/* Finger Position Details */}
         <div className="mx-3 mb-3 sm:mx-6 sm:mb-6 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.4)] overflow-hidden">

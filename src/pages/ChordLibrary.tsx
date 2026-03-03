@@ -440,7 +440,12 @@ export default function ChordLibrary() {
         </div>
       </div>
 
-      <ChordDetailModal chord={selectedChord} onClose={closeModal} />
+      <ChordDetailModal
+        chord={selectedChord}
+        onClose={closeModal}
+        filteredChords={filteredChords}
+        onNavigate={setSelectedChord}
+      />
     </div>
   );
 }
