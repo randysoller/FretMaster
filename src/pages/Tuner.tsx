@@ -874,6 +874,24 @@ export default function TunerPanel() {
                 </div>
               </div>
 
+              {/* Status text — fixed height to prevent layout shift */}
+              <div className="text-center h-7 flex items-center justify-center">
+                {shownNote && isTargetInTune ? (
+                  <motion.p
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
+                    style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
+                  >
+                    In Tune ✓
+                  </motion.p>
+                ) : shownNote ? (
+                  <p className="font-body text-sm text-[hsl(var(--text-muted))]">
+                    {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
+                  </p>
+                ) : null}
+              </div>
+
               {/* Mic sensitivity */}
               <div className="space-y-2 !mt-4">
                 <div className="flex items-center justify-between">
@@ -906,23 +924,6 @@ export default function TunerPanel() {
                 </div>
               </div>
 
-              {/* Status text — fixed height to prevent layout shift */}
-              <div className="text-center h-7 flex items-center justify-center">
-                {shownNote && isTargetInTune ? (
-                  <motion.p
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="font-display text-lg font-bold text-[hsl(142_71%_45%)] uppercase tracking-wider"
-                    style={{ textShadow: '0 0 20px hsl(142 71% 45% / 0.3)' }}
-                  >
-                    In Tune ✓
-                  </motion.p>
-                ) : shownNote ? (
-                  <p className="font-body text-sm text-[hsl(var(--text-muted))]">
-                    {centsFromTarget < 0 ? 'Tune up ↑' : 'Tune down ↓'}
-                  </p>
-                ) : null}
-              </div>
             </div>
           </div>
 
@@ -1014,10 +1015,7 @@ export default function TunerPanel() {
                       <span className="sm:hidden">{gs.display}</span>
                       <span className="hidden sm:inline">{gs.note}</span>
                     </span>
-                    <span className="text-[9px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))] tabular-nums">
-                      <span className="sm:hidden">{Math.round(gs.freq)}</span>
-                      <span className="hidden sm:inline">{gs.freq.toFixed(1)} Hz</span>
-                    </span>
+
                     <span className={`text-[10px] sm:text-[16px] font-display font-bold tabular-nums mt-0.5 h-4 sm:h-5 transition-colors duration-200 ${
                       stringCents === null
                         ? 'text-transparent'
