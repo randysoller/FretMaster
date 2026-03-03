@@ -5,6 +5,7 @@ import {
   ChevronUp, ChevronDown, X,
 } from 'lucide-react';
 import { useSwipeDown } from '@/hooks/useSwipeDown';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function getTempoMarking(bpm: number): string {
   if (bpm < 40) return 'Grave';
@@ -134,12 +135,23 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
       )}
 
       {/* Dropdown panel */}
+      <AnimatePresence>
       {open && (
-        <div {...swipeHandlers} className={`fixed left-2 right-2 z-50 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden ${
+        <motion.div
+          {...swipeHandlers}
+          initial={{ opacity: 0, y: position === 'bottom' ? 40 : -40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: position === 'bottom' ? 60 : -60 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          className={`fixed left-2 right-2 z-50 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden ${
           position === 'bottom'
             ? 'bottom-[64px] sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-[400px]'
             : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'
         }`}>
+          {/* Swipe indicator — mobile only */}
+          <div className="flex justify-center pt-2 pb-0 sm:hidden">
+            <div className="w-10 h-1 rounded-full bg-[hsl(var(--text-muted)/0.3)]" />
+          </div>
           {/* Header */}
           <div className="flex items-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
             <button
@@ -272,8 +284,9 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

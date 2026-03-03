@@ -242,6 +242,7 @@ export default function Tuner() {
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
   const [sensitivity, setSensitivity] = useState(() => {
     const saved = localStorage.getItem('tuner-mic-sensitivity');
     return saved !== null ? Number(saved) : 50;
@@ -688,10 +689,17 @@ export default function Tuner() {
     };
   }, [getChimeCtx]);
 
+  // Animated dismiss handler
+  const handleDismiss = useCallback(() => {
+    if (isDismissing) return;
+    setIsDismissing(true);
+    setTimeout(() => navigate(-1), 300);
+  }, [isDismissing, navigate]);
+
   // Swipe-down to close on mobile
   const swipeHandlers = useSwipeDown({
     threshold: 60,
-    onSwipeDown: () => navigate(-1),
+    onSwipeDown: handleDismiss,
   });
 
   // Auto-start listening on mount
@@ -728,12 +736,21 @@ export default function Tuner() {
   const targetMeterPosition = Math.max(-50, Math.min(50, centsFromTarget));
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-58px)]" {...swipeHandlers}>
+    <motion.div
+      className="stage-gradient min-h-[calc(100vh-58px)]"
+      {...swipeHandlers}
+      animate={isDismissing ? { y: '100%', opacity: 0 } : { y: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+    >
+      {/* Swipe indicator — mobile only */}
+      <div className="flex justify-center pt-3 sm:hidden">
+        <div className="w-10 h-1 rounded-full bg-[hsl(var(--text-muted)/0.3)]" />
+      </div>
       {/* Header */}
       <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">
         {/* Close button */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={handleDismiss}
           className="absolute top-8 left-4 sm:left-6 flex items-center justify-center size-10 sm:size-8 rounded-lg hover:bg-[hsl(var(--color-primary)/0.12)] transition-colors active:scale-90 z-10"
           title="Close tuner"
         >
@@ -1073,6 +1090,6 @@ export default function Tuner() {
 
 
       </div>
-    </div>
+    </motion.div>
   );
 }
