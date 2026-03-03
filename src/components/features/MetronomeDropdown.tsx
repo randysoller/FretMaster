@@ -4,6 +4,7 @@ import {
   Gauge, Play, Minus, Plus, Volume2, Volume1, VolumeX,
   ChevronUp, ChevronDown, X,
 } from 'lucide-react';
+import { useSwipeDown } from '@/hooks/useSwipeDown';
 
 function getTempoMarking(bpm: number): string {
   if (bpm < 40) return 'Grave';
@@ -74,6 +75,12 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
   const presetBpms = [60, 80, 100, 120, 140, 160];
   const VolumeIcon = store.volume === 0 ? VolumeX : store.volume < 0.5 ? Volume1 : Volume2;
 
+  // Swipe-down to close on mobile
+  const swipeHandlers = useSwipeDown({
+    threshold: 50,
+    onSwipeDown: () => setOpen(false),
+  });
+
   // Close on click outside
   useEffect(() => {
     if (!open) return;
@@ -128,7 +135,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
 
       {/* Dropdown panel */}
       {open && (
-        <div className={`fixed left-2 right-2 z-50 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden ${
+        <div {...swipeHandlers} className={`fixed left-2 right-2 z-50 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl overflow-hidden ${
           position === 'bottom'
             ? 'bottom-[64px] sm:absolute sm:left-auto sm:right-0 sm:bottom-full sm:mb-2 sm:w-[400px]'
             : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'

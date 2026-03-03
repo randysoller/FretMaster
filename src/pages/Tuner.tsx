@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Mic, MicOff, Music, Volume2, ChevronDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Mic, MicOff, Music, Volume2, ChevronDown, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useSwipeDown } from '@/hooks/useSwipeDown';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -228,6 +230,7 @@ function findClosestString(freq: number, strings: GuitarString[]): GuitarString 
 // ─── Component ───────────────────────────────────────────
 
 export default function Tuner() {
+  const navigate = useNavigate();
   const [isListening, setIsListening] = useState(false);
   const [selectedTuning, setSelectedTuning] = useState<TuningPreset>(TUNING_PRESETS[0]);
   const [tuningDropdownOpen, setTuningDropdownOpen] = useState(false);
@@ -685,6 +688,12 @@ export default function Tuner() {
     };
   }, [getChimeCtx]);
 
+  // Swipe-down to close on mobile
+  const swipeHandlers = useSwipeDown({
+    threshold: 60,
+    onSwipeDown: () => navigate(-1),
+  });
+
   // Auto-start listening on mount
   useEffect(() => {
     if (!startedRef.current) {
@@ -719,9 +728,17 @@ export default function Tuner() {
   const targetMeterPosition = Math.max(-50, Math.min(50, centsFromTarget));
 
   return (
-    <div className="stage-gradient min-h-[calc(100vh-58px)]">
+    <div className="stage-gradient min-h-[calc(100vh-58px)]" {...swipeHandlers}>
       {/* Header */}
       <div className="relative px-4 sm:px-6 pt-8 pb-4 text-center max-w-3xl mx-auto">
+        {/* Close button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-8 left-4 sm:left-6 flex items-center justify-center size-10 sm:size-8 rounded-lg hover:bg-[hsl(var(--color-primary)/0.12)] transition-colors active:scale-90 z-10"
+          title="Close tuner"
+        >
+          <X className="size-6 text-[hsl(var(--color-primary))]" />
+        </button>
         <div className="inline-flex items-center gap-2 rounded-full border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.08)] px-4 py-1.5 mb-4">
           <Music className="size-3.5 text-[hsl(var(--color-primary))]" />
           <span className="text-xs font-body font-medium text-[hsl(var(--color-primary))]">Guitar Tuner</span>
