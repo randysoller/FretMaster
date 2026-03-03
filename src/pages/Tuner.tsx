@@ -768,7 +768,7 @@ export default function TunerPanel() {
           </p>
         </div>
 
-        <div className="px-4 sm:px-6 pb-12 max-w-xl mx-auto space-y-6">
+        <div className="px-4 sm:px-6 pb-6 max-w-xl mx-auto space-y-4">
           {permissionDenied && (
             <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.25)] px-4 py-2.5 text-center justify-center">
               <MicOff className="size-4 text-[hsl(var(--semantic-error))] shrink-0" />
@@ -779,8 +779,8 @@ export default function TunerPanel() {
           )}
 
           {/* Main tuner display */}
-          <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-6 sm:p-8">
-            <div className="space-y-6">
+          <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-6">
+            <div className="space-y-4">
               {/* Detected note */}
               <div className="text-center">
                 <div className="relative inline-flex items-center justify-center">
@@ -877,7 +877,7 @@ export default function TunerPanel() {
               </div>
 
               {/* Mic sensitivity */}
-              <div className="space-y-2 !mt-8">
+              <div className="space-y-2 !mt-4">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
                     <Mic className="size-3.5" />
@@ -963,13 +963,13 @@ export default function TunerPanel() {
                     key={gs.string}
                     className={`
                       flex-1 flex flex-col items-center rounded-lg px-0.5 sm:px-2 py-2 sm:py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
-                      ${isActive
-                        ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
-                        : isDetected
-                          ? isTargetInTune
-                            ? 'bg-[hsl(142_71%_45%/0.1)] border border-[hsl(142_71%_45%/0.3)]'
-                            : 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
-                          : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
+                      ${(isActive || isDetected) && stringInTune
+                        ? 'bg-[hsl(142_71%_45%/0.18)] border-2 border-[hsl(142_71%_45%/0.5)] shadow-[0_0_14px_hsl(142_71%_45%/0.3)]'
+                        : isActive
+                          ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
+                          : isDetected
+                            ? 'bg-[hsl(var(--color-primary)/0.08)] border border-[hsl(var(--color-primary)/0.3)]'
+                            : 'bg-[hsl(var(--bg-surface))] border border-transparent hover:bg-[hsl(var(--bg-overlay))]'
                       }
                     `}
                     onClick={() => {
@@ -977,20 +977,27 @@ export default function TunerPanel() {
                       playReferenceTone(gs);
                     }}
                   >
-                    {/* String gauge indicator — visual thickness mimics real guitar string */}
+                    {/* String gauge — realistic wound/plain representation */}
                     <div
-                      className="w-3/4 rounded-full mb-1 sm:hidden"
+                      className="w-4/5 rounded-full mb-1.5"
                       style={{
-                        height: gaugeHeight,
-                        backgroundColor: isActive
-                          ? 'hsl(38 75% 52%)'
-                          : isDetected && stringInTune
-                            ? 'hsl(142 71% 45%)'
-                            : 'hsl(33 14% 72% / 0.45)',
+                        height: [0, 2, 2.5, 3, 5, 6, 7][gs.string],
+                        background: (isActive || isDetected) && stringInTune
+                          ? 'linear-gradient(180deg, hsl(142 71% 58%), hsl(142 71% 38%), hsl(142 71% 58%))'
+                          : isActive
+                            ? 'linear-gradient(180deg, hsl(38 75% 65%), hsl(38 75% 45%), hsl(38 75% 65%))'
+                            : gs.string >= 4
+                              ? 'repeating-linear-gradient(90deg, hsl(40 22% 72%) 0px, hsl(33 14% 52%) 1px, hsl(40 22% 74%) 2px, hsl(33 14% 56%) 3px)'
+                              : 'linear-gradient(180deg, hsl(40 10% 82%), hsl(33 8% 58%), hsl(40 10% 82%))',
+                        boxShadow: (isActive || isDetected) && stringInTune
+                          ? '0 0 8px hsl(142 71% 45% / 0.5)'
+                          : gs.string >= 4
+                            ? '0 0.5px 1px hsl(0 0% 0% / 0.3)'
+                            : 'none',
                       }}
                     />
                     <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))]">
-                      <span className="sm:hidden">{gs.string}</span>
+                      <span className="sm:hidden">String {gs.string}</span>
                       <span className="hidden sm:inline">String {gs.string}</span>
                     </span>
                     <span className={`font-display text-[22px] sm:text-[28px] font-bold leading-tight ${
