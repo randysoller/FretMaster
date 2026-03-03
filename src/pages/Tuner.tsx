@@ -948,7 +948,7 @@ export default function TunerPanel() {
                 </div>
               </button>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <div className="flex gap-1 sm:gap-2">
               {activeStrings.map((gs) => {
                 const isActive = selectedString?.string === gs.string;
                 const isDetected = !selectedString && shownClosest?.string === gs.string && isListening && shownFreq !== null;
@@ -956,11 +956,13 @@ export default function TunerPanel() {
                 const stringCents = shownFreq ? Math.round(1200 * Math.log2(shownFreq / gs.freq)) : null;
                 const stringInTune = stringCents !== null && Math.abs(stringCents) <= 5;
                 const stringClose = stringCents !== null && Math.abs(stringCents) <= 15;
+                // String gauge thickness — mirrors physical string diameter (6=thickest, 1=thinnest)
+                const gaugeHeight = [0, 1, 1.5, 2, 3, 3.5, 4][gs.string];
                 return (
                   <button
                     key={gs.string}
                     className={`
-                      flex flex-col items-center rounded-lg px-2 py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
+                      flex-1 flex flex-col items-center rounded-lg px-0.5 sm:px-2 py-2 sm:py-3 transition-all duration-200 cursor-pointer min-h-[44px] active:scale-95
                       ${isActive
                         ? 'bg-[hsl(var(--color-primary)/0.15)] border-2 border-[hsl(var(--color-primary))]'
                         : isDetected
@@ -975,10 +977,23 @@ export default function TunerPanel() {
                       playReferenceTone(gs);
                     }}
                   >
-                    <span className="text-[16px] font-body text-[hsl(var(--text-subtle))]">
-                      String {gs.string}
+                    {/* String gauge indicator — visual thickness mimics real guitar string */}
+                    <div
+                      className="w-3/4 rounded-full mb-1 sm:hidden"
+                      style={{
+                        height: gaugeHeight,
+                        backgroundColor: isActive
+                          ? 'hsl(38 75% 52%)'
+                          : isDetected && stringInTune
+                            ? 'hsl(142 71% 45%)'
+                            : 'hsl(33 14% 72% / 0.45)',
+                      }}
+                    />
+                    <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))]">
+                      <span className="sm:hidden">{gs.string}</span>
+                      <span className="hidden sm:inline">String {gs.string}</span>
                     </span>
-                    <span className={`font-display text-[28px] font-bold ${
+                    <span className={`font-display text-[22px] sm:text-[28px] font-bold leading-tight ${
                       isActive
                         ? 'text-[hsl(var(--color-primary))]'
                         : isDetected
@@ -989,12 +1004,14 @@ export default function TunerPanel() {
                               : 'text-[rgb(220,38,38)]'
                           : 'text-[hsl(var(--text-default))]'
                     }`}>
-                      {gs.note}
+                      <span className="sm:hidden">{gs.display}</span>
+                      <span className="hidden sm:inline">{gs.note}</span>
                     </span>
-                    <span className="text-[16px] font-body text-[hsl(var(--text-subtle))] tabular-nums">
-                      {gs.freq.toFixed(1)} Hz
+                    <span className="text-[9px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))] tabular-nums">
+                      <span className="sm:hidden">{Math.round(gs.freq)}</span>
+                      <span className="hidden sm:inline">{gs.freq.toFixed(1)} Hz</span>
                     </span>
-                    <span className={`text-[16px] font-display font-bold tabular-nums mt-0.5 h-5 transition-colors duration-200 ${
+                    <span className={`text-[10px] sm:text-[16px] font-display font-bold tabular-nums mt-0.5 h-4 sm:h-5 transition-colors duration-200 ${
                       stringCents === null
                         ? 'text-transparent'
                         : stringInTune
