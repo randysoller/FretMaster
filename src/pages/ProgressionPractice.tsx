@@ -211,7 +211,7 @@ function ScaleChordsPreview({ selectedKey, selectedScale, useFlats, keyDisplay }
               <span className={`text-base sm:text-base font-body transition-colors duration-200 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>{c.roman}</span>
               <span className={`text-lg sm:text-lg font-display font-bold transition-colors duration-200 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{c.chordSymbol}</span>
               {hasChord && (
-                <Volume2 className={`size-3 mt-1 transition-all duration-200 ${isActive ? 'text-[hsl(var(--color-primary))] scale-125' : 'text-[hsl(var(--text-muted)/0.3)]'}`} />
+                <Volume2 className={`size-3 mt-1 transition-all duration-200 ${isActive ? 'text-cyan-300 scale-125' : 'text-cyan-400'}`} />
               )}
             </button>
           );
