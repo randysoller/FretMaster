@@ -680,7 +680,7 @@ export default function TunerPanel() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 80 }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-      className="fixed inset-0 z-50 flex flex-col bg-[hsl(var(--bg-base))]"
+      className="fixed inset-x-0 top-0 bottom-[56px] sm:bottom-0 z-40 flex flex-col bg-[hsl(var(--bg-base))]"
     >
       {/* Scrollable tuner content */}
       <div className="flex-1 overflow-y-auto stage-gradient">
