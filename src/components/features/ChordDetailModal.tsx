@@ -43,6 +43,9 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
   const [swipeOffset, setSwipeOffset] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const swipingRef = useRef(false);
+  // Swipe animation phases: idle → dragging → exit → reposition → enter → idle
+  const [swipePhase, setSwipePhase] = useState<'idle' | 'dragging' | 'exit' | 'reposition' | 'enter'>('idle');
+  const animTimerRef = useRef<number>(0);
 
   const currentIndex = chord && filteredChords
     ? filteredChords.findIndex((c) => c.id === chord.id)
@@ -63,15 +66,17 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
   }, [hasPrev, filteredChords, onNavigate, currentIndex]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Only enable swipe on mobile (< 640px)
+    // Only enable swipe on mobile (< 640px), block during animation
     if (window.innerWidth >= 640) return;
+    if (swipePhase !== 'idle') return;
     const touch = e.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
     swipingRef.current = false;
-  }, []);
+  }, [swipePhase]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current || window.innerWidth >= 640) return;
+    if (swipePhase !== 'idle' && swipePhase !== 'dragging') return;
     const touch = e.touches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
@@ -85,6 +90,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     // Lock into horizontal swipe after 10px horizontal movement
     if (Math.abs(dx) > 10) {
       swipingRef.current = true;
+      if (swipePhase === 'idle') setSwipePhase('dragging');
     }
 
     if (swipingRef.current) {
@@ -97,23 +103,63 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         : clamped;
       setSwipeOffset(dampened);
     }
-  }, [hasNext, hasPrev]);
+  }, [hasNext, hasPrev, swipePhase]);
 
   const handleTouchEnd = useCallback(() => {
     if (!touchStartRef.current || !swipingRef.current) {
       touchStartRef.current = null;
       setSwipeOffset(0);
+      setSwipePhase('idle');
       return;
     }
 
     const threshold = 60;
+    const screenW = window.innerWidth;
+
     if (swipeOffset < -threshold && hasNext) {
-      goNext();
+      // ─── Swipe left → go to next chord ───
+      setSwipePhase('exit');
+      setSwipeOffset(-screenW); // card flies out left
+      if (animTimerRef.current) clearTimeout(animTimerRef.current);
+      animTimerRef.current = window.setTimeout(() => {
+        setSwipePhase('reposition');
+        goNext();
+        setSwipeOffset(screenW); // instantly position new card off-screen right
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSwipePhase('enter');
+            setSwipeOffset(0); // animate new card in from right
+            animTimerRef.current = window.setTimeout(() => {
+              setSwipePhase('idle');
+            }, 300);
+          });
+        });
+      }, 280);
     } else if (swipeOffset > threshold && hasPrev) {
-      goPrev();
+      // ─── Swipe right → go to previous chord ───
+      setSwipePhase('exit');
+      setSwipeOffset(screenW); // card flies out right
+      if (animTimerRef.current) clearTimeout(animTimerRef.current);
+      animTimerRef.current = window.setTimeout(() => {
+        setSwipePhase('reposition');
+        goPrev();
+        setSwipeOffset(-screenW); // instantly position new card off-screen left
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setSwipePhase('enter');
+            setSwipeOffset(0); // animate new card in from left
+            animTimerRef.current = window.setTimeout(() => {
+              setSwipePhase('idle');
+            }, 300);
+          });
+        });
+      }, 280);
+    } else {
+      // ─── Did not meet threshold → snap back ───
+      setSwipePhase('idle');
+      setSwipeOffset(0);
     }
 
-    setSwipeOffset(0);
     touchStartRef.current = null;
     swipingRef.current = false;
   }, [swipeOffset, hasNext, hasPrev, goNext, goPrev]);
@@ -142,10 +188,19 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     };
   }, [chord, onClose]);
 
-  // Reset swipe offset when chord changes
+  // Reset swipe offset when chord changes (only if not mid-animation)
   useEffect(() => {
-    setSwipeOffset(0);
-  }, [chord?.id]);
+    if (swipePhase === 'idle') {
+      setSwipeOffset(0);
+    }
+  }, [chord?.id, swipePhase]);
+
+  // Cleanup animation timers on unmount
+  useEffect(() => {
+    return () => {
+      if (animTimerRef.current) clearTimeout(animTimerRef.current);
+    };
+  }, []);
 
   if (!chord) return null;
 
@@ -166,7 +221,17 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         onTouchEnd={handleTouchEnd}
         style={{
           transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
-          transition: swipeOffset !== 0 ? 'none' : 'transform 0.25s ease-out',
+          opacity: swipePhase === 'exit' ? 0.4 : swipePhase === 'reposition' ? 0 : 1,
+          transition:
+            swipePhase === 'dragging'
+              ? 'none'
+              : swipePhase === 'reposition'
+                ? 'none'
+                : swipePhase === 'exit'
+                  ? 'transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.28s ease-out'
+                  : swipePhase === 'enter'
+                    ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out'
+                    : 'transform 0.25s ease-out, opacity 0.25s ease-out',
         }}
         className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
       >
