@@ -978,8 +978,9 @@ export default function TunerPanel() {
                     }}
                   >
                     {/* String gauge — realistic wound/plain representation */}
+                    <div className="flex items-center justify-center w-full h-[7px] mb-1.5">
                     <div
-                      className="w-4/5 rounded-full mb-1.5"
+                      className="w-4/5 rounded-full"
                       style={{
                         height: [0, 2, 2.5, 3, 5, 6, 7][gs.string],
                         background: (isActive || isDetected) && stringInTune
@@ -996,6 +997,7 @@ export default function TunerPanel() {
                             : 'none',
                       }}
                     />
+                    </div>
                     <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))]">
                       <span className="sm:hidden">String {gs.string}</span>
                       <span className="hidden sm:inline">String {gs.string}</span>
