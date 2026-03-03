@@ -38,8 +38,8 @@ export default function ChordTablature({ chord, size = 'sm' }: ChordTablaturePro
             <span className={`${cfg.label} ${cfg.labelW} text-right font-bold text-neutral-800 shrink-0 pr-0.5`}>
               {STRING_LABELS[i]}
             </span>
-            {/* Dashes before — black lines */}
-            <span className={`${cfg.fret} text-neutral-900`}>--</span>
+            {/* Dashes before */}
+            <span className={`${cfg.fret} text-neutral-400`}>--</span>
             {/* Fret number — black, muted slightly lighter */}
             <span
               className={`${cfg.fret} font-bold tabular-nums text-center min-w-[14px] ${
@@ -50,8 +50,8 @@ export default function ChordTablature({ chord, size = 'sm' }: ChordTablaturePro
             >
               {fretDisplay}
             </span>
-            {/* Dashes after — black lines */}
-            <span className={`${cfg.fret} text-neutral-900`}>--</span>
+            {/* Dashes after */}
+            <span className={`${cfg.fret} text-neutral-400`}>--</span>
           </div>
         );
       })}

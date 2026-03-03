@@ -74,25 +74,27 @@ export default function ChordDetailModal({ chord, onClose }: ChordDetailModalPro
         {/* Header */}
         <div className="flex items-start justify-between p-6 pb-0">
           <div>
-            <h2 className="font-display text-3xl font-extrabold text-[hsl(var(--text-default))]">
-              {chord.symbol}
-            </h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="font-display text-3xl font-extrabold text-[hsl(var(--text-default))]">
+                {chord.symbol}
+              </h2>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2.5 py-1 sm:px-2 sm:py-0.5 text-[13px] sm:text-[10px] font-body font-medium text-[hsl(var(--text-subtle))] uppercase tracking-wider">
+                  {getChordCategoryLabel(chord)}
+                </span>
+                <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2.5 py-1 sm:px-2 sm:py-0.5 text-[13px] sm:text-[10px] font-body font-medium text-[hsl(var(--text-subtle))] uppercase tracking-wider">
+                  {CHORD_TYPE_LABELS[chord.type]}
+                </span>
+                {chord.rootString && (
+                  <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2.5 py-1 sm:px-2 sm:py-0.5 text-[13px] sm:text-[10px] font-body font-medium text-[hsl(var(--text-subtle))] uppercase tracking-wider">
+                    Root {chord.rootString}th
+                  </span>
+                )}
+              </div>
+            </div>
             <p className="mt-1 font-body text-sm text-[hsl(var(--text-muted))]">
               {chord.name}
             </p>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2 py-0.5 text-[10px] font-body font-medium text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                {getChordCategoryLabel(chord)}
-              </span>
-              <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2 py-0.5 text-[10px] font-body font-medium text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                {CHORD_TYPE_LABELS[chord.type]}
-              </span>
-              {chord.rootString && (
-                <span className="rounded-md bg-[hsl(var(--bg-surface))] px-2 py-0.5 text-[10px] font-body font-medium text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                  Root {chord.rootString}th
-                </span>
-              )}
-            </div>
           </div>
           <button
             onClick={onClose}
