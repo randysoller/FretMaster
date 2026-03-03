@@ -5,7 +5,7 @@ import { CHORD_TYPE_LABELS, getChordCategoryLabel } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { X, Volume2, Guitar, Edit3 } from 'lucide-react';
+import { X, Volume2, Guitar, Edit3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { useCustomChordStore } from '@/stores/customChordStore';
 
@@ -214,6 +214,36 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
       onClick={handleOverlayClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
+      {/* Desktop left arrow */}
+      {filteredChords && filteredChords.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); goPrev(); }}
+          disabled={!hasPrev}
+          className={`hidden sm:flex absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-[60] items-center justify-center size-11 rounded-full border transition-all duration-200 ${
+            hasPrev
+              ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.9)] backdrop-blur-sm text-[hsl(var(--text-default))] hover:bg-[hsl(var(--color-primary)/0.15)] hover:border-[hsl(var(--color-primary)/0.4)] hover:text-[hsl(var(--color-primary))] active:scale-90 shadow-lg'
+              : 'border-transparent bg-transparent text-transparent cursor-default'
+          }`}
+        >
+          <ChevronLeft className="size-6" />
+        </button>
+      )}
+
+      {/* Desktop right arrow */}
+      {filteredChords && filteredChords.length > 1 && (
+        <button
+          onClick={(e) => { e.stopPropagation(); goNext(); }}
+          disabled={!hasNext}
+          className={`hidden sm:flex absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-[60] items-center justify-center size-11 rounded-full border transition-all duration-200 ${
+            hasNext
+              ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.9)] backdrop-blur-sm text-[hsl(var(--text-default))] hover:bg-[hsl(var(--color-primary)/0.15)] hover:border-[hsl(var(--color-primary)/0.4)] hover:text-[hsl(var(--color-primary))] active:scale-90 shadow-lg'
+              : 'border-transparent bg-transparent text-transparent cursor-default'
+          }`}
+        >
+          <ChevronRight className="size-6" />
+        </button>
+      )}
+
       <div
         ref={contentRef}
         onTouchStart={handleTouchStart}
