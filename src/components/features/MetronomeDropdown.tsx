@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMetronomeStore, SOUND_LABELS, type MetronomeSoundType } from '@/stores/metronomeStore';
 import {
   Gauge, Play, Minus, Plus, Volume2, Volume1, VolumeX,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, X,
 } from 'lucide-react';
 
 function getTempoMarking(bpm: number): string {
@@ -134,8 +134,15 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
             : 'top-[58px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[400px]'
         }`}>
           {/* Header */}
-          <div className="flex items-center justify-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center px-4 py-3.5 sm:py-3 border-b border-[hsl(var(--border-subtle))]">
+            <button
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center size-10 sm:size-8 rounded-lg hover:bg-[hsl(var(--color-emphasis)/0.12)] transition-colors active:scale-90"
+              title="Close metronome"
+            >
+              <X className="size-6 text-[hsl(var(--color-emphasis))]" />
+            </button>
+            <div className="flex-1 flex items-center justify-center gap-2 mr-10 sm:mr-8">
               <MetronomeIcon className="size-5 sm:size-4 text-[hsl(var(--color-emphasis))]" />
               <span className="font-display text-base sm:text-sm font-semibold text-[hsl(var(--text-default))] uppercase tracking-wider">Metronome</span>
             </div>
