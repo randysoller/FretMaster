@@ -26,7 +26,7 @@ function qualityToChordType(quality: string): ChordType[] {
 }
 
 /** Find the best matching chord from the library for a given symbol + quality */
-function findChordInLibrary(chordSymbol: string, quality: string): ChordData | null {
+export function findChordInLibrary(chordSymbol: string, quality: string): ChordData | null {
   const { customChords, hiddenStandardChords } = useCustomChordStore.getState();
   const replacedIds = new Set(customChords.filter((c) => c.sourceChordId).map((c) => c.sourceChordId!));
   const standardChords = CHORDS.filter((c) => !replacedIds.has(c.id) && !hiddenStandardChords.has(c.id));

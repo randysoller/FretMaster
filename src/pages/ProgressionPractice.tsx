@@ -15,6 +15,7 @@ import StrummingPatternDisplay, { StrummingPatternPreview } from '@/components/f
 import { getStyleStrumming, getCustomStrumPatterns } from '@/constants/strumming';
 
 import { useChordAudio } from '@/hooks/useChordAudio';
+import { findChordInLibrary } from '@/stores/progressionStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Play, Music,
@@ -170,16 +171,51 @@ function ScaleSelector({ value, onChange, accentIcon }: { value: ScaleDefinition
 
 function ScaleChordsPreview({ selectedKey, selectedScale, useFlats, keyDisplay }: { selectedKey: NoteName; selectedScale: ScaleDefinition; useFlats: boolean; keyDisplay: string }) {
   const chords = useMemo(() => resolveScaleChords(selectedKey, selectedScale, useFlats), [selectedKey, selectedScale, useFlats]);
+  const { playChord } = useChordAudio();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTap = useCallback((index: number, chordSymbol: string, quality: string) => {
+    const chordData = findChordInLibrary(chordSymbol, quality);
+    if (chordData) playChord(chordData);
+    setActiveIndex(index);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setActiveIndex(null), 600);
+  }, [playChord]);
+
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
+
   return (
     <div>
       <h4 className="font-display text-sm sm:text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-3 sm:mb-2">Chords in {keyDisplay} {selectedScale.name.replace(' Scale', '')}</h4>
-      <div className="flex flex-wrap gap-2.5 sm:gap-2">
-        {chords.map((c, i) => (
-          <div key={i} className="flex flex-col items-center rounded-lg sm:rounded-md bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-subtle)/0.5)] px-5 py-3 sm:px-3 sm:py-2 min-w-[64px] sm:min-w-[52px]">
-            <span className="text-base sm:text-sm font-body text-[hsl(var(--text-muted))]">{c.roman}</span>
-            <span className="text-lg sm:text-sm font-display font-bold text-[hsl(var(--text-default))]">{c.chordSymbol}</span>
-          </div>
-        ))}
+      <div className="flex flex-wrap gap-2.5 sm:gap-3">
+        {chords.map((c, i) => {
+          const isActive = activeIndex === i;
+          const hasChord = !!findChordInLibrary(c.chordSymbol, c.quality);
+          return (
+            <button
+              key={i}
+              onClick={() => handleTap(i, c.chordSymbol, c.quality)}
+              className={`flex flex-col items-center rounded-lg bg-[hsl(var(--bg-surface))] border px-5 py-3 sm:px-5 sm:py-3 min-w-[64px] sm:min-w-[72px] transition-all duration-200 ${
+                isActive
+                  ? 'border-[hsl(var(--color-primary)/0.7)] bg-[hsl(var(--color-primary)/0.12)] scale-105 shadow-[0_0_16px_hsl(var(--color-primary)/0.25)]'
+                  : hasChord
+                    ? 'border-[hsl(var(--border-subtle)/0.5)] hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 cursor-pointer'
+                    : 'border-[hsl(var(--border-subtle)/0.3)] opacity-50 cursor-not-allowed'
+              }`}
+              disabled={!hasChord}
+              title={hasChord ? `Play ${c.chordSymbol}` : `${c.chordSymbol} not in library`}
+            >
+              <span className={`text-base sm:text-base font-body transition-colors duration-200 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-muted))]'}`}>{c.roman}</span>
+              <span className={`text-lg sm:text-lg font-display font-bold transition-colors duration-200 ${isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'}`}>{c.chordSymbol}</span>
+              {hasChord && (
+                <Volume2 className={`size-3 mt-1 transition-all duration-200 ${isActive ? 'text-[hsl(var(--color-primary))] scale-125' : 'text-[hsl(var(--text-muted)/0.3)]'}`} />
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
