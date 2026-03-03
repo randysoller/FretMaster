@@ -975,10 +975,10 @@ export default function TunerPanel() {
                       playReferenceTone(gs);
                     }}
                   >
-                    <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                    <span className="text-[16px] font-body text-[hsl(var(--text-subtle))]">
                       String {gs.string}
                     </span>
-                    <span className={`font-display text-lg font-bold ${
+                    <span className={`font-display text-[28px] font-bold ${
                       isActive
                         ? 'text-[hsl(var(--color-primary))]'
                         : isDetected
@@ -991,10 +991,10 @@ export default function TunerPanel() {
                     }`}>
                       {gs.note}
                     </span>
-                    <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+                    <span className="text-[16px] font-body text-[hsl(var(--text-subtle))] tabular-nums">
                       {gs.freq.toFixed(1)} Hz
                     </span>
-                    <span className={`text-[10px] font-display font-bold tabular-nums mt-0.5 h-3.5 transition-colors duration-200 ${
+                    <span className={`text-[16px] font-display font-bold tabular-nums mt-0.5 h-5 transition-colors duration-200 ${
                       stringCents === null
                         ? 'text-transparent'
                         : stringInTune
