@@ -271,7 +271,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           }}
         >
           <div
-            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-2 shadow-xl"
+            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-[3px] shadow-xl"
             style={{
               height: 'calc((100vh - 80px) * 0.75)',
               borderColor: thresholdHit === 'prev' ? 'hsl(200 80% 62% / 0.85)' : 'hsl(200 80% 62% / 0.5)',
@@ -310,7 +310,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           }}
         >
           <div
-            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-2 shadow-xl"
+            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-[3px] shadow-xl"
             style={{
               height: 'calc((100vh - 80px) * 0.75)',
               borderColor: thresholdHit === 'next' ? 'hsl(200 80% 62% / 0.85)' : 'hsl(200 80% 62% / 0.5)',
