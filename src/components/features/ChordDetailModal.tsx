@@ -46,6 +46,8 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
   // Swipe animation phases: idle → dragging → exit → reposition → enter → idle
   const [swipePhase, setSwipePhase] = useState<'idle' | 'dragging' | 'exit' | 'reposition' | 'enter'>('idle');
   const animTimerRef = useRef<number>(0);
+  // Track which bleeding card has crossed the swipe threshold for bounce feedback
+  const [thresholdHit, setThresholdHit] = useState<'none' | 'next' | 'prev'>('none');
 
   const currentIndex = chord && filteredChords
     ? filteredChords.findIndex((c) => c.id === chord.id)
@@ -102,6 +104,16 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         ? clamped * 0.3
         : clamped;
       setSwipeOffset(dampened);
+
+      // Detect threshold crossing for bounce feedback on bleeding cards
+      const swipeThreshold = 60;
+      if (dampened < -swipeThreshold && hasNext) {
+        setThresholdHit('next');
+      } else if (dampened > swipeThreshold && hasPrev) {
+        setThresholdHit('prev');
+      } else {
+        setThresholdHit('none');
+      }
     }
   }, [hasNext, hasPrev, swipePhase]);
 
@@ -162,6 +174,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
 
     touchStartRef.current = null;
     swipingRef.current = false;
+    setThresholdHit('none');
   }, [swipeOffset, hasNext, hasPrev, goNext, goPrev]);
 
   const handleEdit = () => {
@@ -257,11 +270,28 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
-            <div className="flex items-center justify-center size-10 rounded-full border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))] transition-all active:scale-90">
+          <div
+            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl"
+            style={{
+              height: 'calc((100vh - 80px) * 0.75)',
+              borderColor: thresholdHit === 'prev' ? 'hsl(200 80% 62% / 0.85)' : 'hsl(200 80% 62% / 0.5)',
+              boxShadow: thresholdHit === 'prev'
+                ? '0 0 18px 2px hsl(200 80% 62% / 0.2), 0 20px 25px -5px hsl(200 80% 62% / 0.08)'
+                : '0 20px 25px -5px hsl(200 80% 62% / 0.08)',
+              transform: thresholdHit === 'prev' ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease',
+            }}
+          >
+            <div className={`flex items-center justify-center size-10 rounded-full border bg-[hsl(var(--bg-surface))] transition-all active:scale-90 ${
+              thresholdHit === 'prev'
+                ? 'border-[hsl(var(--color-primary)/0.4)] text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)]'
+                : 'border-[hsl(var(--border-default))] text-[hsl(var(--text-default))]'
+            }`}>
               <ChevronLeft className="size-5" />
             </div>
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-center leading-tight">
+            <span className={`font-display font-extrabold text-base text-center leading-tight transition-colors duration-200 ${
+              thresholdHit === 'prev' ? 'text-[hsl(200_80%_62%)]' : 'text-[hsl(var(--text-muted))]'
+            }`}>
               {filteredChords[currentIndex - 1].symbol}
             </span>
           </div>
@@ -279,11 +309,28 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
-            <div className="flex items-center justify-center size-10 rounded-full border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))] transition-all active:scale-90">
+          <div
+            className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl"
+            style={{
+              height: 'calc((100vh - 80px) * 0.75)',
+              borderColor: thresholdHit === 'next' ? 'hsl(200 80% 62% / 0.85)' : 'hsl(200 80% 62% / 0.5)',
+              boxShadow: thresholdHit === 'next'
+                ? '0 0 18px 2px hsl(200 80% 62% / 0.2), 0 20px 25px -5px hsl(200 80% 62% / 0.08)'
+                : '0 20px 25px -5px hsl(200 80% 62% / 0.08)',
+              transform: thresholdHit === 'next' ? 'scale(1.08)' : 'scale(1)',
+              transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease, box-shadow 0.2s ease',
+            }}
+          >
+            <div className={`flex items-center justify-center size-10 rounded-full border bg-[hsl(var(--bg-surface))] transition-all active:scale-90 ${
+              thresholdHit === 'next'
+                ? 'border-[hsl(var(--color-primary)/0.4)] text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)]'
+                : 'border-[hsl(var(--border-default))] text-[hsl(var(--text-default))]'
+            }`}>
               <ChevronRight className="size-5" />
             </div>
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-center leading-tight">
+            <span className={`font-display font-extrabold text-base text-center leading-tight transition-colors duration-200 ${
+              thresholdHit === 'next' ? 'text-[hsl(200_80%_62%)]' : 'text-[hsl(var(--text-muted))]'
+            }`}>
               {filteredChords[currentIndex + 1].symbol}
             </span>
           </div>
