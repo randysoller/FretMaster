@@ -212,7 +212,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-[82px] sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-[50px] sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
       {/* Desktop left arrow */}
       {filteredChords && filteredChords.length > 1 && (
@@ -251,19 +251,16 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
           style={{
             left: 0,
-            width: '180px',
-            transform: `translateY(-50%) translateX(-100px) translateX(${swipeOffset * 0.35}px)`,
+            width: '90px',
+            transform: `translateY(-50%) translateX(-44px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2.5 pr-3 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]">
-            <ChevronLeft className="size-5 text-[hsl(var(--color-primary)/0.6)]" />
-            <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-right leading-tight">
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-2 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+            <ChevronLeft className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-right leading-tight">
               {filteredChords[currentIndex - 1].symbol}
-            </span>
-            <span className="text-[11px] font-body text-[hsl(var(--text-muted)/0.5)] text-right line-clamp-2 max-w-[50px]">
-              {filteredChords[currentIndex - 1].name}
             </span>
           </div>
         </div>
@@ -274,19 +271,16 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           onClick={(e) => { e.stopPropagation(); goNext(); }}
           style={{
             right: 0,
-            width: '180px',
-            transform: `translateY(-50%) translateX(100px) translateX(${swipeOffset * 0.35}px)`,
+            width: '90px',
+            transform: `translateY(-50%) translateX(44px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2.5 pl-3 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]">
-            <ChevronRight className="size-5 text-[hsl(var(--color-primary)/0.6)]" />
-            <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-left leading-tight">
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-2 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+            <ChevronRight className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-left leading-tight">
               {filteredChords[currentIndex + 1].symbol}
-            </span>
-            <span className="text-[11px] font-body text-[hsl(var(--text-muted)/0.5)] text-left line-clamp-2 max-w-[50px]">
-              {filteredChords[currentIndex + 1].name}
             </span>
           </div>
         </div>
