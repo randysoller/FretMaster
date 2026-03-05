@@ -256,8 +256,8 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border border-[hsl(var(--border-subtle))] backdrop-blur-md flex flex-col items-end justify-center gap-2.5 pr-3 shadow-xl">
-            <ChevronLeft className="size-5 text-[hsl(var(--text-muted)/0.6)]" />
+          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2.5 pr-3 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]">
+            <ChevronLeft className="size-5 text-[hsl(var(--color-primary)/0.6)]" />
             <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-right leading-tight">
               {filteredChords[currentIndex - 1].symbol}
             </span>
@@ -278,8 +278,8 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border border-[hsl(var(--border-subtle))] backdrop-blur-md flex flex-col items-start justify-center gap-2.5 pl-3 shadow-xl">
-            <ChevronRight className="size-5 text-[hsl(var(--text-muted)/0.6)]" />
+          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2.5 pl-3 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]">
+            <ChevronRight className="size-5 text-[hsl(var(--color-primary)/0.6)]" />
             <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-left leading-tight">
               {filteredChords[currentIndex + 1].symbol}
             </span>
@@ -309,7 +309,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
                     ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out'
                     : 'transform 0.25s ease-out, opacity 0.25s ease-out',
         }}
-        className="relative z-10 w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
+        className="relative z-10 w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border-2 border-[hsl(var(--color-primary)/0.45)] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
       >
 
 
