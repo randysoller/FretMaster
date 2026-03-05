@@ -257,9 +257,11 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
-            <ChevronLeft className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-right leading-tight">
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+            <div className="flex items-center justify-center size-10 rounded-full border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))] transition-all active:scale-90">
+              <ChevronLeft className="size-5" />
+            </div>
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-center leading-tight">
               {filteredChords[currentIndex - 1].symbol}
             </span>
           </div>
@@ -277,9 +279,11 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
-            <ChevronRight className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-left leading-tight">
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-center justify-center gap-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+            <div className="flex items-center justify-center size-10 rounded-full border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))] transition-all active:scale-90">
+              <ChevronRight className="size-5" />
+            </div>
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-center leading-tight">
               {filteredChords[currentIndex + 1].symbol}
             </span>
           </div>
@@ -403,34 +407,12 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           </div>
         </div>
 
-        {/* Mobile navigation arrows + position indicator */}
+        {/* Mobile position indicator */}
         {filteredChords && filteredChords.length > 1 && (
-          <div className="flex items-center justify-between px-3 pb-2 sm:hidden">
-            <button
-              onClick={() => goPrev()}
-              disabled={!hasPrev}
-              className={`flex items-center justify-center size-10 rounded-full border transition-all duration-200 active:scale-90 ${
-                hasPrev
-                  ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))]'
-                  : 'border-[hsl(var(--border-subtle)/0.3)] bg-transparent text-[hsl(var(--text-muted)/0.2)] cursor-default'
-              }`}
-            >
-              <ChevronLeft className="size-5" />
-            </button>
+          <div className="flex items-center justify-center px-3 pb-2 sm:hidden">
             <span className="text-xs font-display font-bold text-[hsl(var(--text-muted))] tabular-nums">
               {currentIndex + 1} / {filteredChords.length}
             </span>
-            <button
-              onClick={() => goNext()}
-              disabled={!hasNext}
-              className={`flex items-center justify-center size-10 rounded-full border transition-all duration-200 active:scale-90 ${
-                hasNext
-                  ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))]'
-                  : 'border-[hsl(var(--border-subtle)/0.3)] bg-transparent text-[hsl(var(--text-muted)/0.2)] cursor-default'
-              }`}
-            >
-              <ChevronRight className="size-5" />
-            </button>
           </div>
         )}
 
