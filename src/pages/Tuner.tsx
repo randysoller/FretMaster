@@ -813,7 +813,7 @@ export default function TunerPanel() {
                 <p className="mt-2 text-sm font-body text-[hsl(var(--text-muted))] tabular-nums transition-opacity duration-300" style={{ opacity: shownFreq ? 1 : 0.3 }}>
                   {shownFreq ? `${shownFreq.toFixed(1)} Hz` : '— Hz'}
                 </p>
-                <p className={`mt-1 text-xs font-body text-[hsl(var(--text-muted))] h-4 transition-opacity duration-200 ${targetString && shownNote ? 'opacity-100' : 'opacity-0'}`}>
+                <p className={`mt-1 text-sm font-body text-[hsl(var(--text-subtle))] h-5 transition-opacity duration-200 ${targetString && shownNote ? 'opacity-100' : 'opacity-0'}`}>
                   {targetString ? `Target: ${targetString.note} (${targetString.freq.toFixed(1)} Hz)` : '\u00A0'}
                 </p>
               </div>
@@ -863,7 +863,7 @@ export default function TunerPanel() {
                     );
                   })}
                 </div>
-                <div className="flex justify-between items-center text-[10px] font-body text-[hsl(var(--text-muted))]">
+                <div className="flex justify-between items-center text-[12px] font-body text-[hsl(var(--text-subtle))]">
                   <span>♭ Flat</span>
                   <span className={`font-display text-sm font-bold tabular-nums transition-colors duration-300 ${
                     !shownNote ? 'text-[hsl(var(--text-muted)/0.4)]' : isTargetInTune ? 'text-[hsl(142_71%_45%)]' : isTargetClose ? 'text-[hsl(var(--color-emphasis))]' : 'text-[hsl(var(--text-default))]'
@@ -895,11 +895,11 @@ export default function TunerPanel() {
               {/* Mic sensitivity */}
               <div className="space-y-2 !mt-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-sm font-display font-semibold text-[hsl(var(--text-subtle))] uppercase tracking-wider flex items-center gap-1.5">
                     <Mic className="size-3.5" />
                     Mic Sensitivity
                   </label>
-                  <span className="text-xs font-body tabular-nums text-[hsl(var(--text-muted))]">{sensitivity}%</span>
+                  <span className="text-sm font-body tabular-nums text-[hsl(var(--text-subtle))]">{sensitivity}%</span>
                 </div>
                 <input
                   type="range"
@@ -918,7 +918,7 @@ export default function TunerPanel() {
                     [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full
                     [&::-moz-range-thumb]:bg-[hsl(var(--color-primary))] [&::-moz-range-thumb]:border-none"
                 />
-                <div className="flex justify-between text-[10px] font-body text-[hsl(var(--text-muted)/0.5)]">
+                <div className="flex justify-between text-[12px] font-body text-[hsl(var(--text-muted))]">
                   <span>Low</span>
                   <span>High</span>
                 </div>
@@ -930,7 +930,7 @@ export default function TunerPanel() {
           {/* String selector + reference tones */}
           <div className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
+              <h3 className="font-display text-sm font-semibold text-[hsl(var(--text-subtle))] uppercase tracking-wider">
                 Strings
               </h3>
               <button
@@ -997,7 +997,7 @@ export default function TunerPanel() {
                       }}
                     />
                     </div>
-                    <span className="text-[10px] sm:text-[16px] font-body text-[hsl(var(--text-subtle))] text-center leading-tight">
+                    <span className="text-[12px] sm:text-[18px] font-body text-[hsl(var(--text-default)/0.65)] text-center leading-tight">
                       <span className="block">String</span>
                       <span className="block">{gs.string}</span>
                     </span>
@@ -1016,7 +1016,7 @@ export default function TunerPanel() {
                       <span className="hidden sm:inline">{gs.note}</span>
                     </span>
 
-                    <span className={`text-[10px] sm:text-[16px] font-display font-bold tabular-nums mt-0.5 h-4 sm:h-5 transition-colors duration-200 ${
+                    <span className={`text-[12px] sm:text-[18px] font-display font-bold tabular-nums mt-0.5 h-4 sm:h-5 transition-colors duration-200 ${
                       stringCents === null
                         ? 'text-transparent'
                         : stringInTune
