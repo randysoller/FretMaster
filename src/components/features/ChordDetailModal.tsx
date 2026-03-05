@@ -212,7 +212,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-14 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
       {/* Desktop left arrow */}
       {filteredChords && filteredChords.length > 1 && (
@@ -244,38 +244,48 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         </button>
       )}
 
-      {/* Mobile edge card previews — show adjacent chord cards peeking from sides */}
+      {/* Mobile bleeding-edge cards — adjacent chords partially cut off at screen edges */}
       {filteredChords && filteredChords.length > 1 && hasPrev && (
         <div
-          className="sm:hidden absolute left-0 top-1/2 -translate-y-1/2 z-[5] pointer-events-none"
+          className="sm:hidden absolute top-1/2 z-[5] pointer-events-none"
           style={{
-            transform: swipeOffset !== 0 ? `translateY(-50%) translateX(${swipeOffset * 0.3}px)` : 'translateY(-50%)',
+            left: 0,
+            width: '180px',
+            transform: `translateY(-50%) translateX(-125px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
-            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 1,
+            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="w-14 ml-0.5 rounded-xl bg-[hsl(var(--bg-elevated)/0.75)] border border-[hsl(var(--border-subtle))] backdrop-blur-sm py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg">
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] leading-none text-center px-1" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border border-[hsl(var(--border-subtle))] backdrop-blur-md flex flex-col items-end justify-center gap-2.5 pr-3 shadow-xl">
+            <ChevronLeft className="size-5 text-[hsl(var(--text-muted)/0.6)]" />
+            <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-right leading-tight">
               {filteredChords[currentIndex - 1].symbol}
             </span>
-            <ChevronLeft className="size-3.5 text-[hsl(var(--text-muted)/0.5)]" />
+            <span className="text-[11px] font-body text-[hsl(var(--text-muted)/0.5)] text-right line-clamp-2 max-w-[50px]">
+              {filteredChords[currentIndex - 1].name}
+            </span>
           </div>
         </div>
       )}
       {filteredChords && filteredChords.length > 1 && hasNext && (
         <div
-          className="sm:hidden absolute right-0 top-1/2 -translate-y-1/2 z-[5] pointer-events-none"
+          className="sm:hidden absolute top-1/2 z-[5] pointer-events-none"
           style={{
-            transform: swipeOffset !== 0 ? `translateY(-50%) translateX(${swipeOffset * 0.3}px)` : 'translateY(-50%)',
+            right: 0,
+            width: '180px',
+            transform: `translateY(-50%) translateX(125px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
-            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 1,
+            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="w-14 mr-0.5 rounded-xl bg-[hsl(var(--bg-elevated)/0.75)] border border-[hsl(var(--border-subtle))] backdrop-blur-sm py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg">
-            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] leading-none text-center px-1" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+          <div className="h-[240px] rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border border-[hsl(var(--border-subtle))] backdrop-blur-md flex flex-col items-start justify-center gap-2.5 pl-3 shadow-xl">
+            <ChevronRight className="size-5 text-[hsl(var(--text-muted)/0.6)]" />
+            <span className="font-display font-extrabold text-xl text-[hsl(var(--text-muted))] text-left leading-tight">
               {filteredChords[currentIndex + 1].symbol}
             </span>
-            <ChevronRight className="size-3.5 text-[hsl(var(--text-muted)/0.5)]" />
+            <span className="text-[11px] font-body text-[hsl(var(--text-muted)/0.5)] text-left line-clamp-2 max-w-[50px]">
+              {filteredChords[currentIndex + 1].name}
+            </span>
           </div>
         </div>
       )}
