@@ -359,18 +359,34 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           </div>
         </div>
 
-        {/* Mobile swipe indicator */}
+        {/* Mobile navigation arrows + position indicator */}
         {filteredChords && filteredChords.length > 1 && (
-          <div className="flex items-center justify-between px-3 pb-1 sm:hidden">
-            <span className={`text-[10px] font-body ${hasPrev ? 'text-[hsl(var(--text-muted))]' : 'text-transparent'}`}>
-              ← Swipe right
-            </span>
-            <span className="text-[10px] font-body text-[hsl(var(--text-muted))] tabular-nums">
+          <div className="flex items-center justify-between px-3 pb-2 sm:hidden">
+            <button
+              onClick={() => goPrev()}
+              disabled={!hasPrev}
+              className={`flex items-center justify-center size-10 rounded-full border transition-all duration-200 active:scale-90 ${
+                hasPrev
+                  ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))]'
+                  : 'border-[hsl(var(--border-subtle)/0.3)] bg-transparent text-[hsl(var(--text-muted)/0.2)] cursor-default'
+              }`}
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+            <span className="text-xs font-display font-bold text-[hsl(var(--text-muted))] tabular-nums">
               {currentIndex + 1} / {filteredChords.length}
             </span>
-            <span className={`text-[10px] font-body ${hasNext ? 'text-[hsl(var(--text-muted))]' : 'text-transparent'}`}>
-              Swipe left →
-            </span>
+            <button
+              onClick={() => goNext()}
+              disabled={!hasNext}
+              className={`flex items-center justify-center size-10 rounded-full border transition-all duration-200 active:scale-90 ${
+                hasNext
+                  ? 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-default))] active:bg-[hsl(var(--color-primary)/0.15)] active:border-[hsl(var(--color-primary)/0.4)] active:text-[hsl(var(--color-primary))]'
+                  : 'border-[hsl(var(--border-subtle)/0.3)] bg-transparent text-[hsl(var(--text-muted)/0.2)] cursor-default'
+              }`}
+            >
+              <ChevronRight className="size-5" />
+            </button>
           </div>
         )}
 
