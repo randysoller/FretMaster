@@ -244,6 +244,42 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         </button>
       )}
 
+      {/* Mobile edge card previews — show adjacent chord cards peeking from sides */}
+      {filteredChords && filteredChords.length > 1 && hasPrev && (
+        <div
+          className="sm:hidden absolute left-0 top-1/2 -translate-y-1/2 z-[5] pointer-events-none"
+          style={{
+            transform: swipeOffset !== 0 ? `translateY(-50%) translateX(${swipeOffset * 0.3}px)` : 'translateY(-50%)',
+            transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
+            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 1,
+          }}
+        >
+          <div className="w-14 ml-0.5 rounded-xl bg-[hsl(var(--bg-elevated)/0.75)] border border-[hsl(var(--border-subtle))] backdrop-blur-sm py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg">
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] leading-none text-center px-1" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+              {filteredChords[currentIndex - 1].symbol}
+            </span>
+            <ChevronLeft className="size-3.5 text-[hsl(var(--text-muted)/0.5)]" />
+          </div>
+        </div>
+      )}
+      {filteredChords && filteredChords.length > 1 && hasNext && (
+        <div
+          className="sm:hidden absolute right-0 top-1/2 -translate-y-1/2 z-[5] pointer-events-none"
+          style={{
+            transform: swipeOffset !== 0 ? `translateY(-50%) translateX(${swipeOffset * 0.3}px)` : 'translateY(-50%)',
+            transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
+            opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 1,
+          }}
+        >
+          <div className="w-14 mr-0.5 rounded-xl bg-[hsl(var(--bg-elevated)/0.75)] border border-[hsl(var(--border-subtle))] backdrop-blur-sm py-5 flex flex-col items-center justify-center gap-1.5 shadow-lg">
+            <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] leading-none text-center px-1" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+              {filteredChords[currentIndex + 1].symbol}
+            </span>
+            <ChevronRight className="size-3.5 text-[hsl(var(--text-muted)/0.5)]" />
+          </div>
+        </div>
+      )}
+
       <div
         ref={contentRef}
         onTouchStart={handleTouchStart}
@@ -263,31 +299,9 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
                     ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out'
                     : 'transform 0.25s ease-out, opacity 0.25s ease-out',
         }}
-        className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
+        className="relative z-10 w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
       >
-        {/* Mobile bleeding edge indicators — hint swipeability */}
-        {filteredChords && filteredChords.length > 1 && (
-          <>
-            {hasPrev && (
-              <div
-                className="sm:hidden absolute left-0 top-0 bottom-0 w-[6px] z-20 pointer-events-none rounded-l-2xl"
-                style={{
-                  background: 'linear-gradient(to right, hsl(var(--color-primary) / 0.35), hsl(var(--color-primary) / 0.12), transparent)',
-                  boxShadow: '0 0 12px hsl(var(--color-primary) / 0.15)',
-                }}
-              />
-            )}
-            {hasNext && (
-              <div
-                className="sm:hidden absolute right-0 top-0 bottom-0 w-[6px] z-20 pointer-events-none rounded-r-2xl"
-                style={{
-                  background: 'linear-gradient(to left, hsl(var(--color-primary) / 0.35), hsl(var(--color-primary) / 0.12), transparent)',
-                  boxShadow: '0 0 12px hsl(var(--color-primary) / 0.15)',
-                }}
-              />
-            )}
-          </>
-        )}
+
 
         {/* Header */}
         <div className="flex items-start justify-between p-3 pb-0 sm:p-6 sm:pb-0">
