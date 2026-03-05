@@ -159,7 +159,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
             {/* BPM control */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Tempo</span>
+                <span className="text-base sm:text-sm font-body text-[hsl(var(--text-subtle))] uppercase tracking-wider">Tempo</span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm sm:text-xs font-body italic text-[hsl(var(--text-subtle))]">{getTempoMarking(store.bpm)}</span>
                   <span className="text-base sm:text-sm font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">
@@ -195,7 +195,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
 
             {/* Time Signature */}
             <div className="space-y-2.5 sm:space-y-2">
-              <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Time Signature</span>
+              <span className="text-base sm:text-sm font-body text-[hsl(var(--text-subtle))] uppercase tracking-wider">Time Signature</span>
               <div className="flex gap-2 sm:gap-1.5">
                 {timeSigOptions.map((opt) => (
                   <button key={opt.value} onClick={() => store.setBeatsPerMeasure(opt.value)} className={`flex-1 rounded-lg sm:rounded-md px-2 py-2.5 sm:py-1.5 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.beatsPerMeasure === opt.value ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
@@ -207,7 +207,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
 
             {/* Sound type */}
             <div className="space-y-2.5 sm:space-y-2">
-              <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Sound</span>
+              <span className="text-base sm:text-sm font-body text-[hsl(var(--text-subtle))] uppercase tracking-wider">Sound</span>
               <div className="grid grid-cols-3 gap-2 sm:gap-1.5">
                 {soundTypes.map((s) => (
                   <button key={s} onClick={() => store.setSoundType(s)} className={`rounded-lg sm:rounded-md px-2 py-3 sm:py-2 text-sm sm:text-xs font-display font-bold transition-all active:scale-95 ${store.soundType === s ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]' : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
@@ -220,7 +220,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
             {/* Volume */}
             <div className="space-y-2.5 sm:space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm sm:text-xs font-body text-[hsl(var(--text-muted))] uppercase tracking-wider">Volume</span>
+                <span className="text-base sm:text-sm font-body text-[hsl(var(--text-subtle))] uppercase tracking-wider">Volume</span>
                 <span className="text-sm sm:text-xs font-display font-bold text-[hsl(var(--color-primary))] tabular-nums">{Math.round(store.volume * 100)}%</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-2">
