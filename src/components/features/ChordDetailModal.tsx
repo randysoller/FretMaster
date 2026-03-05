@@ -265,6 +265,30 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
         }}
         className="relative w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
       >
+        {/* Mobile bleeding edge indicators — hint swipeability */}
+        {filteredChords && filteredChords.length > 1 && (
+          <>
+            {hasPrev && (
+              <div
+                className="sm:hidden absolute left-0 top-0 bottom-0 w-[6px] z-20 pointer-events-none rounded-l-2xl"
+                style={{
+                  background: 'linear-gradient(to right, hsl(var(--color-primary) / 0.35), hsl(var(--color-primary) / 0.12), transparent)',
+                  boxShadow: '0 0 12px hsl(var(--color-primary) / 0.15)',
+                }}
+              />
+            )}
+            {hasNext && (
+              <div
+                className="sm:hidden absolute right-0 top-0 bottom-0 w-[6px] z-20 pointer-events-none rounded-r-2xl"
+                style={{
+                  background: 'linear-gradient(to left, hsl(var(--color-primary) / 0.35), hsl(var(--color-primary) / 0.12), transparent)',
+                  boxShadow: '0 0 12px hsl(var(--color-primary) / 0.15)',
+                }}
+              />
+            )}
+          </>
+        )}
+
         {/* Header */}
         <div className="flex items-start justify-between p-3 pb-0 sm:p-6 sm:pb-0">
           <div>
