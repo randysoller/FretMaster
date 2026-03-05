@@ -234,8 +234,8 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
               </div>
             </div>
 
-            {/* Play / Stop */}
-            <div className="flex justify-center">
+            {/* Play / Stop + Beat indicators (always visible) */}
+            <div className="flex flex-col items-center gap-3 sm:gap-2">
               <button
                 onClick={store.toggle}
                 className={`
@@ -252,13 +252,11 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
                   <><Play className="size-4" /> Play</>
                 )}
               </button>
-            </div>
 
-            {/* Beat indicators */}
-            {store.isPlaying && (
-              <div className="flex items-center justify-center gap-1.5 sm:gap-1 pt-3 sm:pt-2 border-t border-[hsl(var(--border-subtle))]">
+              {/* Beat indicators — always shown */}
+              <div className="flex items-center justify-center gap-1.5 sm:gap-1 pt-2 sm:pt-1.5 border-t border-[hsl(var(--border-subtle))] w-full">
                 {Array.from({ length: store.beatsPerMeasure }, (_, i) => {
-                  const isActive = i === store.currentBeat;
+                  const isActive = store.isPlaying && i === store.currentBeat;
                   const isAccentBeat = i === 0 || (store.beatsPerMeasure === 6 && i === 3) || (store.beatsPerMeasure === 12 && (i === 3 || i === 6 || i === 9));
                   return (
                     <span
@@ -270,7 +268,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
                   );
                 })}
               </div>
-            )}
+            </div>
           </div>
         </motion.div>
       )}
