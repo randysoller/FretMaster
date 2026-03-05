@@ -212,7 +212,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-[50px] sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-[39px] sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
       {/* Desktop left arrow */}
       {filteredChords && filteredChords.length > 1 && (
@@ -251,8 +251,8 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           onClick={(e) => { e.stopPropagation(); goPrev(); }}
           style={{
             left: 0,
-            width: '90px',
-            transform: `translateY(-50%) translateX(-44px) translateX(${swipeOffset * 0.35}px)`,
+            width: '68px',
+            transform: `translateY(-50%) translateX(-33px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
@@ -271,8 +271,8 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
           onClick={(e) => { e.stopPropagation(); goNext(); }}
           style={{
             right: 0,
-            width: '90px',
-            transform: `translateY(-50%) translateX(44px) translateX(${swipeOffset * 0.35}px)`,
+            width: '68px',
+            transform: `translateY(-50%) translateX(33px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
