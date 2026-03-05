@@ -257,7 +257,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-2 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-end justify-center gap-2 pr-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
             <ChevronLeft className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
             <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-right leading-tight">
               {filteredChords[currentIndex - 1].symbol}
@@ -277,7 +277,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
         >
-          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(var(--color-primary)/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-2 shadow-xl shadow-[hsl(var(--color-primary)/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
+          <div className="rounded-2xl bg-[hsl(var(--bg-elevated)/0.9)] border-2 border-[hsl(200_80%_62%/0.5)] backdrop-blur-md flex flex-col items-start justify-center gap-2 pl-2 shadow-xl shadow-[hsl(200_80%_62%/0.08)]" style={{ height: 'calc((100vh - 80px) * 0.75)' }}>
             <ChevronRight className="size-4 text-[hsl(var(--color-primary)/0.6)]" />
             <span className="font-display font-extrabold text-base text-[hsl(var(--text-muted))] text-left leading-tight">
               {filteredChords[currentIndex + 1].symbol}
@@ -305,7 +305,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
                     ? 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease-out'
                     : 'transform 0.25s ease-out, opacity 0.25s ease-out',
         }}
-        className="relative z-10 w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border-2 border-[hsl(var(--color-primary)/0.45)] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
+        className="relative z-10 w-full max-w-md max-h-[calc(100vh-80px)] sm:max-h-[calc(100vh-40px)] rounded-2xl border-2 border-[hsl(200_80%_62%/0.45)] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-y-auto animate-in zoom-in-95 duration-200"
       >
 
 
