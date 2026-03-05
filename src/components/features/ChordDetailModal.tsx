@@ -212,7 +212,7 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-14 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center py-4 px-[82px] sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
     >
       {/* Desktop left arrow */}
       {filteredChords && filteredChords.length > 1 && (
@@ -247,11 +247,12 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
       {/* Mobile bleeding-edge cards — adjacent chords partially cut off at screen edges */}
       {filteredChords && filteredChords.length > 1 && hasPrev && (
         <div
-          className="sm:hidden absolute top-1/2 z-[5] pointer-events-none"
+          className="sm:hidden absolute top-1/2 z-[5] cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); goPrev(); }}
           style={{
             left: 0,
             width: '180px',
-            transform: `translateY(-50%) translateX(-125px) translateX(${swipeOffset * 0.35}px)`,
+            transform: `translateY(-50%) translateX(-100px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
@@ -269,11 +270,12 @@ export default function ChordDetailModal({ chord, onClose, filteredChords, onNav
       )}
       {filteredChords && filteredChords.length > 1 && hasNext && (
         <div
-          className="sm:hidden absolute top-1/2 z-[5] pointer-events-none"
+          className="sm:hidden absolute top-1/2 z-[5] cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); goNext(); }}
           style={{
             right: 0,
             width: '180px',
-            transform: `translateY(-50%) translateX(125px) translateX(${swipeOffset * 0.35}px)`,
+            transform: `translateY(-50%) translateX(100px) translateX(${swipeOffset * 0.35}px)`,
             transition: swipePhase === 'dragging' ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out',
             opacity: swipePhase === 'exit' || swipePhase === 'reposition' ? 0 : 0.9,
           }}
