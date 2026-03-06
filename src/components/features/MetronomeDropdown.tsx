@@ -242,7 +242,7 @@ export default function MetronomeDropdown({ position = 'top' }: { position?: 'to
                   flex items-center justify-center gap-2.5 sm:gap-2 rounded-xl w-3/4 py-3.5 sm:py-2.5 text-base sm:text-sm font-display font-bold transition-all duration-200 active:scale-95
                   ${store.isPlaying
                     ? 'bg-[hsl(var(--semantic-error)/0.12)] text-[hsl(var(--semantic-error))] border border-[hsl(var(--semantic-error)/0.3)] hover:bg-[hsl(var(--semantic-error)/0.2)]'
-                    : 'bg-[hsl(var(--color-primary)/0.12)] text-[hsl(var(--color-primary))] border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.2)]'
+                    : 'bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))] border border-[hsl(var(--semantic-success)/0.3)] hover:bg-[hsl(var(--semantic-success)/0.2)]'
                   }
                 `}
               >
