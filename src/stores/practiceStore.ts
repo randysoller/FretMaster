@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ChordCategory, ChordData, ChordType, TimerDuration, BarreRoot } from '@/types/chord';
 import { CHORDS } from '@/constants/chords';
 import { useCustomChordStore } from '@/stores/customChordStore';
@@ -85,7 +86,7 @@ interface PracticeState {
   getAvailableCount: () => number;
 }
 
-export const usePracticeStore = create<PracticeState>((set, get) => ({
+export const usePracticeStore = create<PracticeState>()(persist((set, get) => ({
   categories: new Set<ChordCategory>(),
   chordTypes: new Set<ChordType>(),
   timerDuration: 0,
@@ -178,4 +179,23 @@ export const usePracticeStore = create<PracticeState>((set, get) => ({
     const { categories, chordTypes, barreRoots, keyFilter } = get();
     return filterChords(categories, chordTypes, barreRoots, keyFilter).length;
   },
+}), {
+  name: 'fretmaster-practice-filters',
+  partialize: (state) => ({
+    categories: [...state.categories] as ChordCategory[],
+    chordTypes: [...state.chordTypes] as ChordType[],
+    barreRoots: [...state.barreRoots] as BarreRoot[],
+    keyFilter: state.keyFilter,
+    timerDuration: state.timerDuration,
+  }),
+  merge: (persisted: any, current) => ({
+    ...current,
+    ...(persisted ? {
+      categories: new Set<ChordCategory>(persisted.categories ?? []),
+      chordTypes: new Set<ChordType>(persisted.chordTypes ?? []),
+      barreRoots: new Set<BarreRoot>(persisted.barreRoots ?? []),
+      keyFilter: persisted.keyFilter ?? null,
+      timerDuration: persisted.timerDuration ?? 0,
+    } : {}),
+  }),
 }));
