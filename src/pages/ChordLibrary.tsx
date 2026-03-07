@@ -261,7 +261,7 @@ export default function ChordLibrary() {
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
-                      className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-0 group-hover/preset:opacity-100 transition-all"
+                      className="absolute -top-1.5 -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
                     >
                       <X className="size-3" />
                     </button>
