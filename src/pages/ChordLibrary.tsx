@@ -600,11 +600,7 @@ export default function ChordLibrary() {
                           <Volume2 className="size-3.5" />
                         </button>
                     </div>
-                    {(chord as any).isCustom && !(chord as any).sourceChordId && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] z-10">
-                        Custom
-                      </span>
-                    )}
+
 
                     {/* Left: Chord Diagram */}
                     <div className="shrink-0 ml-5 sm:ml-6">
