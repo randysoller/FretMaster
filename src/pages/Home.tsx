@@ -2,13 +2,14 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePracticeStore } from '@/stores/practiceStore';
+import { usePresetStore } from '@/stores/presetStore';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/chord';
 import type { ChordCategory, ChordType, BarreRoot } from '@/types/chord';
 import { KEY_SIGNATURES } from '@/constants/scales';
 import type { KeySignature } from '@/constants/scales';
 import {
   Play, Music, AlertCircle, ChevronDown, X, KeyRound, Shapes, Layers,
-  Guitar, Grip, Music2, Check, SlidersHorizontal,
+  Guitar, Grip, Music2, Check, Bookmark, Trash2,
 } from 'lucide-react';
 import heroImg from '@/assets/hero-guitar.jpg';
 
@@ -34,13 +35,17 @@ type SheetId = 'key' | 'category' | 'type' | null;
 export default function Home() {
   const navigate = useNavigate();
   const store = usePracticeStore();
-  const { startPractice, getAvailableCount, categories, chordTypes, barreRoots, keyFilter, setKeyFilter } = store;
+  const presetStore = usePresetStore();
+  const { startPractice, getAvailableCount, categories, chordTypes, barreRoots, keyFilter, setKeyFilter, activePresetId, setActivePreset } = store;
   const availableCount = getAvailableCount();
+  const { presets } = presetStore;
 
   const [activeSheet, setActiveSheet] = useState<SheetId>(null);
   const keyDropdownRef = useRef<HTMLDivElement>(null);
   const catDropdownRef = useRef<HTMLDivElement>(null);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const toggleSheet = useCallback((id: SheetId) => {
     setActiveSheet((prev) => (prev === id ? null : id));
@@ -74,7 +79,23 @@ export default function Home() {
     navigate('/practice');
   };
 
+  const handleActivatePreset = useCallback((id: string) => {
+    if (activePresetId === id) {
+      setActivePreset(null);
+    } else {
+      setActivePreset(id);
+    }
+  }, [activePresetId, setActivePreset]);
+
+  const handleDeletePreset = useCallback((id: string) => {
+    presetStore.removePreset(id);
+    if (activePresetId === id) setActivePreset(null);
+    setConfirmDeleteId(null);
+  }, [presetStore, activePresetId, setActivePreset]);
+
   // ─── Summary helpers ───
+  const activePreset = activePresetId ? presets.find((p) => p.id === activePresetId) : null;
+
   const getKeySummary = () => keyFilter ? `${keyFilter.display} Major` : 'Chords in a Key';
   const getCatSummary = () => {
     if (categories.size === 0) return 'All Shapes';
@@ -143,8 +164,100 @@ export default function Home() {
       <div className="px-3 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4">
         <div className="max-w-5xl mx-auto">
 
+          {/* ═══════════ PRESET CHIPS ═══════════ */}
+          {presets.length > 0 && (
+            <div className="mb-4 sm:mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Bookmark className="size-3.5 text-[hsl(var(--text-muted))]" />
+                <span className="text-[11px] font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
+                  My Presets
+                </span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+                {presets.map((preset) => {
+                  const isActive = activePresetId === preset.id;
+                  return (
+                    <div key={preset.id} className="shrink-0 relative group/preset">
+                      <button
+                        onClick={() => handleActivatePreset(preset.id)}
+                        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-display font-semibold transition-all active:scale-95 ${
+                          isActive
+                            ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-md shadow-[hsl(var(--color-primary)/0.2)]'
+                            : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))]'
+                        }`}
+                      >
+                        <Bookmark className={`size-3.5 ${isActive ? 'fill-current' : ''}`} />
+                        <span>{preset.name}</span>
+                        <span className={`text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full ${
+                          isActive
+                            ? 'bg-[hsl(var(--color-primary)/0.2)] text-[hsl(var(--color-primary))]'
+                            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]'
+                        }`}>
+                          {preset.chordIds.length}
+                        </span>
+                      </button>
+
+                      {/* Delete button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
+                        className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-0 group-hover/preset:opacity-100 transition-all sm:opacity-0 sm:group-hover/preset:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+
+                      {/* Confirm delete popover */}
+                      <AnimatePresence>
+                        {confirmDeleteId === preset.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-48 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 p-3"
+                          >
+                            <p className="text-xs font-body text-[hsl(var(--text-subtle))] mb-2 text-center">Delete this preset?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setConfirmDeleteId(null)}
+                                className="flex-1 rounded-lg border border-[hsl(var(--border-default))] py-1.5 text-xs font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleDeletePreset(preset.id)}
+                                className="flex-1 rounded-lg bg-[hsl(var(--semantic-error))] py-1.5 text-xs font-body font-bold text-white active:scale-95 transition-transform"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
-          <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6 space-y-2.5">
+          <div className={`sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6 space-y-2.5 transition-opacity duration-200 ${activePreset ? 'opacity-50 pointer-events-none' : ''}`}>
+
+            {/* Preset active banner */}
+            {activePreset && (
+              <div className="pointer-events-auto flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary)/0.1)] border border-[hsl(var(--color-primary)/0.3)] px-3 py-2 -mt-1 mb-1">
+                <Bookmark className="size-3.5 text-[hsl(var(--color-primary))] fill-current shrink-0" />
+                <span className="text-sm font-body font-medium text-[hsl(var(--color-primary))] truncate">
+                  Using preset: <span className="font-display font-bold">{activePreset.name}</span>
+                </span>
+                <button
+                  onClick={() => setActivePreset(null)}
+                  className="ml-auto shrink-0 text-xs font-body text-[hsl(var(--color-primary))] hover:underline underline-offset-2"
+                >
+                  Use filters
+                </button>
+              </div>
+            )}
 
             {/* Row 1: Three filter chips — Key | Category | Type */}
             <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible scrollbar-none -mx-1 px-1 pb-0.5">
@@ -311,7 +424,17 @@ export default function Home() {
               <span className="text-[hsl(var(--color-primary))] font-display font-bold">{availableCount}</span> chord{availableCount !== 1 ? 's' : ''} available
             </span>
 
-            {keyFilter && (
+            {activePreset && (
+              <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.25)] text-[hsl(var(--color-primary))] px-2.5 py-0.5 text-[11px] font-body font-medium">
+                <Bookmark className="size-3 fill-current" />
+                {activePreset.name}
+                <button onClick={() => setActivePreset(null)} className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(var(--color-primary)/0.2)] transition-colors">
+                  <X className="size-2.5" />
+                </button>
+              </span>
+            )}
+
+            {!activePreset && keyFilter && (
               <span className="flex items-center gap-1 rounded-full bg-amber-500/12 border border-amber-500/25 text-amber-400 px-2.5 py-0.5 text-[11px] font-body font-medium">
                 {keyFilter.display} Major
                 <button onClick={() => setKeyFilter(null)} className="size-3.5 flex items-center justify-center rounded-full hover:bg-amber-500/20 transition-colors">
@@ -319,7 +442,7 @@ export default function Home() {
                 </button>
               </span>
             )}
-            {categories.size > 0 && [...categories].map((cat) => (
+            {!activePreset && categories.size > 0 && [...categories].map((cat) => (
               <span
                 key={cat}
                 className="flex items-center gap-1 rounded-full bg-emerald-500/12 border border-emerald-500/25 text-emerald-400 px-2.5 py-0.5 text-[11px] font-body font-medium"
@@ -330,7 +453,7 @@ export default function Home() {
                 </button>
               </span>
             ))}
-            {chordTypes.size > 0 && chordTypes.size <= 3 && [...chordTypes].map((type) => (
+            {!activePreset && chordTypes.size > 0 && chordTypes.size <= 3 && [...chordTypes].map((type) => (
               <span
                 key={type}
                 className="flex items-center gap-1 rounded-full bg-violet-500/12 border border-violet-500/25 text-violet-400 px-2.5 py-0.5 text-[11px] font-body font-medium"
@@ -341,7 +464,7 @@ export default function Home() {
                 </button>
               </span>
             ))}
-            {chordTypes.size > 3 && (
+            {!activePreset && chordTypes.size > 3 && (
               <span className="flex items-center gap-1 rounded-full bg-violet-500/12 border border-violet-500/25 text-violet-400 px-2.5 py-0.5 text-[11px] font-body font-medium">
                 {chordTypes.size} types
                 <button onClick={store.clearChordTypes} className="size-3.5 flex items-center justify-center rounded-full hover:bg-violet-500/20 transition-colors">
@@ -349,7 +472,7 @@ export default function Home() {
                 </button>
               </span>
             )}
-            {barreRoots.size > 0 && [...barreRoots].map((root) => (
+            {!activePreset && barreRoots.size > 0 && [...barreRoots].map((root) => (
               <span
                 key={String(root)}
                 className="flex items-center gap-1 rounded-full bg-[hsl(200_80%_62%/0.12)] border border-[hsl(200_80%_62%/0.25)] text-[hsl(200_80%_62%)] px-2.5 py-0.5 text-[11px] font-body font-medium"
@@ -360,8 +483,8 @@ export default function Home() {
                 </button>
               </span>
             ))}
-            {hasActiveFilters && (
-              <button onClick={clearAll} className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors underline underline-offset-2">
+            {(hasActiveFilters || activePreset) && (
+              <button onClick={() => { clearAll(); setActivePreset(null); }} className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors underline underline-offset-2">
                 Clear all
               </button>
             )}
@@ -381,37 +504,55 @@ export default function Home() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm font-body">
-                  <span className="text-[hsl(var(--text-muted))]">Category</span>
-                  <span className="text-[hsl(var(--text-default))] font-medium">
-                    {categories.size === 0 || categories.size === 3
-                      ? 'All Chords'
-                      : [...categories].map((c) => CATEGORY_LABELS[c].replace(' Chords', '')).join(', ')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-body">
-                  <span className="text-[hsl(var(--text-muted))]">Type</span>
-                  <span className="text-[hsl(var(--text-default))] font-medium truncate ml-4 text-right">
-                    {chordTypes.size === 0
-                      ? 'All Types'
-                      : chordTypes.size <= 3
-                        ? [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')
-                        : `${chordTypes.size} types`}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm font-body">
-                  <span className="text-[hsl(var(--text-muted))]">Key</span>
-                  <span className="text-[hsl(var(--text-default))] font-medium">
-                    {keyFilter ? `${keyFilter.display} Major` : 'All'}
-                  </span>
-                </div>
-                {hasBorreOrMovable && barreRoots.size > 0 && barreRoots.size < 3 && (
-                  <div className="flex items-center justify-between text-sm font-body">
-                    <span className="text-[hsl(var(--text-muted))]">Root String</span>
-                    <span className="text-[hsl(var(--text-default))] font-medium">
-                      {[...barreRoots].map((r) => BARRE_ROOT_LABELS[r]).join(', ')}
-                    </span>
-                  </div>
+                {activePreset ? (
+                  <>
+                    <div className="flex items-center justify-between text-sm font-body">
+                      <span className="text-[hsl(var(--text-muted))]">Preset</span>
+                      <span className="flex items-center gap-1.5 text-[hsl(var(--color-primary))] font-display font-bold">
+                        <Bookmark className="size-3.5 fill-current" />
+                        {activePreset.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm font-body">
+                      <span className="text-[hsl(var(--text-muted))]">Chords in preset</span>
+                      <span className="text-[hsl(var(--text-default))] font-medium">{activePreset.chordIds.length}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between text-sm font-body">
+                      <span className="text-[hsl(var(--text-muted))]">Category</span>
+                      <span className="text-[hsl(var(--text-default))] font-medium">
+                        {categories.size === 0 || categories.size === 3
+                          ? 'All Chords'
+                          : [...categories].map((c) => CATEGORY_LABELS[c].replace(' Chords', '')).join(', ')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm font-body">
+                      <span className="text-[hsl(var(--text-muted))]">Type</span>
+                      <span className="text-[hsl(var(--text-default))] font-medium truncate ml-4 text-right">
+                        {chordTypes.size === 0
+                          ? 'All Types'
+                          : chordTypes.size <= 3
+                            ? [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')
+                            : `${chordTypes.size} types`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm font-body">
+                      <span className="text-[hsl(var(--text-muted))]">Key</span>
+                      <span className="text-[hsl(var(--text-default))] font-medium">
+                        {keyFilter ? `${keyFilter.display} Major` : 'All'}
+                      </span>
+                    </div>
+                    {hasBorreOrMovable && barreRoots.size > 0 && barreRoots.size < 3 && (
+                      <div className="flex items-center justify-between text-sm font-body">
+                        <span className="text-[hsl(var(--text-muted))]">Root String</span>
+                        <span className="text-[hsl(var(--text-default))] font-medium">
+                          {[...barreRoots].map((r) => BARRE_ROOT_LABELS[r]).join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="h-px bg-[hsl(var(--border-subtle))]" />
                 <div className="flex items-center justify-between text-sm font-body">
@@ -428,7 +569,9 @@ export default function Home() {
                 <div className="flex items-center gap-2 rounded-md bg-[hsl(var(--semantic-error)/0.1)] border border-[hsl(var(--semantic-error)/0.2)] px-3 py-2">
                   <AlertCircle className="size-4 text-[hsl(var(--semantic-error))]" />
                   <span className="text-xs text-[hsl(var(--semantic-error))] font-body">
-                    No chords match this combination. Try a different category or type.
+                    {activePreset
+                      ? 'Some chords in this preset may no longer exist. Try another preset or use filters.'
+                      : 'No chords match this combination. Try a different category or type.'}
                   </span>
                 </div>
               )}
@@ -642,7 +785,6 @@ function CategorySheetContent({ categories, barreRoots, onToggleCategory, onClea
 
   return (
     <>
-      {/* All option */}
       <button
         onClick={onClearCategories}
         className={`w-full flex items-center gap-3 px-4 ${py} text-left transition-colors ${
@@ -685,7 +827,6 @@ function CategorySheetContent({ categories, barreRoots, onToggleCategory, onClea
         );
       })}
 
-      {/* Root string filter within category sheet */}
       {showRootSection && (
         <>
           <div className="h-px bg-[hsl(var(--border-subtle))]" />

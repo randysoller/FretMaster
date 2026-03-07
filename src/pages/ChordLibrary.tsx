@@ -7,12 +7,13 @@ import type { ChordCategory, ChordType, BarreRoot, ChordData } from '@/types/cho
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2 } from 'lucide-react';
+import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, CheckSquare, Square, Save, Bookmark } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
 import { useChordLibraryStore } from '@/stores/chordLibraryStore';
+import { usePresetStore } from '@/stores/presetStore';
 
 type ExtendedChordData = ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number };
 
@@ -35,6 +36,7 @@ const CATEGORY_ICONS: Record<ChordCategory, React.ReactNode> = {
 
 export default function ChordLibrary() {
   const store = useChordLibraryStore();
+  const presetStore = usePresetStore();
   const filterCategories = useMemo(() => new Set(store.filterCategories), [store.filterCategories]);
   const filterTypes = useMemo(() => new Set(store.filterTypes), [store.filterTypes]);
   const filterBarreRoots = useMemo(() => new Set(store.filterBarreRoots), [store.filterBarreRoots]);
@@ -47,6 +49,57 @@ export default function ChordLibrary() {
   const { playChord } = useChordAudio();
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
+
+  // ─── Selection Mode ───
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const presetInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSelectMode = useCallback(() => {
+    setIsSelectMode((prev) => {
+      if (prev) {
+        setSelectedIds(new Set());
+        setShowSaveForm(false);
+        setPresetName('');
+      }
+      return !prev;
+    });
+  }, []);
+
+  const toggleChordSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAllVisible = useCallback((chords: ExtendedChordData[]) => {
+    setSelectedIds(new Set(chords.map((c) => c.id)));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleSavePreset = useCallback(() => {
+    const name = presetName.trim();
+    if (!name || selectedIds.size === 0) return;
+    presetStore.addPreset(name, [...selectedIds]);
+    setShowSaveForm(false);
+    setPresetName('');
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  }, [presetName, selectedIds, presetStore]);
+
+  useEffect(() => {
+    if (showSaveForm && presetInputRef.current) {
+      presetInputRef.current.focus();
+    }
+  }, [showSaveForm]);
 
   const { customChords, editChord: editCustomChord, editStandardChord, hiddenStandardChords } = useCustomChordStore();
 
@@ -66,7 +119,6 @@ export default function ChordLibrary() {
     return [...standardChords, ...converted] as ExtendedChordData[];
   }, [customChords, hiddenStandardChords]);
 
-  // ─── Filter toggles ───
   const toggleCategory = store.toggleCategory;
   const toggleType = store.toggleType;
   const toggleBarreRoot = store.toggleBarreRoot;
@@ -88,7 +140,6 @@ export default function ChordLibrary() {
     });
   }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Category counts (filtered by type + root + search)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const cat of ALL_CAT_OPTIONS) {
@@ -102,7 +153,6 @@ export default function ChordLibrary() {
     return counts;
   }, [filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Type counts (filtered by category + root + search)
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const type of ALL_CHORD_TYPES) {
@@ -116,7 +166,6 @@ export default function ChordLibrary() {
     return counts;
   }, [filterCategories, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Root counts (filtered by category + type + search)
   const rootCounts = useMemo(() => {
     const counts: Record<number, number> = {};
     for (const root of BARRE_ROOTS) {
@@ -134,7 +183,6 @@ export default function ChordLibrary() {
 
   const hasActiveFilters = filterCategories.size > 0 || filterTypes.size > 0 || filterBarreRoots.size > 0 || searchQuery !== '';
 
-  // Close type dropdown on outside click (desktop)
   useEffect(() => {
     if (!typeSheetOpen || window.innerWidth < 640) return;
     const handler = (e: MouseEvent) => {
@@ -144,7 +192,6 @@ export default function ChordLibrary() {
     return () => document.removeEventListener('mousedown', handler);
   }, [typeSheetOpen]);
 
-  // Lock body scroll when bottom sheet open on mobile
   useEffect(() => {
     if (typeSheetOpen && window.innerWidth < 640) {
       document.body.style.overflow = 'hidden';
@@ -182,14 +229,124 @@ export default function ChordLibrary() {
       <div className="px-3 sm:px-6 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-3 sm:mb-6">
-            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
-              Chord Library
-            </h1>
-            <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
-              Browse all {ALL_CHORDS.length} chord diagrams in the collection
-            </p>
+          <div className="mb-3 sm:mb-6 flex items-start justify-between gap-3">
+            <div>
+              <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
+                Chord Library
+              </h1>
+              <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
+                Browse all {ALL_CHORDS.length} chord diagrams in the collection
+              </p>
+            </div>
+            <button
+              onClick={toggleSelectMode}
+              className={`shrink-0 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-body font-medium transition-all active:scale-95 ${
+                isSelectMode
+                  ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]'
+                  : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
+              }`}
+            >
+              {isSelectMode ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+              <span className="hidden sm:inline">{isSelectMode ? 'Cancel' : 'Select'}</span>
+            </button>
           </div>
+
+          {/* ═══════════ SELECT MODE BAR ═══════════ */}
+          <AnimatePresence>
+            {isSelectMode && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="overflow-hidden"
+              >
+                <div className="mb-3 sm:mb-5 rounded-xl border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.06)] p-3 sm:p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Bookmark className="size-4 text-[hsl(var(--color-primary))]" />
+                      <span className="text-sm font-display font-semibold text-[hsl(var(--text-default))]">
+                        {selectedIds.size > 0 ? (
+                          <><span className="text-[hsl(var(--color-primary))]">{selectedIds.size}</span> chord{selectedIds.size !== 1 ? 's' : ''} selected</>
+                        ) : (
+                          'Tap chords to select'
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => selectAllVisible(filteredChords)}
+                        className="text-[11px] font-body text-[hsl(var(--color-primary))] hover:underline underline-offset-2"
+                      >
+                        Select all
+                      </button>
+                      {selectedIds.size > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--border-default))]">·</span>
+                          <button
+                            onClick={clearSelection}
+                            className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))]"
+                          >
+                            Clear
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save preset form */}
+                  <AnimatePresence>
+                    {showSaveForm ? (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            ref={presetInputRef}
+                            type="text"
+                            placeholder="Preset name..."
+                            value={presetName}
+                            onChange={(e) => setPresetName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveForm(false); }}
+                            className="flex-1 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-3 py-2 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)]"
+                          />
+                          <button
+                            onClick={handleSavePreset}
+                            disabled={!presetName.trim() || selectedIds.size === 0}
+                            className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--color-primary))] px-4 py-2 text-sm font-display font-bold text-[hsl(var(--bg-base))] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
+                          >
+                            <Save className="size-3.5" />
+                            Save
+                          </button>
+                          <button
+                            onClick={() => { setShowSaveForm(false); setPresetName(''); }}
+                            className="shrink-0 size-8 flex items-center justify-center rounded-lg text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))]"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      selectedIds.size > 0 && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                          <button
+                            onClick={() => setShowSaveForm(true)}
+                            className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.06)] py-2.5 text-sm font-display font-semibold text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.12)] active:scale-[0.98] transition-all"
+                          >
+                            <Bookmark className="size-4" />
+                            Save as Practice Preset
+                          </button>
+                        </motion.div>
+                      )
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
@@ -296,7 +453,7 @@ export default function ChordLibrary() {
               })}
             </div>
 
-            {/* Row 3: Contextual Root String chips — slide in when barre/movable selected */}
+            {/* Row 3: Contextual Root String chips */}
             <AnimatePresence>
               {showRootFilter && (
                 <motion.div
@@ -337,7 +494,6 @@ export default function ChordLibrary() {
               <span className="text-[hsl(var(--color-primary))] font-display font-bold">{filteredChords.length}</span> chord{filteredChords.length !== 1 ? 's' : ''}
             </span>
 
-            {/* Active filter pills with dismiss */}
             {filterCategories.size > 0 && [...filterCategories].map((cat) => (
               <span
                 key={cat}
@@ -428,87 +584,120 @@ export default function ChordLibrary() {
                 visible: { transition: { staggerChildren: 0.04 } },
               }}
             >
-              {filteredChords.map((chord) => (
-                <motion.div
-                  key={chord.id}
-                  onClick={() => setSelectedChord(chord)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter') setSelectedChord(chord); }}
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
-                  }}
-                  className="group relative rounded-lg sm:rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4 hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.01] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)] active:scale-[0.99] transition-all duration-200 cursor-pointer"
-                >
-                  {/* Action buttons */}
-                  <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 z-10">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
-                      className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
-                      title="Edit chord"
-                    >
-                      <Edit3 className="size-3" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); playChord(chord); }}
-                      className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
-                      title="Play chord"
-                    >
-                      <Volume2 className="size-3.5" />
-                    </button>
-                  </div>
-                  {(chord as any).isCustom && !(chord as any).sourceChordId && (
-                    <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] z-10">
-                      Custom
-                    </span>
-                  )}
-
-                  {/* Left: Chord Diagram */}
-                  <div className="shrink-0">
-                    {(chord as any).isCustom ? (
-                      <CustomChordDiagram
-                        key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
-                        chord={{
-                          id: chord.id,
-                          name: chord.name,
-                          symbol: chord.symbol,
-                          baseFret: chord.baseFret,
-                          numFrets: (chord as any).numFrets ?? 5,
-                          mutedStrings: new Set((chord as any).customMutedStrings ?? []),
-                          openStrings: new Set((chord as any).customOpenStrings ?? []),
-                          openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
-                          markers: (chord as any).customMarkers ?? [],
-                          barres: (chord as any).customBarres ?? [],
-                          createdAt: 0,
-                          updatedAt: 0,
-                        }}
-                        size="sm"
-                      />
-                    ) : (
-                      <ChordDiagram chord={chord} size="sm" />
+              {filteredChords.map((chord) => {
+                const isSelected = selectedIds.has(chord.id);
+                return (
+                  <motion.div
+                    key={chord.id}
+                    onClick={() => {
+                      if (isSelectMode) {
+                        toggleChordSelection(chord.id);
+                      } else {
+                        setSelectedChord(chord);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (isSelectMode) toggleChordSelection(chord.id);
+                        else setSelectedChord(chord);
+                      }
+                    }}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+                    }}
+                    className={`group relative rounded-lg sm:rounded-xl border p-3 sm:p-4 flex flex-row items-center gap-3 sm:gap-4 transition-all duration-200 cursor-pointer ${
+                      isSelected
+                        ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.08)] shadow-[0_0_16px_hsl(var(--color-primary)/0.2)]'
+                        : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.01] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)]'
+                    } active:scale-[0.99]`}
+                  >
+                    {/* Selection checkbox */}
+                    {isSelectMode && (
+                      <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10">
+                        <div className={`size-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))]'
+                            : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)]'
+                        }`}>
+                          {isSelected && <Check className="size-3.5 text-[hsl(var(--bg-base))]" />}
+                        </div>
+                      </div>
                     )}
-                  </div>
 
-                  {/* Center: Name + Category */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <h3 className="font-display text-base sm:text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors leading-tight truncate">
-                      {chord.symbol}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
-                      {getChordCategoryLabel(chord)}
-                    </p>
-                    <p className="text-xs font-body text-[hsl(var(--text-subtle))] mt-0.5">
-                      {chord.name}
-                    </p>
-                  </div>
+                    {/* Action buttons — hidden in select mode */}
+                    {!isSelectMode && (
+                      <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 z-10">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
+                          className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                          title="Edit chord"
+                        >
+                          <Edit3 className="size-3" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); playChord(chord); }}
+                          className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.1)] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
+                          title="Play chord"
+                        >
+                          <Volume2 className="size-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    {!isSelectMode && (chord as any).isCustom && !(chord as any).sourceChordId && (
+                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] z-10">
+                        Custom
+                      </span>
+                    )}
 
-                  {/* Right: Tablature */}
-                  <div className="shrink-0">
-                    <ChordTablature chord={chord} size="sm" />
-                  </div>
-                </motion.div>
-              ))}
+                    {/* Left: Chord Diagram */}
+                    <div className={`shrink-0 ${isSelectMode ? 'ml-5 sm:ml-6' : ''}`}>
+                      {(chord as any).isCustom ? (
+                        <CustomChordDiagram
+                          key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
+                          chord={{
+                            id: chord.id,
+                            name: chord.name,
+                            symbol: chord.symbol,
+                            baseFret: chord.baseFret,
+                            numFrets: (chord as any).numFrets ?? 5,
+                            mutedStrings: new Set((chord as any).customMutedStrings ?? []),
+                            openStrings: new Set((chord as any).customOpenStrings ?? []),
+                            openDiamonds: new Set((chord as any).customOpenDiamonds ?? []),
+                            markers: (chord as any).customMarkers ?? [],
+                            barres: (chord as any).customBarres ?? [],
+                            createdAt: 0,
+                            updatedAt: 0,
+                          }}
+                          size="sm"
+                        />
+                      ) : (
+                        <ChordDiagram chord={chord} size="sm" />
+                      )}
+                    </div>
+
+                    {/* Center: Name + Category */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <h3 className="font-display text-base sm:text-lg font-bold text-[hsl(var(--text-default))] group-hover:text-[hsl(var(--color-primary))] transition-colors leading-tight truncate">
+                        {chord.symbol}
+                      </h3>
+                      <p className="text-[10px] sm:text-xs font-body text-[hsl(var(--text-muted))] mt-0.5 uppercase tracking-wider">
+                        {getChordCategoryLabel(chord)}
+                      </p>
+                      <p className="text-xs font-body text-[hsl(var(--text-subtle))] mt-0.5">
+                        {chord.name}
+                      </p>
+                    </div>
+
+                    {/* Right: Tablature */}
+                    <div className="shrink-0">
+                      <ChordTablature chord={chord} size="sm" />
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -536,7 +725,6 @@ export default function ChordLibrary() {
       <AnimatePresence>
         {typeSheetOpen && (
           <>
-            {/* Backdrop — mobile only */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -545,7 +733,6 @@ export default function ChordLibrary() {
               onClick={() => setTypeSheetOpen(false)}
               className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
             />
-            {/* Sheet */}
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
@@ -553,12 +740,9 @@ export default function ChordLibrary() {
               transition={{ type: 'spring', stiffness: 400, damping: 36 }}
               className="sm:hidden fixed left-0 right-0 bottom-0 z-50 rounded-t-2xl border-t border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl max-h-[75vh] flex flex-col"
             >
-              {/* Drag indicator */}
               <div className="flex justify-center py-3">
                 <div className="w-10 h-1 rounded-full bg-[hsl(var(--border-default))]" />
               </div>
-
-              {/* Sheet header */}
               <div className="flex items-center justify-between px-5 pb-3 border-b border-[hsl(var(--border-subtle))]">
                 <h3 className="font-display text-lg font-bold text-[hsl(var(--text-default))]">Chord Type</h3>
                 <div className="flex items-center gap-3">
@@ -578,8 +762,6 @@ export default function ChordLibrary() {
                   </button>
                 </div>
               </div>
-
-              {/* Sheet body */}
               <div className="flex-1 overflow-y-auto overscroll-contain px-1 pb-8">
                 <TypeSheetContent
                   filterTypes={filterTypes}
@@ -590,8 +772,6 @@ export default function ChordLibrary() {
                   isMobile
                 />
               </div>
-
-              {/* Sheet footer — apply */}
               <div className="px-5 py-3 border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))]">
                 <button
                   onClick={() => setTypeSheetOpen(false)}
@@ -615,7 +795,7 @@ export default function ChordLibrary() {
   );
 }
 
-/* ═══════════ TYPE SHEET CONTENT (shared between desktop dropdown & mobile sheet) ═══════════ */
+/* ═══════════ TYPE SHEET CONTENT ═══════════ */
 
 interface TypeSheetContentProps {
   filterTypes: Set<ChordType>;
@@ -634,7 +814,6 @@ function TypeSheetContent({ filterTypes, typeCounts, onToggleType, onToggleAll, 
 
   return (
     <>
-      {/* All Types */}
       <button
         onClick={onToggleAll}
         className={`w-full flex items-center gap-3 px-4 ${py} text-left transition-colors ${
@@ -652,7 +831,6 @@ function TypeSheetContent({ filterTypes, typeCounts, onToggleType, onToggleAll, 
         const someInGroup = group.types.some((t) => filterTypes.has(t)) && !allInGroup;
         return (
           <div key={group.label}>
-            {/* Group header */}
             <button
               onClick={() => onToggleGroup(group.types)}
               className={`w-full flex items-center gap-3 px-4 pt-3 pb-1.5 text-left transition-colors hover:bg-[hsl(var(--bg-overlay))] ${allInGroup ? 'bg-[hsl(var(--color-primary)/0.05)]' : ''}`}
@@ -672,7 +850,6 @@ function TypeSheetContent({ filterTypes, typeCounts, onToggleType, onToggleAll, 
               </span>
             </button>
 
-            {/* Group items */}
             {group.types.map((type) => {
               const isActive = filterTypes.has(type);
               const count = typeCounts[type] ?? 0;
