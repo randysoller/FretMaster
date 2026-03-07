@@ -7,7 +7,7 @@ import type { ChordCategory, ChordType, BarreRoot, ChordData } from '@/types/cho
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, CheckSquare, Square, Save, Bookmark } from 'lucide-react';
+import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, Save, Bookmark } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import { useCustomChordStore } from '@/stores/customChordStore';
@@ -50,23 +50,11 @@ export default function ChordLibrary() {
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
 
-  // ─── Selection Mode ───
-  const [isSelectMode, setIsSelectMode] = useState(false);
+  // ─── Selection ───
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [presetName, setPresetName] = useState('');
   const presetInputRef = useRef<HTMLInputElement>(null);
-
-  const toggleSelectMode = useCallback(() => {
-    setIsSelectMode((prev) => {
-      if (prev) {
-        setSelectedIds(new Set());
-        setShowSaveForm(false);
-        setPresetName('');
-      }
-      return !prev;
-    });
-  }, []);
 
   const toggleChordSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -81,7 +69,7 @@ export default function ChordLibrary() {
     setSelectedIds(new Set(chords.map((c) => c.id)));
   }, []);
 
-  const clearSelection = useCallback(() => {
+  const deselectAll = useCallback(() => {
     setSelectedIds(new Set());
   }, []);
 
@@ -91,7 +79,6 @@ export default function ChordLibrary() {
     presetStore.addPreset(name, [...selectedIds]);
     setShowSaveForm(false);
     setPresetName('');
-    setIsSelectMode(false);
     setSelectedIds(new Set());
   }, [presetName, selectedIds, presetStore]);
 
@@ -229,124 +216,16 @@ export default function ChordLibrary() {
       <div className="px-3 sm:px-6 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-3 sm:mb-6 flex items-start justify-between gap-3">
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
-                Chord Library
-              </h1>
-              <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
-                Browse all {ALL_CHORDS.length} chord diagrams in the collection
-              </p>
-            </div>
-            <button
-              onClick={toggleSelectMode}
-              className={`shrink-0 flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-body font-medium transition-all active:scale-95 ${
-                isSelectMode
-                  ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))]'
-                  : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
-              }`}
-            >
-              {isSelectMode ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
-              <span className="hidden sm:inline">{isSelectMode ? 'Cancel' : 'Select'}</span>
-            </button>
+          <div className="mb-3 sm:mb-6">
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
+              Chord Library
+            </h1>
+            <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
+              Browse all {ALL_CHORDS.length} chord diagrams — tap the checkbox to select chords for a practice preset
+            </p>
           </div>
 
-          {/* ═══════════ SELECT MODE BAR ═══════════ */}
-          <AnimatePresence>
-            {isSelectMode && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="overflow-hidden"
-              >
-                <div className="mb-3 sm:mb-5 rounded-xl border border-[hsl(var(--color-primary)/0.3)] bg-[hsl(var(--color-primary)/0.06)] p-3 sm:p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Bookmark className="size-4 text-[hsl(var(--color-primary))]" />
-                      <span className="text-sm font-display font-semibold text-[hsl(var(--text-default))]">
-                        {selectedIds.size > 0 ? (
-                          <><span className="text-[hsl(var(--color-primary))]">{selectedIds.size}</span> chord{selectedIds.size !== 1 ? 's' : ''} selected</>
-                        ) : (
-                          'Tap chords to select'
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => selectAllVisible(filteredChords)}
-                        className="text-[11px] font-body text-[hsl(var(--color-primary))] hover:underline underline-offset-2"
-                      >
-                        Select all
-                      </button>
-                      {selectedIds.size > 0 && (
-                        <>
-                          <span className="text-[hsl(var(--border-default))]">·</span>
-                          <button
-                            onClick={clearSelection}
-                            className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))]"
-                          >
-                            Clear
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Save preset form */}
-                  <AnimatePresence>
-                    {showSaveForm ? (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            ref={presetInputRef}
-                            type="text"
-                            placeholder="Preset name..."
-                            value={presetName}
-                            onChange={(e) => setPresetName(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveForm(false); }}
-                            className="flex-1 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-3 py-2 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)]"
-                          />
-                          <button
-                            onClick={handleSavePreset}
-                            disabled={!presetName.trim() || selectedIds.size === 0}
-                            className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--color-primary))] px-4 py-2 text-sm font-display font-bold text-[hsl(var(--bg-base))] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            <Save className="size-3.5" />
-                            Save
-                          </button>
-                          <button
-                            onClick={() => { setShowSaveForm(false); setPresetName(''); }}
-                            className="shrink-0 size-8 flex items-center justify-center rounded-lg text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))]"
-                          >
-                            <X className="size-4" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    ) : (
-                      selectedIds.size > 0 && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                          <button
-                            onClick={() => setShowSaveForm(true)}
-                            className="w-full flex items-center justify-center gap-2 rounded-lg border border-dashed border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.06)] py-2.5 text-sm font-display font-semibold text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.12)] active:scale-[0.98] transition-all"
-                          >
-                            <Bookmark className="size-4" />
-                            Save as Practice Preset
-                          </button>
-                        </motion.div>
-                      )
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
@@ -589,20 +468,11 @@ export default function ChordLibrary() {
                 return (
                   <motion.div
                     key={chord.id}
-                    onClick={() => {
-                      if (isSelectMode) {
-                        toggleChordSelection(chord.id);
-                      } else {
-                        setSelectedChord(chord);
-                      }
-                    }}
+                    onClick={() => setSelectedChord(chord)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        if (isSelectMode) toggleChordSelection(chord.id);
-                        else setSelectedChord(chord);
-                      }
+                      if (e.key === 'Enter') setSelectedChord(chord);
                     }}
                     variants={{
                       hidden: { opacity: 0, y: 20 },
@@ -614,22 +484,23 @@ export default function ChordLibrary() {
                         : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.5)] hover:border-[hsl(var(--color-primary)/0.4)] hover:bg-[hsl(var(--bg-elevated))] hover:scale-[1.01] hover:shadow-[0_0_16px_hsl(var(--color-primary)/0.15),0_0_40px_hsl(var(--color-primary)/0.06)]'
                     } active:scale-[0.99]`}
                   >
-                    {/* Selection checkbox */}
-                    {isSelectMode && (
-                      <div className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10">
-                        <div className={`size-6 rounded-md border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                            ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))]'
-                            : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)]'
-                        }`}>
-                          {isSelected && <Check className="size-3.5 text-[hsl(var(--bg-base))]" />}
-                        </div>
+                    {/* Selection checkbox — always visible */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleChordSelection(chord.id); }}
+                      className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 p-0.5"
+                      aria-label={isSelected ? 'Deselect chord' : 'Select chord'}
+                    >
+                      <div className={`size-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                        isSelected
+                          ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))] shadow-[0_0_8px_hsl(var(--color-primary)/0.4)]'
+                          : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] hover:border-[hsl(var(--color-primary)/0.5)]'
+                      }`}>
+                        {isSelected && <Check className="size-3.5 text-[hsl(var(--bg-base))]" />}
                       </div>
-                    )}
+                    </button>
 
-                    {/* Action buttons — hidden in select mode */}
-                    {!isSelectMode && (
-                      <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 z-10">
+                    {/* Action buttons */}
+                    <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 flex gap-0.5 sm:gap-1 z-10">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleEditChord(chord as ChordData & { isCustom?: boolean }); }}
                           className="size-7 flex items-center justify-center rounded-md text-[hsl(var(--text-muted))] bg-[hsl(var(--bg-surface)/0.8)] hover:text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.15)] active:scale-95 transition-all"
@@ -644,16 +515,15 @@ export default function ChordLibrary() {
                         >
                           <Volume2 className="size-3.5" />
                         </button>
-                      </div>
-                    )}
-                    {!isSelectMode && (chord as any).isCustom && !(chord as any).sourceChordId && (
+                    </div>
+                    {(chord as any).isCustom && !(chord as any).sourceChordId && (
                       <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 rounded px-1.5 py-0.5 text-[8px] font-display font-bold uppercase tracking-wider bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] z-10">
                         Custom
                       </span>
                     )}
 
                     {/* Left: Chord Diagram */}
-                    <div className={`shrink-0 ${isSelectMode ? 'ml-5 sm:ml-6' : ''}`}>
+                    <div className="shrink-0 ml-5 sm:ml-6">
                       {(chord as any).isCustom ? (
                         <CustomChordDiagram
                           key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}-${((chord as any).customMarkers ?? []).length}`}
@@ -791,6 +661,93 @@ export default function ChordLibrary() {
         filteredChords={filteredChords}
         onNavigate={setSelectedChord}
       />
+
+      {/* ═══════════ FLOATING SAVE BAR ═══════════ */}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+            className="fixed bottom-[72px] sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:w-[420px] z-40"
+          >
+            <div className="rounded-2xl border border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 backdrop-blur-md p-3 sm:p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Bookmark className="size-4 text-[hsl(var(--color-primary))]" />
+                  <span className="text-sm font-display font-semibold text-[hsl(var(--text-default))]">
+                    <span className="text-[hsl(var(--color-primary))]">{selectedIds.size}</span> chord{selectedIds.size !== 1 ? 's' : ''} selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => selectAllVisible(filteredChords)}
+                    className="text-[11px] font-body text-[hsl(var(--color-primary))] hover:underline underline-offset-2"
+                  >
+                    Select all
+                  </button>
+                  <span className="text-[hsl(var(--border-default))]">·</span>
+                  <button
+                    onClick={deselectAll}
+                    className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))]"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                {showSaveForm ? (
+                  <motion.div
+                    key="form"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={presetInputRef}
+                        type="text"
+                        placeholder="Preset name..."
+                        value={presetName}
+                        onChange={(e) => setPresetName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowSaveForm(false); }}
+                        className="flex-1 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] px-3 py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)]"
+                      />
+                      <button
+                        onClick={handleSavePreset}
+                        disabled={!presetName.trim() || selectedIds.size === 0}
+                        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-[hsl(var(--color-primary))] px-4 py-2.5 text-sm font-display font-bold text-[hsl(var(--bg-base))] disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-all"
+                      >
+                        <Save className="size-3.5" />
+                        Save
+                      </button>
+                      <button
+                        onClick={() => { setShowSaveForm(false); setPresetName(''); }}
+                        className="shrink-0 size-8 flex items-center justify-center rounded-lg text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))]"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div key="button" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <button
+                      onClick={() => setShowSaveForm(true)}
+                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-[hsl(var(--color-primary))] py-3 text-sm font-display font-bold text-[hsl(var(--bg-base))] hover:brightness-110 active:scale-[0.98] transition-all"
+                    >
+                      <Bookmark className="size-4" />
+                      Save as Practice Preset
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
