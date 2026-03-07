@@ -176,7 +176,7 @@ export default function Home() {
                     My Presets
                   </span>
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 pt-2 -mx-1 px-1">
                   {presets.map((preset) => {
                     const isActive = activePresetId === preset.id;
                     return (
@@ -203,7 +203,7 @@ export default function Home() {
                         {/* Delete button */}
                         <button
                           onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
-                          className="absolute -top-1.5 -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
+                          className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
                         >
                           <X className="size-3" />
                         </button>
