@@ -227,4 +227,13 @@
     stroke-linecap: round;
     transition: stroke-dashoffset 0.1s linear;
   }
+
+  /* Hide scrollbar for horizontal scroll containers */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }

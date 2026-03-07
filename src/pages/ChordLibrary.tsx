@@ -1,31 +1,48 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CHORDS } from '@/constants/chords';
 import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS, getChordCategoryLabel } from '@/types/chord';
-import type { ChordCategory, ChordType, BarreRoot } from '@/types/chord';
+import type { ChordCategory, ChordType, BarreRoot, ChordData } from '@/types/chord';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { Search, Filter, X, Volume2, Edit3 } from 'lucide-react';
+import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2 } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
-import type { ChordData } from '@/types/chord';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
+
+type ExtendedChordData = ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number };
+
+const ALL_CAT_OPTIONS: ChordCategory[] = ['open', 'barre', 'movable', 'custom'];
+const BARRE_ROOTS: BarreRoot[] = [6, 5, 4];
+const ALL_CHORD_TYPES: ChordType[] = ['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'];
+
+const TYPE_GROUPS: { label: string; types: ChordType[] }[] = [
+  { label: 'Basic', types: ['major', 'minor', 'augmented', 'diminished', 'suspended', 'slash'] },
+  { label: '7th Chords', types: ['major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7'] },
+  { label: 'Extended', types: ['9th', '11th', '13th'] },
+];
+
+const CATEGORY_ICONS: Record<ChordCategory, React.ReactNode> = {
+  open: <Guitar className="size-3.5" />,
+  barre: <Grip className="size-3.5" />,
+  movable: <Music2 className="size-3.5" />,
+  custom: <Edit3 className="size-3.5" />,
+};
 
 export default function ChordLibrary() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategories, setFilterCategories] = useState<Set<ChordCategory>>(new Set());
   const [filterTypes, setFilterTypes] = useState<Set<ChordType>>(new Set());
   const [filterBarreRoots, setFilterBarreRoots] = useState<Set<BarreRoot>>(new Set());
-  const [showFilters, setShowFilters] = useState(true);
+  const [typeSheetOpen, setTypeSheetOpen] = useState(false);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { playChord } = useChordAudio();
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
-
-
 
   const { customChords, editChord: editCustomChord, editStandardChord, hiddenStandardChords } = useCustomChordStore();
 
@@ -38,21 +55,19 @@ export default function ChordLibrary() {
     navigate('/editor');
   }, [editCustomChord, editStandardChord, navigate]);
 
-  // Merge built-in + custom chords, filtering out replaced/hidden standard chords
   const ALL_CHORDS = useMemo(() => {
     const converted = customChords.map(customToLibraryChord);
     const replacedIds = new Set(customChords.filter((c) => c.sourceChordId).map((c) => c.sourceChordId!));
     const standardChords = CHORDS.filter((c) => !replacedIds.has(c.id) && !hiddenStandardChords.has(c.id));
-    return [...standardChords, ...converted] as (ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number })[];
+    return [...standardChords, ...converted] as ExtendedChordData[];
   }, [customChords, hiddenStandardChords]);
 
-
+  // ─── Filter toggles ───
   const toggleCategory = (cat: ChordCategory) => {
     setFilterCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
       else next.add(cat);
-      // Clear root filters if no barre/movable selected
       const hasBM = next.has('barre') || next.has('movable');
       if (!hasBM) setFilterBarreRoots(new Set());
       return next;
@@ -78,7 +93,6 @@ export default function ChordLibrary() {
   };
 
   const showRootFilter = filterCategories.has('barre') || filterCategories.has('movable');
-  const allCatOptions: ChordCategory[] = ['open', 'barre', 'movable', 'custom'];
 
   const matchesSearch = useCallback((chord: ChordData) => {
     return searchQuery === '' ||
@@ -95,10 +109,10 @@ export default function ChordLibrary() {
     });
   }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Counts per category (filtered by current type + root + search)
+  // Category counts (filtered by type + root + search)
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const cat of allCatOptions) {
+    for (const cat of ALL_CAT_OPTIONS) {
       counts[cat] = ALL_CHORDS.filter((c) => {
         if (c.category !== cat) return false;
         if (filterTypes.size > 0 && !filterTypes.has(c.type)) return false;
@@ -109,10 +123,10 @@ export default function ChordLibrary() {
     return counts;
   }, [filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Counts per type (filtered by current category + root + search)
+  // Type counts (filtered by category + root + search)
   const typeCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const type of ['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'] as ChordType[]) {
+    for (const type of ALL_CHORD_TYPES) {
       counts[type] = ALL_CHORDS.filter((c) => {
         if (c.type !== type) return false;
         if (filterCategories.size > 0 && !filterCategories.has(c.category)) return false;
@@ -123,10 +137,10 @@ export default function ChordLibrary() {
     return counts;
   }, [filterCategories, filterBarreRoots, matchesSearch, ALL_CHORDS]);
 
-  // Counts per root string (filtered by current category + type + search)
+  // Root counts (filtered by category + type + search)
   const rootCounts = useMemo(() => {
     const counts: Record<number, number> = {};
-    for (const root of [6, 5, 4] as BarreRoot[]) {
+    for (const root of BARRE_ROOTS) {
       counts[root] = ALL_CHORDS.filter((c) => {
         if (c.rootString !== root) return false;
         if (filterCategories.size > 0 && !filterCategories.has(c.category)) return false;
@@ -146,12 +160,57 @@ export default function ChordLibrary() {
 
   const hasActiveFilters = filterCategories.size > 0 || filterTypes.size > 0 || filterBarreRoots.size > 0 || searchQuery !== '';
 
+  // Close type dropdown on outside click (desktop)
+  useEffect(() => {
+    if (!typeSheetOpen || window.innerWidth < 640) return;
+    const handler = (e: MouseEvent) => {
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target as Node)) setTypeSheetOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [typeSheetOpen]);
+
+  // Lock body scroll when bottom sheet open on mobile
+  useEffect(() => {
+    if (typeSheetOpen && window.innerWidth < 640) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [typeSheetOpen]);
+
+  const getTypeSummary = () => {
+    if (filterTypes.size === 0) return 'All Types';
+    if (filterTypes.size === 1) return CHORD_TYPE_LABELS[[...filterTypes][0]];
+    return `${filterTypes.size} types`;
+  };
+
+  const handleToggleAllTypes = () => {
+    if (filterTypes.size === ALL_CHORD_TYPES.length) {
+      setFilterTypes(new Set());
+    } else {
+      setFilterTypes(new Set(ALL_CHORD_TYPES));
+    }
+  };
+
+  const handleToggleGroup = (types: ChordType[]) => {
+    const allSelected = types.every((t) => filterTypes.has(t));
+    setFilterTypes((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        for (const t of types) next.delete(t);
+      } else {
+        for (const t of types) next.add(t);
+      }
+      return next;
+    });
+  };
+
   return (
     <div className="stage-gradient min-h-[calc(100vh-58px)]">
       <div className="px-3 sm:px-6 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-4 sm:mb-6">
+          <div className="mb-3 sm:mb-6">
             <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-[hsl(var(--text-default))]">
               Chord Library
             </h1>
@@ -160,153 +219,214 @@ export default function ChordLibrary() {
             </p>
           </div>
 
-          {/* Sticky Search/Filter Bar */}
-          <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 py-3 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6">
-            <div className="flex items-center gap-2 sm:gap-3">
-              {/* Search */}
-              <div className="relative flex-1 sm:flex-none">
+          {/* ═══════════ STICKY FILTER BAR ═══════════ */}
+          <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
+
+            {/* Row 1: Search + Type dropdown */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[hsl(var(--text-muted))]" />
                 <input
                   type="text"
                   placeholder="Search chords..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] pl-10 pr-4 py-2 sm:py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
+                  className="w-full rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] pl-10 pr-9 py-2.5 text-sm font-body text-[hsl(var(--text-default))] placeholder:text-[hsl(var(--text-muted))] focus:outline-none focus:border-[hsl(var(--color-primary))] focus:ring-1 focus:ring-[hsl(var(--color-primary)/0.3)] transition-colors"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center rounded-full text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
               </div>
 
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`
-                  flex items-center gap-1.5 sm:gap-2 rounded-lg border px-3 sm:px-4 py-2 sm:py-2.5 text-sm font-body font-medium transition-colors shrink-0
-                  ${showFilters
-                    ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.08)] text-[hsl(var(--color-primary))]'
-                    : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
-                  }
-                `}
-              >
-                <Filter className="size-4" />
-                <span className="hidden sm:inline">Filters</span>
-              </button>
-
-              {hasActiveFilters && (
+              {/* Type picker trigger */}
+              <div ref={typeDropdownRef} className="relative shrink-0">
                 <button
-                  onClick={clearFilters}
-                  className="flex items-center gap-1 rounded-lg px-2 sm:px-3 py-2 sm:py-2.5 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors shrink-0"
+                  onClick={() => setTypeSheetOpen(!typeSheetOpen)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-body font-medium transition-all whitespace-nowrap ${
+                    filterTypes.size > 0
+                      ? 'border-[hsl(var(--color-primary)/0.5)] bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
+                      : typeSheetOpen
+                        ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-default))]'
+                        : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
+                  }`}
                 >
-                  <X className="size-3.5" />
-                  <span className="hidden sm:inline">Clear</span>
+                  <SlidersHorizontal className="size-4" />
+                  <span className="hidden sm:inline">{getTypeSummary()}</span>
+                  <span className="sm:hidden">{filterTypes.size > 0 ? filterTypes.size : ''}</span>
+                  {filterTypes.size > 0 && (
+                    <span className="hidden sm:flex size-5 items-center justify-center rounded-full bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] text-[10px] font-bold">
+                      {filterTypes.size}
+                    </span>
+                  )}
+                  <ChevronDown className={`size-3.5 transition-transform duration-200 ${typeSheetOpen ? 'rotate-180' : ''}`} />
                 </button>
-              )}
-            </div>
-          </div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="mb-4 sm:mb-8 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated)/0.6)] backdrop-blur-sm p-3 sm:p-6 space-y-4 sm:space-y-5">
-              <div className="space-y-2.5">
-                <label className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                  Category
-                  <span className="ml-1.5 normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(select multiple)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
+                {/* Desktop dropdown */}
+                <AnimatePresence>
+                  {typeSheetOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="hidden sm:block absolute right-0 top-full mt-2 w-72 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/50 overflow-hidden z-50 max-h-[60vh] overflow-y-auto"
+                    >
+                      <TypeSheetContent
+                        filterTypes={filterTypes}
+                        typeCounts={typeCounts}
+                        onToggleType={toggleType}
+                        onToggleAll={handleToggleAllTypes}
+                        onToggleGroup={handleToggleGroup}
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Row 2: Horizontal category chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none -mx-1 px-1">
+              <button
+                onClick={() => { setFilterCategories(new Set()); setFilterBarreRoots(new Set()); }}
+                className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] sm:text-xs font-display font-semibold transition-all active:scale-95 ${
+                  filterCategories.size === 0
+                    ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md shadow-[hsl(var(--color-primary)/0.3)]'
+                    : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
+                }`}
+              >
+                All
+              </button>
+              {ALL_CAT_OPTIONS.map((cat) => {
+                const isActive = filterCategories.has(cat);
+                const count = categoryCounts[cat] ?? 0;
+                return (
                   <button
-                    onClick={() => {
-                      const allCats = filterCategories.size === allCatOptions.length;
-                      const allRoots = filterBarreRoots.size === 3;
-                      if (allCats && allRoots) {
-                        setFilterCategories(new Set());
-                        setFilterBarreRoots(new Set());
-                      } else {
-                        setFilterCategories(new Set<ChordCategory>(allCatOptions));
-                        setFilterBarreRoots(new Set<BarreRoot>([6, 5, 4]));
-                      }
-                    }}
-                    className={`rounded-md px-3 py-1.5 text-xs font-body font-semibold uppercase tracking-wider transition-all ${
-                      filterCategories.size === allCatOptions.length && filterBarreRoots.size === 3
-                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md'
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] sm:text-xs font-display font-semibold transition-all active:scale-95 ${
+                      isActive
+                        ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md shadow-[hsl(var(--color-primary)/0.3)]'
                         : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] hover:text-[hsl(var(--text-default))]'
                     }`}
                   >
-                    All Chords
+                    {CATEGORY_ICONS[cat]}
+                    {CATEGORY_LABELS[cat].replace(' Chords', '').replace('My ', '')}
+                    <span className={`text-[10px] font-body tabular-nums ${isActive ? 'opacity-70' : 'opacity-50'}`}>
+                      {count}
+                    </span>
                   </button>
-                  {allCatOptions.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategory(cat)}
-                      className={`rounded-md px-3 py-1.5 text-xs font-body font-medium transition-all ${
-                        filterCategories.has(cat)
-                          ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
-                          : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
-                      }`}
-                    >
-                      {CATEGORY_LABELS[cat]}
-                      <span className="ml-1 opacity-60">({categoryCounts[cat]})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {showRootFilter && (
-                <div className="space-y-2.5">
-                  <label className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                    Root String
-                    <span className="ml-1.5 normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(select multiple)</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {([6, 5, 4] as BarreRoot[]).map((root) => (
-                      <button
-                        key={String(root)}
-                        onClick={() => toggleBarreRoot(root)}
-                        className={`rounded-md px-3 py-1.5 text-xs font-body font-medium transition-all ${
-                          filterBarreRoots.has(root)
-                            ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
-                            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
-                        }`}
-                      >
-                        {BARRE_ROOT_LABELS[root]}
-                        <span className="ml-1 opacity-60">({rootCounts[root]})</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2.5">
-                <label className="font-display text-xs font-semibold text-[hsl(var(--text-muted))] uppercase tracking-wider">
-                  Type
-                  <span className="ml-1.5 normal-case tracking-normal font-normal text-[hsl(var(--text-muted)/0.6)]">(select multiple)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {(['major', 'minor', 'augmented', 'slash', 'diminished', 'suspended', 'major7', 'dominant7', 'minor7', 'aug7', 'halfDim7', 'dim7', '9th', '11th', '13th'] as ChordType[]).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => toggleType(type)}
-                      className={`rounded-md px-3 py-1.5 text-xs font-body font-medium transition-all ${
-                        filterTypes.has(type)
-                          ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))]'
-                          : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))]'
-                      }`}
-                    >
-                      {CHORD_TYPE_LABELS[type]}
-                      <span className="ml-1 opacity-60">({typeCounts[type]})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                );
+              })}
             </div>
-          )}
 
-          {/* Results Count */}
-          <div className="mb-2 sm:mb-3 flex items-center gap-3">
+            {/* Row 3: Contextual Root String chips — slide in when barre/movable selected */}
+            <AnimatePresence>
+              {showRootFilter && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-center gap-1.5 pb-0.5">
+                    <span className="text-[11px] font-body text-[hsl(var(--text-muted))] uppercase tracking-wider mr-1 shrink-0">Root:</span>
+                    {BARRE_ROOTS.map((root) => {
+                      const isActive = filterBarreRoots.has(root);
+                      return (
+                        <button
+                          key={String(root)}
+                          onClick={() => toggleBarreRoot(root)}
+                          className={`shrink-0 rounded-full px-3 py-1 text-[12px] sm:text-[11px] font-body font-medium transition-all active:scale-95 ${
+                            isActive
+                              ? 'bg-[hsl(200_80%_62%/0.2)] text-[hsl(200_80%_62%)] border border-[hsl(200_80%_62%/0.4)]'
+                              : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] border border-transparent'
+                          }`}
+                        >
+                          {root}th String
+                          <span className={`ml-1 text-[10px] tabular-nums ${isActive ? 'opacity-70' : 'opacity-50'}`}>{rootCounts[root]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ═══════════ ACTIVE FILTER PILLS + RESULT COUNT ═══════════ */}
+          <div className="mb-3 sm:mb-5 flex flex-wrap items-center gap-2">
             <span className="text-sm font-body text-[hsl(var(--text-muted))]">
-              Showing <span className="text-[hsl(var(--color-primary))] font-display font-bold">{filteredChords.length}</span> chord{filteredChords.length !== 1 ? 's' : ''}
+              <span className="text-[hsl(var(--color-primary))] font-display font-bold">{filteredChords.length}</span> chord{filteredChords.length !== 1 ? 's' : ''}
             </span>
-            {hasActiveFilters && (
-              <span className="text-xs text-[hsl(var(--text-muted))]">
-                (filtered)
+
+            {/* Active filter pills with dismiss */}
+            {filterCategories.size > 0 && [...filterCategories].map((cat) => (
+              <span
+                key={cat}
+                className="flex items-center gap-1 rounded-full bg-[hsl(var(--color-primary)/0.12)] border border-[hsl(var(--color-primary)/0.25)] text-[hsl(var(--color-primary))] px-2.5 py-0.5 text-[11px] font-body font-medium"
+              >
+                {CATEGORY_LABELS[cat].replace(' Chords', '')}
+                <button
+                  onClick={() => toggleCategory(cat)}
+                  className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(var(--color-primary)/0.2)] transition-colors"
+                >
+                  <X className="size-2.5" />
+                </button>
               </span>
+            ))}
+            {filterTypes.size > 0 && filterTypes.size <= 3 && [...filterTypes].map((type) => (
+              <span
+                key={type}
+                className="flex items-center gap-1 rounded-full bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.25)] text-[hsl(var(--color-emphasis))] px-2.5 py-0.5 text-[11px] font-body font-medium"
+              >
+                {CHORD_TYPE_LABELS[type]}
+                <button
+                  onClick={() => toggleType(type)}
+                  className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(var(--color-emphasis)/0.2)] transition-colors"
+                >
+                  <X className="size-2.5" />
+                </button>
+              </span>
+            ))}
+            {filterTypes.size > 3 && (
+              <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.25)] text-[hsl(var(--color-emphasis))] px-2.5 py-0.5 text-[11px] font-body font-medium">
+                {filterTypes.size} types
+                <button
+                  onClick={() => setFilterTypes(new Set())}
+                  className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(var(--color-emphasis)/0.2)] transition-colors"
+                >
+                  <X className="size-2.5" />
+                </button>
+              </span>
+            )}
+            {filterBarreRoots.size > 0 && [...filterBarreRoots].map((root) => (
+              <span
+                key={String(root)}
+                className="flex items-center gap-1 rounded-full bg-[hsl(200_80%_62%/0.12)] border border-[hsl(200_80%_62%/0.25)] text-[hsl(200_80%_62%)] px-2.5 py-0.5 text-[11px] font-body font-medium"
+              >
+                Root {root}th
+                <button
+                  onClick={() => toggleBarreRoot(root)}
+                  className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(200_80%_62%/0.2)] transition-colors"
+                >
+                  <X className="size-2.5" />
+                </button>
+              </span>
+            ))}
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-[11px] font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] transition-colors underline underline-offset-2"
+              >
+                Clear all
+              </button>
             )}
           </div>
 
@@ -324,7 +444,7 @@ export default function ChordLibrary() {
             </div>
           </div>
 
-          {/* Chord Grid */}
+          {/* ═══════════ CHORD GRID ═══════════ */}
           {filteredChords.length > 0 ? (
             <motion.div
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
@@ -440,12 +560,185 @@ export default function ChordLibrary() {
         </div>
       </div>
 
+      {/* ═══════════ MOBILE BOTTOM SHEET for Type picker ═══════════ */}
+      <AnimatePresence>
+        {typeSheetOpen && (
+          <>
+            {/* Backdrop — mobile only */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setTypeSheetOpen(false)}
+              className="sm:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 36 }}
+              className="sm:hidden fixed left-0 right-0 bottom-0 z-50 rounded-t-2xl border-t border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl max-h-[75vh] flex flex-col"
+            >
+              {/* Drag indicator */}
+              <div className="flex justify-center py-3">
+                <div className="w-10 h-1 rounded-full bg-[hsl(var(--border-default))]" />
+              </div>
+
+              {/* Sheet header */}
+              <div className="flex items-center justify-between px-5 pb-3 border-b border-[hsl(var(--border-subtle))]">
+                <h3 className="font-display text-lg font-bold text-[hsl(var(--text-default))]">Chord Type</h3>
+                <div className="flex items-center gap-3">
+                  {filterTypes.size > 0 && (
+                    <button
+                      onClick={() => setFilterTypes(new Set())}
+                      className="text-xs font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))]"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setTypeSheetOpen(false)}
+                    className="size-8 flex items-center justify-center rounded-lg text-[hsl(var(--text-muted))] hover:bg-[hsl(var(--bg-overlay))]"
+                  >
+                    <X className="size-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Sheet body */}
+              <div className="flex-1 overflow-y-auto overscroll-contain px-1 pb-8">
+                <TypeSheetContent
+                  filterTypes={filterTypes}
+                  typeCounts={typeCounts}
+                  onToggleType={toggleType}
+                  onToggleAll={handleToggleAllTypes}
+                  onToggleGroup={handleToggleGroup}
+                  isMobile
+                />
+              </div>
+
+              {/* Sheet footer — apply */}
+              <div className="px-5 py-3 border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-elevated))]">
+                <button
+                  onClick={() => setTypeSheetOpen(false)}
+                  className="w-full rounded-xl bg-[hsl(var(--color-primary))] py-3 text-base font-display font-bold text-[hsl(var(--bg-base))] active:scale-[0.98] transition-transform"
+                >
+                  Show Results
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <ChordDetailModal
         chord={selectedChord}
         onClose={closeModal}
         filteredChords={filteredChords}
         onNavigate={setSelectedChord}
       />
+    </div>
+  );
+}
+
+/* ═══════════ TYPE SHEET CONTENT (shared between desktop dropdown & mobile sheet) ═══════════ */
+
+interface TypeSheetContentProps {
+  filterTypes: Set<ChordType>;
+  typeCounts: Record<string, number>;
+  onToggleType: (type: ChordType) => void;
+  onToggleAll: () => void;
+  onToggleGroup: (types: ChordType[]) => void;
+  isMobile?: boolean;
+}
+
+function TypeSheetContent({ filterTypes, typeCounts, onToggleType, onToggleAll, onToggleGroup, isMobile }: TypeSheetContentProps) {
+  const allSelected = filterTypes.size === ALL_CHORD_TYPES.length;
+  const py = isMobile ? 'py-3.5' : 'py-2.5';
+  const textSize = isMobile ? 'text-base' : 'text-sm';
+  const groupTextSize = isMobile ? 'text-xs' : 'text-[10px]';
+
+  return (
+    <>
+      {/* All Types */}
+      <button
+        onClick={onToggleAll}
+        className={`w-full flex items-center gap-3 px-4 ${py} text-left transition-colors ${
+          allSelected ? 'bg-[hsl(var(--color-primary)/0.1)]' : 'hover:bg-[hsl(var(--bg-overlay))]'
+        }`}
+      >
+        <CheckboxIcon checked={allSelected} />
+        <span className={`flex-1 font-display ${textSize} font-semibold text-[hsl(var(--text-default))]`}>All Types</span>
+      </button>
+
+      <div className="h-px bg-[hsl(var(--border-subtle))]" />
+
+      {TYPE_GROUPS.map((group) => {
+        const allInGroup = group.types.every((t) => filterTypes.has(t));
+        const someInGroup = group.types.some((t) => filterTypes.has(t)) && !allInGroup;
+        return (
+          <div key={group.label}>
+            {/* Group header */}
+            <button
+              onClick={() => onToggleGroup(group.types)}
+              className={`w-full flex items-center gap-3 px-4 pt-3 pb-1.5 text-left transition-colors hover:bg-[hsl(var(--bg-overlay))] ${allInGroup ? 'bg-[hsl(var(--color-primary)/0.05)]' : ''}`}
+            >
+              <div className={`size-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                allInGroup
+                  ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))]'
+                  : someInGroup
+                    ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.3)]'
+                    : 'border-[hsl(var(--border-default))]'
+              }`}>
+                {allInGroup && <Check className="size-2.5 text-[hsl(var(--bg-base))]" />}
+                {someInGroup && <div className="size-1.5 rounded-sm bg-[hsl(var(--color-primary))]" />}
+              </div>
+              <span className={`font-display ${groupTextSize} font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest`}>
+                {group.label}
+              </span>
+            </button>
+
+            {/* Group items */}
+            {group.types.map((type) => {
+              const isActive = filterTypes.has(type);
+              const count = typeCounts[type] ?? 0;
+              return (
+                <button
+                  key={type}
+                  onClick={() => onToggleType(type)}
+                  className={`w-full flex items-center gap-3 px-4 ${py} text-left transition-colors ${
+                    isActive ? 'bg-[hsl(var(--color-primary)/0.08)]' : 'hover:bg-[hsl(var(--bg-overlay))]'
+                  }`}
+                >
+                  <CheckboxIcon checked={isActive} />
+                  <span className={`flex-1 font-body ${textSize} font-medium ${
+                    isActive ? 'text-[hsl(var(--color-primary))]' : 'text-[hsl(var(--text-default))]'
+                  }`}>
+                    {CHORD_TYPE_LABELS[type]}
+                  </span>
+                  <span className={`text-[11px] font-body tabular-nums ${isActive ? 'text-[hsl(var(--color-primary)/0.6)]' : 'text-[hsl(var(--text-muted)/0.5)]'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function CheckboxIcon({ checked }: { checked: boolean }) {
+  return (
+    <div className={`size-5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+      checked
+        ? 'bg-[hsl(var(--color-primary))] border-[hsl(var(--color-primary))]'
+        : 'border-[hsl(var(--border-default))]'
+    }`}>
+      {checked && <Check className="size-3 text-[hsl(var(--bg-base))]" />}
     </div>
   );
 }
