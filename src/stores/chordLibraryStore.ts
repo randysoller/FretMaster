@@ -8,6 +8,7 @@ interface ChordLibraryState {
   filterBarreRoots: BarreRoot[];
   searchQuery: string;
   activeLibraryPresetId: string | null;
+  selectedChordIds: string[];
   toggleCategory: (cat: ChordCategory) => void;
   clearCategories: () => void;
   toggleType: (type: ChordType) => void;
@@ -17,6 +18,9 @@ interface ChordLibraryState {
   clearBarreRoots: () => void;
   setSearchQuery: (q: string) => void;
   setActiveLibraryPreset: (id: string | null) => void;
+  toggleChordSelection: (id: string) => void;
+  setSelectedChordIds: (ids: string[]) => void;
+  clearSelectedChords: () => void;
   clearAll: () => void;
 }
 
@@ -28,6 +32,7 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
       filterBarreRoots: [],
       searchQuery: '',
       activeLibraryPresetId: null,
+      selectedChordIds: [],
 
       toggleCategory: (cat) =>
         set((s) => {
@@ -64,6 +69,17 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
       setSearchQuery: (q) => set({ searchQuery: q }),
 
       setActiveLibraryPreset: (id) => set({ activeLibraryPresetId: id }),
+
+      toggleChordSelection: (id) =>
+        set((s) => ({
+          selectedChordIds: s.selectedChordIds.includes(id)
+            ? s.selectedChordIds.filter((c) => c !== id)
+            : [...s.selectedChordIds, id],
+        })),
+
+      setSelectedChordIds: (ids) => set({ selectedChordIds: ids }),
+
+      clearSelectedChords: () => set({ selectedChordIds: [] }),
 
       clearAll: () => set({ filterCategories: [], filterTypes: [], filterBarreRoots: [], searchQuery: '', activeLibraryPresetId: null }),
     }),

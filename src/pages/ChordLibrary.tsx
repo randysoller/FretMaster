@@ -61,29 +61,24 @@ export default function ChordLibrary() {
     setActiveLibraryPresetId(activeLibraryPresetId === id ? null : id);
   }, [activeLibraryPresetId, setActiveLibraryPresetId]);
 
-  // ─── Selection ───
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // ─── Selection (persisted in store) ───
+  const selectedIds = useMemo(() => new Set(store.selectedChordIds), [store.selectedChordIds]);
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [presetName, setPresetName] = useState('');
   const presetInputRef = useRef<HTMLInputElement>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const toggleChordSelection = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+    store.toggleChordSelection(id);
+  }, [store]);
 
   const selectAllVisible = useCallback((chords: ExtendedChordData[]) => {
-    setSelectedIds(new Set(chords.map((c) => c.id)));
-  }, []);
+    store.setSelectedChordIds(chords.map((c) => c.id));
+  }, [store]);
 
   const deselectAll = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
+    store.clearSelectedChords();
+  }, [store]);
 
   const handleSavePreset = useCallback(() => {
     const name = presetName.trim();
@@ -91,7 +86,7 @@ export default function ChordLibrary() {
     presetStore.addPreset(name, [...selectedIds]);
     setShowSaveForm(false);
     setPresetName('');
-    setSelectedIds(new Set());
+    store.clearSelectedChords();
     toast.success(`Preset "${name}" saved with ${selectedIds.size} chords`, {
       description: 'Available on the Chord Practice page under My Presets',
       duration: 4000,
@@ -245,6 +240,15 @@ export default function ChordLibrary() {
             <p className="mt-1 font-body text-xs sm:text-sm text-[hsl(var(--text-muted))]">
               Browse all {ALL_CHORDS.length} chord diagrams — tap the checkbox to select chords for a practice preset
             </p>
+            {selectedIds.size > 0 && (
+              <button
+                onClick={deselectAll}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-3 py-1.5 text-xs font-display font-semibold text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.4)] active:scale-95 transition-all"
+              >
+                <X className="size-3" />
+                Deselect All ({selectedIds.size})
+              </button>
+            )}
           </div>
 
 
