@@ -147,7 +147,7 @@ export default function Home() {
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6 space-y-2.5">
 
             {/* Row 1: Three filter chips — Key | Category | Type */}
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
+            <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible scrollbar-none -mx-1 px-1 pb-0.5">
               {/* Key chip */}
               <div ref={keyDropdownRef} className="relative shrink-0">
                 <button

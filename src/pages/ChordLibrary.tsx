@@ -262,7 +262,7 @@ export default function ChordLibrary() {
             </div>
 
             {/* Row 2: Horizontal category chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none -mx-1 px-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto sm:overflow-visible pb-0.5 scrollbar-none -mx-1 px-1">
               <button
                 onClick={store.clearCategories}
                 className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] sm:text-xs font-display font-semibold transition-all active:scale-95 ${
