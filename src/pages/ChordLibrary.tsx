@@ -52,6 +52,13 @@ export default function ChordLibrary() {
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
 
+  // ─── Active preset filter ───
+  const [activeLibraryPresetId, setActiveLibraryPresetId] = useState<string | null>(null);
+
+  const handleToggleLibraryPreset = useCallback((id: string) => {
+    setActiveLibraryPresetId((prev) => (prev === id ? null : id));
+  }, []);
+
   // ─── Selection ───
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSaveForm, setShowSaveForm] = useState(false);
@@ -124,14 +131,20 @@ export default function ChordLibrary() {
       chord.symbol.toLowerCase().includes(searchQuery.toLowerCase());
   }, [searchQuery]);
 
+  const activeLibraryPreset = activeLibraryPresetId ? presetStore.presets.find((p) => p.id === activeLibraryPresetId) : null;
+
   const filteredChords = useMemo(() => {
+    if (activeLibraryPreset) {
+      const idSet = new Set(activeLibraryPreset.chordIds);
+      return ALL_CHORDS.filter((chord) => idSet.has(chord.id));
+    }
     return ALL_CHORDS.filter((chord) => {
       const matchCategory = filterCategories.size === 0 || filterCategories.has(chord.category);
       const matchType = filterTypes.size === 0 || filterTypes.has(chord.type);
       const matchRoot = filterBarreRoots.size === 0 || !chord.rootString || filterBarreRoots.has(chord.rootString);
       return matchCategory && matchType && matchRoot && matchesSearch(chord);
     });
-  }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS]);
+  }, [filterCategories, filterTypes, filterBarreRoots, matchesSearch, ALL_CHORDS, activeLibraryPreset]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -246,27 +259,37 @@ export default function ChordLibrary() {
                 </span>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
-                {presetStore.presets.map((preset) => (
-                  <div key={preset.id} className="shrink-0 group/preset relative">
-                    <button
-                      onClick={() => navigate('/')}
-                      className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-4 py-2.5 text-sm font-display font-semibold text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))] transition-all active:scale-95"
-                    >
-                      <Bookmark className="size-3.5" />
-                      <span>{preset.name}</span>
-                      <span className="text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]">
-                        {preset.chordIds.length}
-                      </span>
-                      <Play className="size-3 text-[hsl(var(--color-primary))]" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
-                      className="absolute -top-1.5 -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
+                {presetStore.presets.map((preset) => {
+                  const isActive = activeLibraryPresetId === preset.id;
+                  return (
+                    <div key={preset.id} className="shrink-0 group/preset relative">
+                      <button
+                        onClick={() => handleToggleLibraryPreset(preset.id)}
+                        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-display font-semibold transition-all active:scale-95 ${
+                          isActive
+                            ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-md shadow-[hsl(var(--color-primary)/0.2)]'
+                            : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))]'
+                        }`}
+                      >
+                        <Bookmark className={`size-3.5 ${isActive ? 'fill-current' : ''}`} />
+                        <span>{preset.name}</span>
+                        <span className={`text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full ${
+                          isActive
+                            ? 'bg-[hsl(var(--color-primary)/0.2)] text-[hsl(var(--color-primary))]'
+                            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]'
+                        }`}>
+                          {preset.chordIds.length}
+                        </span>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) setActiveLibraryPresetId(null); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
+                        className="absolute -top-1.5 -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -274,8 +297,24 @@ export default function ChordLibrary() {
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
 
+            {/* Preset active banner */}
+            {activeLibraryPreset && (
+              <div className="flex items-center gap-2 rounded-lg bg-[hsl(var(--color-primary)/0.1)] border border-[hsl(var(--color-primary)/0.3)] px-3 py-2 -mt-1 mb-1">
+                <Bookmark className="size-3.5 text-[hsl(var(--color-primary))] fill-current shrink-0" />
+                <span className="text-sm font-body font-medium text-[hsl(var(--color-primary))] truncate">
+                  Showing preset: <span className="font-display font-bold">{activeLibraryPreset.name}</span>
+                </span>
+                <button
+                  onClick={() => setActiveLibraryPresetId(null)}
+                  className="ml-auto shrink-0 text-xs font-body text-[hsl(var(--color-primary))] hover:underline underline-offset-2"
+                >
+                  Use filters
+                </button>
+              </div>
+            )}
+
             {/* Row 1: Search + Type dropdown */}
-            <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-2 transition-opacity duration-200 ${activeLibraryPreset ? 'opacity-40 pointer-events-none' : ''}`}>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[hsl(var(--text-muted))]" />
                 <input
@@ -342,7 +381,7 @@ export default function ChordLibrary() {
             </div>
 
             {/* Row 2: Horizontal category chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto sm:overflow-visible pb-0.5 scrollbar-none -mx-1 px-1">
+            <div className={`flex items-center gap-1.5 overflow-x-auto sm:overflow-visible pb-0.5 scrollbar-none -mx-1 px-1 transition-opacity duration-200 ${activeLibraryPreset ? 'opacity-40 pointer-events-none' : ''}`}>
               <button
                 onClick={store.clearCategories}
                 className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] sm:text-xs font-display font-semibold transition-all active:scale-95 ${
