@@ -65,6 +65,7 @@ export default function ChordLibrary() {
   const [showSaveForm, setShowSaveForm] = useState(false);
   const [presetName, setPresetName] = useState('');
   const presetInputRef = useRef<HTMLInputElement>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const toggleChordSelection = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -283,11 +284,40 @@ export default function ChordLibrary() {
                         </span>
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
+                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
                         className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
                       >
                         <X className="size-3" />
                       </button>
+
+                      {/* Confirm delete popover */}
+                      <AnimatePresence>
+                        {confirmDeleteId === preset.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-48 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 p-3"
+                          >
+                            <p className="text-xs font-body text-[hsl(var(--text-subtle))] mb-2 text-center">Delete this preset?</p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                className="flex-1 rounded-lg border border-[hsl(var(--border-default))] py-1.5 text-xs font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); setConfirmDeleteId(null); toast('Preset deleted'); }}
+                                className="flex-1 rounded-lg bg-[hsl(var(--semantic-error))] py-1.5 text-xs font-body font-bold text-white active:scale-95 transition-transform"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })}
