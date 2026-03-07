@@ -1,3 +1,4 @@
+
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +10,7 @@ import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, Save, Bookmark, Trash2, Play } from 'lucide-react';
 import { toast } from 'sonner';
-import { useNavigate as useNav } from 'react-router-dom';
+
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import { useCustomChordStore } from '@/stores/customChordStore';
@@ -248,85 +249,85 @@ export default function ChordLibrary() {
 
 
 
-          {/* ═══════════ MY PRESETS ═══════════ */}
-          {presetStore.presets.length > 0 && (
-            <div className="mb-4 sm:mb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Bookmark className="size-3.5 text-[hsl(var(--text-muted))]" />
-                <span className="text-[11px] font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
-                  Saved Presets
-                </span>
-                <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
-                  ({presetStore.presets.length})
-                </span>
-              </div>
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 pt-2 -mx-1 px-1">
-                {presetStore.presets.map((preset) => {
-                  const isActive = activeLibraryPresetId === preset.id;
-                  return (
-                    <div key={preset.id} className="shrink-0 group/preset relative">
-                      <button
-                        onClick={() => handleToggleLibraryPreset(preset.id)}
-                        className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-display font-semibold transition-all active:scale-95 ${
-                          isActive
-                            ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-md shadow-[hsl(var(--color-primary)/0.2)]'
-                            : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))]'
-                        }`}
-                      >
-                        <Bookmark className={`size-3.5 ${isActive ? 'fill-current' : ''}`} />
-                        <span>{preset.name}</span>
-                        <span className={`text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full ${
-                          isActive
-                            ? 'bg-[hsl(var(--color-primary)/0.2)] text-[hsl(var(--color-primary))]'
-                            : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]'
-                        }`}>
-                          {preset.chordIds.length}
-                        </span>
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
-                        className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
-                      >
-                        <X className="size-3" />
-                      </button>
-
-                      {/* Confirm delete popover */}
-                      <AnimatePresence>
-                        {confirmDeleteId === preset.id && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-48 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 p-3"
-                          >
-                            <p className="text-xs font-body text-[hsl(var(--text-subtle))] mb-2 text-center">Delete this preset?</p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
-                                className="flex-1 rounded-lg border border-[hsl(var(--border-default))] py-1.5 text-xs font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); setConfirmDeleteId(null); toast('Preset deleted'); }}
-                                className="flex-1 rounded-lg bg-[hsl(var(--semantic-error))] py-1.5 text-xs font-body font-bold text-white active:scale-95 transition-transform"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
+
+            {/* ═══════════ MY PRESETS (inside sticky bar) ═══════════ */}
+            {presetStore.presets.length > 0 && (
+              <div className="-mt-1 mb-0.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Bookmark className="size-3.5 text-[hsl(var(--text-muted))]" />
+                  <span className="text-[11px] font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
+                    Saved Presets
+                  </span>
+                  <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                    ({presetStore.presets.length})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 pt-2 -mx-1 px-1">
+                  {presetStore.presets.map((preset) => {
+                    const isActive = activeLibraryPresetId === preset.id;
+                    return (
+                      <div key={preset.id} className="shrink-0 group/preset relative">
+                        <button
+                          onClick={() => handleToggleLibraryPreset(preset.id)}
+                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-display font-semibold transition-all active:scale-95 ${
+                            isActive
+                              ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-md shadow-[hsl(var(--color-primary)/0.2)]'
+                              : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))]'
+                          }`}
+                        >
+                          <Bookmark className={`size-3.5 ${isActive ? 'fill-current' : ''}`} />
+                          <span>{preset.name}</span>
+                          <span className={`text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full ${
+                            isActive
+                              ? 'bg-[hsl(var(--color-primary)/0.2)] text-[hsl(var(--color-primary))]'
+                              : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]'
+                          }`}>
+                            {preset.chordIds.length}
+                          </span>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
+                          className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
+                        >
+                          <X className="size-3" />
+                        </button>
+
+                        {/* Confirm delete popover */}
+                        <AnimatePresence>
+                          {confirmDeleteId === preset.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                              transition={{ duration: 0.15 }}
+                              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-48 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 p-3"
+                            >
+                              <p className="text-xs font-body text-[hsl(var(--text-subtle))] mb-2 text-center">Delete this preset?</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                                  className="flex-1 rounded-lg border border-[hsl(var(--border-default))] py-1.5 text-xs font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); setConfirmDeleteId(null); toast('Preset deleted'); }}
+                                  className="flex-1 rounded-lg bg-[hsl(var(--semantic-error))] py-1.5 text-xs font-body font-bold text-white active:scale-95 transition-transform"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Preset active banner */}
             {activeLibraryPreset && (
