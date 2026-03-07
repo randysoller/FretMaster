@@ -161,7 +161,7 @@ export default function Home() {
       </div>
 
       {/* ═══════════ SETUP SECTION ═══════════ */}
-      <div className="px-3 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4">
+      <div className="px-3 sm:px-6 pb-12 sm:pb-16 mt-2 sm:-mt-4">
         <div className="max-w-5xl mx-auto">
 
           {/* ═══════════ PRESET CHIPS ═══════════ */}
