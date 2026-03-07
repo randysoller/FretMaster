@@ -7,6 +7,7 @@ interface ChordLibraryState {
   filterTypes: ChordType[];
   filterBarreRoots: BarreRoot[];
   searchQuery: string;
+  activeLibraryPresetId: string | null;
   toggleCategory: (cat: ChordCategory) => void;
   clearCategories: () => void;
   toggleType: (type: ChordType) => void;
@@ -15,6 +16,7 @@ interface ChordLibraryState {
   toggleBarreRoot: (root: BarreRoot) => void;
   clearBarreRoots: () => void;
   setSearchQuery: (q: string) => void;
+  setActiveLibraryPreset: (id: string | null) => void;
   clearAll: () => void;
 }
 
@@ -25,6 +27,7 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
       filterTypes: [],
       filterBarreRoots: [],
       searchQuery: '',
+      activeLibraryPresetId: null,
 
       toggleCategory: (cat) =>
         set((s) => {
@@ -60,7 +63,9 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
 
       setSearchQuery: (q) => set({ searchQuery: q }),
 
-      clearAll: () => set({ filterCategories: [], filterTypes: [], filterBarreRoots: [], searchQuery: '' }),
+      setActiveLibraryPreset: (id) => set({ activeLibraryPresetId: id }),
+
+      clearAll: () => set({ filterCategories: [], filterTypes: [], filterBarreRoots: [], searchQuery: '', activeLibraryPresetId: null }),
     }),
     {
       name: 'fretmaster-chord-library-filters',

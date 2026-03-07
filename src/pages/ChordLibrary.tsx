@@ -52,12 +52,13 @@ export default function ChordLibrary() {
   const [selectedChord, setSelectedChord] = useState<ChordData | null>(null);
   const closeModal = useCallback(() => setSelectedChord(null), []);
 
-  // ─── Active preset filter ───
-  const [activeLibraryPresetId, setActiveLibraryPresetId] = useState<string | null>(null);
+  // ─── Active preset filter (persisted in store) ───
+  const activeLibraryPresetId = store.activeLibraryPresetId;
+  const setActiveLibraryPresetId = store.setActiveLibraryPreset;
 
   const handleToggleLibraryPreset = useCallback((id: string) => {
-    setActiveLibraryPresetId((prev) => (prev === id ? null : id));
-  }, []);
+    setActiveLibraryPresetId(activeLibraryPresetId === id ? null : id);
+  }, [activeLibraryPresetId, setActiveLibraryPresetId]);
 
   // ─── Selection ───
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -282,7 +283,7 @@ export default function ChordLibrary() {
                         </span>
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) setActiveLibraryPresetId(null); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
+                        onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
                         className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
                       >
                         <X className="size-3" />
