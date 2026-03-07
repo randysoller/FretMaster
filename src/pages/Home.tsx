@@ -46,7 +46,7 @@ export default function Home() {
     setActiveSheet((prev) => (prev === id ? null : id));
   }, []);
 
-  const showRootFilter = categories.has('barre') || categories.has('movable') || categories.size === 0;
+  const hasBorreOrMovable = categories.has('barre') || categories.has('movable');
 
   // Close desktop dropdown on outside click
   useEffect(() => {
@@ -220,7 +220,6 @@ export default function Home() {
                         onClearCategories={store.clearCategories}
                         onToggleBarreRoot={store.toggleBarreRoot}
                         onClearBarreRoots={store.clearBarreRoots}
-                        showRootFilter={showRootFilter}
                       />
                     </motion.div>
                   )}
@@ -274,7 +273,7 @@ export default function Home() {
 
             {/* Row 2: Contextual Root String chips — slide in when barre/movable selected */}
             <AnimatePresence>
-              {showRootFilter && (categories.has('barre') || categories.has('movable')) && (
+              {hasBorreOrMovable && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
@@ -406,7 +405,7 @@ export default function Home() {
                     {keyFilter ? `${keyFilter.display} Major` : 'All Keys'}
                   </span>
                 </div>
-                {(categories.has('barre') || categories.has('movable') || categories.size === 0) && barreRoots.size > 0 && barreRoots.size < 3 && (
+                {hasBorreOrMovable && barreRoots.size > 0 && barreRoots.size < 3 && (
                   <div className="flex items-center justify-between text-sm font-body">
                     <span className="text-[hsl(var(--text-muted))]">Root String</span>
                     <span className="text-[hsl(var(--text-default))] font-medium">
@@ -519,7 +518,6 @@ export default function Home() {
                     onClearCategories={store.clearCategories}
                     onToggleBarreRoot={store.toggleBarreRoot}
                     onClearBarreRoots={store.clearBarreRoots}
-                    showRootFilter={showRootFilter}
                     isMobile
                   />
                 )}
@@ -626,7 +624,6 @@ interface CategorySheetContentProps {
   onClearCategories: () => void;
   onToggleBarreRoot: (root: BarreRoot) => void;
   onClearBarreRoots: () => void;
-  showRootFilter: boolean;
   isMobile?: boolean;
 }
 
@@ -637,7 +634,8 @@ const CATEGORY_DESCRIPTIONS: Record<ChordCategory, string> = {
   custom: '',
 };
 
-function CategorySheetContent({ categories, barreRoots, onToggleCategory, onClearCategories, onToggleBarreRoot, onClearBarreRoots, showRootFilter, isMobile }: CategorySheetContentProps) {
+function CategorySheetContent({ categories, barreRoots, onToggleCategory, onClearCategories, onToggleBarreRoot, onClearBarreRoots, isMobile }: CategorySheetContentProps) {
+  const showRootSection = categories.has('barre') || categories.has('movable');
   const py = isMobile ? 'py-3.5' : 'py-2.5';
   const textSize = isMobile ? 'text-base' : 'text-sm';
   const allSelected = categories.size === ALL_CATEGORIES.length;
@@ -688,7 +686,7 @@ function CategorySheetContent({ categories, barreRoots, onToggleCategory, onClea
       })}
 
       {/* Root string filter within category sheet */}
-      {showRootFilter && (categories.has('barre') || categories.has('movable')) && (
+      {showRootSection && (
         <>
           <div className="h-px bg-[hsl(var(--border-subtle))]" />
           <div className="px-4 pt-3 pb-2">
