@@ -75,7 +75,7 @@ export default function Home() {
   };
 
   // ─── Summary helpers ───
-  const getKeySummary = () => keyFilter ? `${keyFilter.display}` : 'All Keys';
+  const getKeySummary = () => keyFilter ? `${keyFilter.display} Major` : 'Chords in a Key';
   const getCatSummary = () => {
     if (categories.size === 0) return 'All Shapes';
     if (categories.size === 1) return CATEGORY_LABELS[[...categories][0]].replace(' Chords', '');
@@ -313,7 +313,7 @@ export default function Home() {
 
             {keyFilter && (
               <span className="flex items-center gap-1 rounded-full bg-amber-500/12 border border-amber-500/25 text-amber-400 px-2.5 py-0.5 text-[11px] font-body font-medium">
-                Key: {keyFilter.display}
+                {keyFilter.display} Major
                 <button onClick={() => setKeyFilter(null)} className="size-3.5 flex items-center justify-center rounded-full hover:bg-amber-500/20 transition-colors">
                   <X className="size-2.5" />
                 </button>
@@ -402,7 +402,7 @@ export default function Home() {
                 <div className="flex items-center justify-between text-sm font-body">
                   <span className="text-[hsl(var(--text-muted))]">Key</span>
                   <span className="text-[hsl(var(--text-default))] font-medium">
-                    {keyFilter ? `${keyFilter.display} Major` : 'All Keys'}
+                    {keyFilter ? `${keyFilter.display} Major` : 'All'}
                   </span>
                 </div>
                 {hasBorreOrMovable && barreRoots.size > 0 && barreRoots.size < 3 && (
@@ -592,7 +592,7 @@ function KeySheetContent({ keyFilter, onSelect, isMobile }: { keyFilter: KeySign
                 <span className={`font-display ${textSize} font-bold min-w-[36px] ${
                   isActive ? 'text-amber-400' : 'text-[hsl(var(--text-default))]'
                 }`}>
-                  {ks.display}
+                  {ks.display} Major
                 </span>
                 {ks.count === 0 && (
                   <span className="text-xs text-[hsl(var(--text-muted))]">no sharps or flats</span>
