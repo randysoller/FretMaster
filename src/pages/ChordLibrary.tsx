@@ -12,6 +12,7 @@ import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import { useCustomChordStore } from '@/stores/customChordStore';
 import { customToLibraryChord } from '@/types/customChord';
+import { useChordLibraryStore } from '@/stores/chordLibraryStore';
 
 type ExtendedChordData = ChordData & { isCustom?: boolean; customMarkers?: any[]; customBarres?: any[]; customMutedStrings?: number[]; customOpenStrings?: number[]; customOpenDiamonds?: number[]; numFrets?: number };
 
@@ -33,10 +34,13 @@ const CATEGORY_ICONS: Record<ChordCategory, React.ReactNode> = {
 };
 
 export default function ChordLibrary() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategories, setFilterCategories] = useState<Set<ChordCategory>>(new Set());
-  const [filterTypes, setFilterTypes] = useState<Set<ChordType>>(new Set());
-  const [filterBarreRoots, setFilterBarreRoots] = useState<Set<BarreRoot>>(new Set());
+  const store = useChordLibraryStore();
+  const filterCategories = useMemo(() => new Set(store.filterCategories), [store.filterCategories]);
+  const filterTypes = useMemo(() => new Set(store.filterTypes), [store.filterTypes]);
+  const filterBarreRoots = useMemo(() => new Set(store.filterBarreRoots), [store.filterBarreRoots]);
+  const searchQuery = store.searchQuery;
+  const setSearchQuery = store.setSearchQuery;
+
   const [typeSheetOpen, setTypeSheetOpen] = useState(false);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -63,34 +67,9 @@ export default function ChordLibrary() {
   }, [customChords, hiddenStandardChords]);
 
   // ─── Filter toggles ───
-  const toggleCategory = (cat: ChordCategory) => {
-    setFilterCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      const hasBM = next.has('barre') || next.has('movable');
-      if (!hasBM) setFilterBarreRoots(new Set());
-      return next;
-    });
-  };
-
-  const toggleType = (type: ChordType) => {
-    setFilterTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) next.delete(type);
-      else next.add(type);
-      return next;
-    });
-  };
-
-  const toggleBarreRoot = (root: BarreRoot) => {
-    setFilterBarreRoots((prev) => {
-      const next = new Set(prev);
-      if (next.has(root)) next.delete(root);
-      else next.add(root);
-      return next;
-    });
-  };
+  const toggleCategory = store.toggleCategory;
+  const toggleType = store.toggleType;
+  const toggleBarreRoot = store.toggleBarreRoot;
 
   const showRootFilter = filterCategories.has('barre') || filterCategories.has('movable');
 
@@ -151,12 +130,7 @@ export default function ChordLibrary() {
     return counts;
   }, [filterCategories, filterTypes, matchesSearch, ALL_CHORDS]);
 
-  const clearFilters = () => {
-    setFilterCategories(new Set());
-    setFilterTypes(new Set());
-    setFilterBarreRoots(new Set());
-    setSearchQuery('');
-  };
+  const clearFilters = store.clearAll;
 
   const hasActiveFilters = filterCategories.size > 0 || filterTypes.size > 0 || filterBarreRoots.size > 0 || searchQuery !== '';
 
@@ -186,23 +160,21 @@ export default function ChordLibrary() {
 
   const handleToggleAllTypes = () => {
     if (filterTypes.size === ALL_CHORD_TYPES.length) {
-      setFilterTypes(new Set());
+      store.clearTypes();
     } else {
-      setFilterTypes(new Set(ALL_CHORD_TYPES));
+      store.setFilterTypes([...ALL_CHORD_TYPES]);
     }
   };
 
   const handleToggleGroup = (types: ChordType[]) => {
     const allSelected = types.every((t) => filterTypes.has(t));
-    setFilterTypes((prev) => {
-      const next = new Set(prev);
-      if (allSelected) {
-        for (const t of types) next.delete(t);
-      } else {
-        for (const t of types) next.add(t);
-      }
-      return next;
-    });
+    const current = store.filterTypes;
+    if (allSelected) {
+      store.setFilterTypes(current.filter((t) => !types.includes(t)));
+    } else {
+      const merged = new Set([...current, ...types]);
+      store.setFilterTypes([...merged]);
+    }
   };
 
   return (
@@ -292,7 +264,7 @@ export default function ChordLibrary() {
             {/* Row 2: Horizontal category chips */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none -mx-1 px-1">
               <button
-                onClick={() => { setFilterCategories(new Set()); setFilterBarreRoots(new Set()); }}
+                onClick={store.clearCategories}
                 className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] sm:text-xs font-display font-semibold transition-all active:scale-95 ${
                   filterCategories.size === 0
                     ? 'bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] shadow-md shadow-[hsl(var(--color-primary)/0.3)]'
@@ -398,7 +370,7 @@ export default function ChordLibrary() {
               <span className="flex items-center gap-1 rounded-full bg-[hsl(var(--color-emphasis)/0.12)] border border-[hsl(var(--color-emphasis)/0.25)] text-[hsl(var(--color-emphasis))] px-2.5 py-0.5 text-[11px] font-body font-medium">
                 {filterTypes.size} types
                 <button
-                  onClick={() => setFilterTypes(new Set())}
+                  onClick={store.clearTypes}
                   className="size-3.5 flex items-center justify-center rounded-full hover:bg-[hsl(var(--color-emphasis)/0.2)] transition-colors"
                 >
                   <X className="size-2.5" />
@@ -592,7 +564,7 @@ export default function ChordLibrary() {
                 <div className="flex items-center gap-3">
                   {filterTypes.size > 0 && (
                     <button
-                      onClick={() => setFilterTypes(new Set())}
+                      onClick={store.clearTypes}
                       className="text-xs font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--color-primary))]"
                     >
                       Clear
@@ -612,7 +584,7 @@ export default function ChordLibrary() {
                 <TypeSheetContent
                   filterTypes={filterTypes}
                   typeCounts={typeCounts}
-                  onToggleType={toggleType}
+                  onToggleType={store.toggleType}
                   onToggleAll={handleToggleAllTypes}
                   onToggleGroup={handleToggleGroup}
                   isMobile
