@@ -7,7 +7,9 @@ import type { ChordCategory, ChordType, BarreRoot, ChordData } from '@/types/cho
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, Save, Bookmark } from 'lucide-react';
+import { Search, X, Volume2, Edit3, SlidersHorizontal, Check, ChevronDown, Guitar, Grip, Music2, Save, Bookmark, Trash2, Play } from 'lucide-react';
+import { toast } from 'sonner';
+import { useNavigate as useNav } from 'react-router-dom';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import ChordDetailModal from '@/components/features/ChordDetailModal';
 import { useCustomChordStore } from '@/stores/customChordStore';
@@ -80,6 +82,10 @@ export default function ChordLibrary() {
     setShowSaveForm(false);
     setPresetName('');
     setSelectedIds(new Set());
+    toast.success(`Preset "${name}" saved with ${selectedIds.size} chords`, {
+      description: 'Available on the Chord Practice page under My Presets',
+      duration: 4000,
+    });
   }, [presetName, selectedIds, presetStore]);
 
   useEffect(() => {
@@ -226,6 +232,44 @@ export default function ChordLibrary() {
           </div>
 
 
+
+          {/* ═══════════ MY PRESETS ═══════════ */}
+          {presetStore.presets.length > 0 && (
+            <div className="mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Bookmark className="size-3.5 text-[hsl(var(--text-muted))]" />
+                <span className="text-[11px] font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
+                  Saved Presets
+                </span>
+                <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">
+                  ({presetStore.presets.length})
+                </span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+                {presetStore.presets.map((preset) => (
+                  <div key={preset.id} className="shrink-0 group/preset relative">
+                    <button
+                      onClick={() => navigate('/')}
+                      className="flex items-center gap-2 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] px-4 py-2.5 text-sm font-display font-semibold text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))] transition-all active:scale-95"
+                    >
+                      <Bookmark className="size-3.5" />
+                      <span>{preset.name}</span>
+                      <span className="text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]">
+                        {preset.chordIds.length}
+                      </span>
+                      <Play className="size-3 text-[hsl(var(--color-primary))]" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); presetStore.removePreset(preset.id); toast('Preset deleted'); }}
+                      className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-0 group-hover/preset:opacity-100 transition-all"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className="sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-3 sm:mb-6 space-y-2.5">
