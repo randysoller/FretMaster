@@ -23,12 +23,16 @@ export const usePresetStore = create<PresetState>()(
 
       addPreset: (name, chordIds) => {
         const id = `preset-${Date.now()}`;
+        const newPreset: ChordPreset = { id, name, chordIds, createdAt: Date.now() };
         set((s) => ({
-          presets: [
-            ...s.presets,
-            { id, name, chordIds, createdAt: Date.now() },
-          ],
+          presets: [...s.presets, newPreset],
         }));
+        // Force-sync to localStorage immediately for navigation safety
+        try {
+          const current = JSON.parse(localStorage.getItem('fretmaster-presets') || '{"state":{"presets":[]}}');
+          current.state.presets = [...(current.state?.presets ?? []), newPreset];
+          localStorage.setItem('fretmaster-presets', JSON.stringify(current));
+        } catch (_) { /* persist middleware handles it */ }
         return id;
       },
 
@@ -42,6 +46,14 @@ export const usePresetStore = create<PresetState>()(
 
       getPreset: (id) => get().presets.find((p) => p.id === id),
     }),
-    { name: 'fretmaster-presets' }
+    {
+      name: 'fretmaster-presets',
+      version: 1,
+      partialize: (state) => ({ presets: state.presets }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        presets: (persisted as any)?.presets ?? [],
+      }),
+    }
   )
 );

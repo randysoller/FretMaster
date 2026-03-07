@@ -85,6 +85,26 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
     }),
     {
       name: 'fretmaster-chord-library-filters',
+      version: 1,
+      partialize: (state) => ({
+        filterCategories: state.filterCategories,
+        filterTypes: state.filterTypes,
+        filterBarreRoots: state.filterBarreRoots,
+        searchQuery: state.searchQuery,
+        activeLibraryPresetId: state.activeLibraryPresetId,
+        selectedChordIds: state.selectedChordIds,
+      }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        ...(persisted ? {
+          filterCategories: persisted.filterCategories ?? [],
+          filterTypes: persisted.filterTypes ?? [],
+          filterBarreRoots: persisted.filterBarreRoots ?? [],
+          searchQuery: persisted.searchQuery ?? '',
+          activeLibraryPresetId: persisted.activeLibraryPresetId ?? null,
+          selectedChordIds: persisted.selectedChordIds ?? [],
+        } : {}),
+      }),
     }
   )
 );
