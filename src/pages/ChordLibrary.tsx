@@ -268,7 +268,7 @@ export default function ChordLibrary() {
                     ({presetStore.presets.length})
                   </span>
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 pt-2 -mx-1 px-1">
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 pt-3 -mx-1 px-2">
                   {presetStore.presets.map((preset) => {
                     const isActive = activeLibraryPresetId === preset.id;
                     return (
@@ -293,43 +293,58 @@ export default function ChordLibrary() {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
-                          className="absolute -top-[2px] -right-1.5 size-6 sm:size-5 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all"
+                          className="absolute top-0 right-0 size-7 sm:size-6 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all -translate-y-1/2 translate-x-1/3"
                         >
                           <X className="size-3" />
                         </button>
-
-                        {/* Confirm delete popover */}
-                        <AnimatePresence>
-                          {confirmDeleteId === preset.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.9, y: -4 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.9, y: -4 }}
-                              transition={{ duration: 0.15 }}
-                              className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-48 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-xl shadow-black/40 p-3"
-                            >
-                              <p className="text-xs font-body text-[hsl(var(--text-subtle))] mb-2 text-center">Delete this preset?</p>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }}
-                                  className="flex-1 rounded-lg border border-[hsl(var(--border-default))] py-1.5 text-xs font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); if (activeLibraryPresetId === preset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(preset.id); setConfirmDeleteId(null); toast('Preset deleted'); }}
-                                  className="flex-1 rounded-lg bg-[hsl(var(--semantic-error))] py-1.5 text-xs font-body font-bold text-white active:scale-95 transition-transform"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Confirm delete modal — rendered outside scroll container */}
+                <AnimatePresence>
+                  {confirmDeleteId && (() => {
+                    const targetPreset = presetStore.presets.find((p) => p.id === confirmDeleteId);
+                    if (!targetPreset) return null;
+                    return (
+                      <motion.div
+                        key="confirm-delete"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+                      >
+                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmDeleteId(null)} />
+                        <motion.div
+                          initial={{ scale: 0.9, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.9, opacity: 0 }}
+                          transition={{ duration: 0.15 }}
+                          className="relative w-full max-w-[280px] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/60 p-5"
+                        >
+                          <p className="text-sm font-display font-semibold text-[hsl(var(--text-default))] text-center mb-1">Delete Preset</p>
+                          <p className="text-xs font-body text-[hsl(var(--text-subtle))] text-center mb-4">Delete "{targetPreset.name}"? This cannot be undone.</p>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="flex-1 rounded-xl border border-[hsl(var(--border-default))] py-2.5 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => { if (activeLibraryPresetId === targetPreset.id) store.setActiveLibraryPreset(null); presetStore.removePreset(targetPreset.id); setConfirmDeleteId(null); toast('Preset deleted'); }}
+                              className="flex-1 rounded-xl bg-[hsl(var(--semantic-error))] py-2.5 text-sm font-body font-bold text-white active:scale-95 transition-all"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
               </div>
             )}
 
