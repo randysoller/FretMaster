@@ -58,7 +58,6 @@ export const usePresetStore = create<PresetState>()(
     }),
     {
       name: 'fretmaster-presets',
-      version: 1,
       partialize: (state) => ({ presets: state.presets }),
       merge: (persisted: any, current) => ({
         ...current,

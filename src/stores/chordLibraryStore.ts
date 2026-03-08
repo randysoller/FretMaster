@@ -85,7 +85,6 @@ export const useChordLibraryStore = create<ChordLibraryState>()(
     }),
     {
       name: 'fretmaster-chord-library-filters',
-      version: 1,
       partialize: (state) => ({
         filterCategories: state.filterCategories,
         filterTypes: state.filterTypes,

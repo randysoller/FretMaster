@@ -170,9 +170,8 @@ export default function PresetDropdown({ presets, activePresetId, onActivate, on
     setConfirmDeleteId(null);
   };
 
-  if (presets.length === 0) return null;
-
   const isDragging = dragVisual !== null;
+  const isEmpty = presets.length === 0;
 
   return (
     <div ref={dropdownRef} className="relative -mt-1 mb-0.5">
@@ -227,6 +226,13 @@ export default function PresetDropdown({ presets, activePresetId, onActivate, on
 
             {/* Preset list */}
             <div ref={listRef} className="relative">
+              {isEmpty && (
+                <div className="px-4 py-6 text-center">
+                  <Bookmark className="size-6 text-[hsl(var(--text-muted)/0.4)] mx-auto mb-2" />
+                  <p className="text-sm font-body text-[hsl(var(--text-subtle))]">No presets yet</p>
+                  <p className="text-[11px] font-body text-[hsl(var(--text-muted)/0.6)] mt-1">Go to the Chord Library, select chords, and save them as a preset</p>
+                </div>
+              )}
               {presets.map((preset, index) => {
                 const isActive = activePresetId === preset.id;
                 const isBeingDragged = dragVisual?.from === index;
