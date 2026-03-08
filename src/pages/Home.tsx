@@ -9,8 +9,9 @@ import { KEY_SIGNATURES } from '@/constants/scales';
 import type { KeySignature } from '@/constants/scales';
 import {
   Play, Music, AlertCircle, ChevronDown, X, KeyRound, Shapes, Layers,
-  Guitar, Grip, Music2, Check, Bookmark, Trash2,
+  Guitar, Grip, Music2, Check, Bookmark,
 } from 'lucide-react';
+import PresetDropdown from '@/components/features/PresetDropdown';
 import heroImg from '@/assets/hero-guitar.jpg';
 
 const ALL_CATEGORIES: ChordCategory[] = ['open', 'barre', 'movable'];
@@ -44,8 +45,6 @@ export default function Home() {
   const keyDropdownRef = useRef<HTMLDivElement>(null);
   const catDropdownRef = useRef<HTMLDivElement>(null);
   const typeDropdownRef = useRef<HTMLDivElement>(null);
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const toggleSheet = useCallback((id: SheetId) => {
     setActiveSheet((prev) => (prev === id ? null : id));
@@ -90,7 +89,6 @@ export default function Home() {
   const handleDeletePreset = useCallback((id: string) => {
     presetStore.removePreset(id);
     if (activePresetId === id) setActivePreset(null);
-    setConfirmDeleteId(null);
   }, [presetStore, activePresetId, setActivePreset]);
 
   // ─── Summary helpers ───
@@ -167,96 +165,15 @@ export default function Home() {
           {/* ═══════════ STICKY FILTER BAR ═══════════ */}
           <div className={`sticky top-[3.5rem] z-30 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2 bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-md border-b border-[hsl(var(--border-subtle)/0.5)] mb-4 sm:mb-6 space-y-2.5 transition-opacity duration-200`}>
 
-            {/* ═══════════ PRESET CHIPS (always inside sticky bar) ═══════════ */}
-            {presets.length > 0 && (
-              <div className="-mt-1 mb-0.5">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Bookmark className="size-3.5 text-[hsl(var(--text-muted))]" />
-                  <span className="text-[11px] font-display font-semibold text-[hsl(var(--text-muted))] uppercase tracking-widest">
-                    My Presets
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-2 pt-3 -mx-1 px-2">
-                  {presets.map((preset) => {
-                    const isActive = activePresetId === preset.id;
-                    return (
-                      <div key={preset.id} className="shrink-0 relative group/preset">
-                        <button
-                          onClick={() => handleActivatePreset(preset.id)}
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-display font-semibold transition-all active:scale-95 ${
-                            isActive
-                              ? 'border-[hsl(var(--color-primary))] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] shadow-md shadow-[hsl(var(--color-primary)/0.2)]'
-                              : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--bg-overlay))]'
-                          }`}
-                        >
-                          <Bookmark className={`size-3.5 ${isActive ? 'fill-current' : ''}`} />
-                          <span>{preset.name}</span>
-                          <span className={`text-[10px] font-body tabular-nums px-1.5 py-0.5 rounded-full ${
-                            isActive
-                              ? 'bg-[hsl(var(--color-primary)/0.2)] text-[hsl(var(--color-primary))]'
-                              : 'bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))]'
-                          }`}>
-                            {preset.chordIds.length}
-                          </span>
-                        </button>
-
-                        {/* Delete button */}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === preset.id ? null : preset.id); }}
-                          className="absolute top-0 right-0 size-7 sm:size-6 rounded-full bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-default))] flex items-center justify-center text-[hsl(var(--text-muted))] hover:text-[hsl(var(--semantic-error))] hover:border-[hsl(var(--semantic-error)/0.5)] opacity-100 sm:opacity-0 sm:group-hover/preset:opacity-100 transition-all -translate-y-1/2 translate-x-1/3"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Confirm delete modal — rendered outside scroll container */}
-                <AnimatePresence>
-                  {confirmDeleteId && (() => {
-                    const targetPreset = presets.find((p) => p.id === confirmDeleteId);
-                    if (!targetPreset) return null;
-                    return (
-                      <motion.div
-                        key="confirm-delete"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center px-4"
-                      >
-                        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmDeleteId(null)} />
-                        <motion.div
-                          initial={{ scale: 0.9, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ scale: 0.9, opacity: 0 }}
-                          transition={{ duration: 0.15 }}
-                          className="relative w-full max-w-[280px] rounded-2xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] shadow-2xl shadow-black/60 p-5"
-                        >
-                          <p className="text-sm font-display font-semibold text-[hsl(var(--text-default))] text-center mb-1">Delete Preset</p>
-                          <p className="text-xs font-body text-[hsl(var(--text-subtle))] text-center mb-4">Delete "{targetPreset.name}"? This cannot be undone.</p>
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="flex-1 rounded-xl border border-[hsl(var(--border-default))] py-2.5 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={() => handleDeletePreset(targetPreset.id)}
-                              className="flex-1 rounded-xl bg-[hsl(var(--semantic-error))] py-2.5 text-sm font-body font-bold text-white active:scale-95 transition-all"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </motion.div>
-                      </motion.div>
-                    );
-                  })()}
-                </AnimatePresence>
-              </div>
-            )}
+            {/* ═══════════ EASY START - PRESETS DROPDOWN ═══════════ */}
+            <PresetDropdown
+              presets={presets}
+              activePresetId={activePresetId}
+              onActivate={handleActivatePreset}
+              onDeactivate={() => setActivePreset(null)}
+              onDelete={handleDeletePreset}
+              onReorder={presetStore.reorderPreset}
+            />
 
             {/* Preset active banner */}
             {activePreset && (

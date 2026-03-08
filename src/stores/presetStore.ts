@@ -13,6 +13,7 @@ interface PresetState {
   addPreset: (name: string, chordIds: string[]) => string;
   removePreset: (id: string) => void;
   renamePreset: (id: string, name: string) => void;
+  reorderPreset: (id: string, direction: 'up' | 'down') => void;
   getPreset: (id: string) => ChordPreset | undefined;
 }
 
@@ -43,6 +44,17 @@ export const usePresetStore = create<PresetState>()(
         set((s) => ({
           presets: s.presets.map((p) => (p.id === id ? { ...p, name } : p)),
         })),
+
+      reorderPreset: (id, direction) =>
+        set((s) => {
+          const idx = s.presets.findIndex((p) => p.id === id);
+          if (idx === -1) return s;
+          const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+          if (newIdx < 0 || newIdx >= s.presets.length) return s;
+          const next = [...s.presets];
+          [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+          return { presets: next };
+        }),
 
       getPreset: (id) => get().presets.find((p) => p.id === id),
     }),
