@@ -268,6 +268,7 @@ export default function VideoLessons() {
           </AnimatePresence>
 
           {/* ─── Learning Paths ─── */}
+          {LEARNING_PATHS.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {LEARNING_PATHS.map((path) => {
               const colors = SKILL_LEVEL_COLORS[path.level];
@@ -314,6 +315,7 @@ export default function VideoLessons() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* ─── Filter Bar ─── */}
@@ -495,7 +497,7 @@ export default function VideoLessons() {
         </div>
 
         {/* ─── Active path indicator ─── */}
-        {store.activeLearningPathId && (() => {
+        {store.activeLearningPathId && LEARNING_PATHS.length > 0 && (() => {
           const path = LEARNING_PATHS.find((p) => p.id === store.activeLearningPathId);
           if (!path) return null;
           const colors = SKILL_LEVEL_COLORS[path.level];
@@ -554,17 +556,27 @@ export default function VideoLessons() {
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <TrendingUp className="size-10 text-[hsl(var(--text-muted)/0.3)]" />
             <p className="font-display text-base font-semibold text-[hsl(var(--text-subtle))]">
-              No lessons match your filters
+              {hasActiveFilters ? 'No lessons match your filters' : 'No video lessons yet'}
             </p>
             <p className="text-xs font-body text-[hsl(var(--text-muted)/0.6)]">
-              Try adjusting your search or filter criteria
+              {hasActiveFilters ? 'Try adjusting your search or filter criteria' : 'Click Manage then Add YouTube Video to start building your lesson library'}
             </p>
-            <button
-              onClick={store.clearAllFilters}
-              className="mt-2 rounded-lg border border-[hsl(var(--border-default))] px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
-            >
-              Reset filters
-            </button>
+            {hasActiveFilters ? (
+              <button
+                onClick={store.clearAllFilters}
+                className="mt-2 rounded-lg border border-[hsl(var(--border-default))] px-4 py-2 text-sm font-body font-medium text-[hsl(var(--text-subtle))] hover:bg-[hsl(var(--bg-overlay))] transition-colors"
+              >
+                Reset filters
+              </button>
+            ) : (
+              <button
+                onClick={() => { store.setManageMode(true); setShowAddModal(true); setEditingLesson(null); }}
+                className="mt-2 flex items-center gap-2 rounded-xl border-2 border-dashed border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.06)] px-5 py-2.5 text-sm font-display font-semibold text-[hsl(var(--color-primary))] hover:bg-[hsl(var(--color-primary)/0.12)] hover:border-[hsl(var(--color-primary)/0.6)] transition-all active:scale-95"
+              >
+                <Plus className="size-4" />
+                Add Your First Video
+              </button>
+            )}
           </div>
         )}
       </div>
