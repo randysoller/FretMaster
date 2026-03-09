@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Guitar, BookOpen, PenTool } from 'lucide-react';
+import { Guitar, BookOpen, PenTool, PlayCircle } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 import { useTunerStore } from '@/stores/tunerStore';
 
@@ -19,6 +19,7 @@ export default function Header() {
   const navLinks = [
     { to: '/library', label: 'Library', icon: <BookOpen className="size-[23px]" />, matchPaths: ['/library'] },
     { to: '/editor', label: 'Editor', icon: <PenTool className="size-[23px]" />, matchPaths: ['/editor'] },
+    { to: '/lessons', label: 'Lessons', icon: <PlayCircle className="size-[23px]" />, matchPaths: ['/lessons'] },
   ];
 
   return (

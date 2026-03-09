@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, PlayCircle } from 'lucide-react';
 import MetronomeDropdown from '@/components/features/MetronomeDropdown';
 import { useTunerStore } from '@/stores/tunerStore';
 
@@ -29,6 +29,7 @@ const leftTabs = [
 ] as const;
 
 const rightTabs = [
+  { to: '/lessons', label: 'Lessons', icon: PlayCircle, matchPaths: ['/lessons'] },
   { to: '/library', label: 'Library', icon: BookOpen, matchPaths: ['/library'] },
 ] as const;
 
@@ -64,7 +65,7 @@ export default function MobileTabBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 sm:hidden border-t border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-base)/0.92)] backdrop-blur-lg safe-area-bottom">
-      <div className="grid grid-cols-4 h-[56px]">
+      <div className="grid grid-cols-5 h-[56px]">
         {leftTabs.map(renderTab)}
         {/* Center metronome */}
         <div className="flex flex-col items-center justify-center">
