@@ -30,7 +30,7 @@ export default function ShowDiagramsToggle({ enabled, onChange, compact = false 
       }}
       className={`relative flex items-center gap-2 rounded-lg border px-3 py-2 transition-all duration-200 select-none active:scale-95 ${
         enabled
-          ? 'border-[hsl(var(--color-primary)/0.4)] bg-[hsl(var(--color-primary)/0.1)] text-[hsl(var(--color-primary))]'
+          ? 'border-[hsl(142_71%_45%/0.5)] bg-[hsl(142_71%_45%/0.1)] text-[hsl(142_71%_45%)]'
           : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'
       }`}
       title={enabled ? 'Hide chord diagrams' : 'Show chord diagrams'}
@@ -44,11 +44,11 @@ export default function ShowDiagramsToggle({ enabled, onChange, compact = false 
       )}
       {/* Sliding pill indicator */}
       <div className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${
-        enabled ? 'bg-[hsl(var(--color-primary)/0.35)]' : 'bg-[hsl(var(--border-default))]'
+        enabled ? 'bg-[hsl(142_71%_45%/0.35)]' : 'bg-[hsl(var(--border-default))]'
       }`}>
         <div className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-all duration-200 ${
           enabled
-            ? 'left-[15px] bg-[hsl(var(--color-primary))]'
+            ? 'left-[15px] bg-[hsl(142_71%_45%)]'
             : 'left-[2px] bg-[hsl(var(--text-muted))]'
         }`} />
       </div>
