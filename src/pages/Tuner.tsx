@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Mic, MicOff, Music, Volume2, X, ChevronDown } from 'lucide-react';
+import { Mic, MicOff, Music, Volume2, X, ChevronDown, Crosshair, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTunerStore } from '@/stores/tunerStore';
+import { useDetectionSettingsStore } from '@/stores/detectionSettingsStore';
+import CalibrationWizard from '@/components/features/CalibrationWizard';
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -256,7 +258,14 @@ export default function TunerPanel() {
   const [selectedString, setSelectedString] = useState<GuitarString | null>(null);
   const [playingString, setPlayingString] = useState<number | null>(null);
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
+  const [showCalibration, setShowCalibration] = useState(false);
+  // Use global detection settings for sensitivity
+  const globalSettings = useDetectionSettingsStore();
   const [sensitivity, setSensitivity] = useState(() => {
+    // If advanced detection is enabled, derive tuner sensitivity from noise gate
+    if (globalSettings.advancedEnabled) {
+      return globalSettings.advancedValues.noiseGate;
+    }
     const saved = localStorage.getItem('tuner-mic-sensitivity');
     return saved !== null ? Number(saved) : 60;
   });
@@ -283,6 +292,13 @@ export default function TunerPanel() {
     sensitivityRef.current = sensitivity;
     localStorage.setItem('tuner-mic-sensitivity', String(sensitivity));
   }, [sensitivity]);
+
+  // Sync with global calibration settings when they change
+  useEffect(() => {
+    if (globalSettings.advancedEnabled) {
+      setSensitivity(globalSettings.advancedValues.noiseGate);
+    }
+  }, [globalSettings.advancedEnabled, globalSettings.advancedValues.noiseGate]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -796,6 +812,8 @@ export default function TunerPanel() {
   if (!isOpen) return null;
 
   return (
+    <>
+    <CalibrationWizard open={showCalibration} onClose={() => setShowCalibration(false)} />
     <motion.div
       initial={{ opacity: 0, y: 80 }}
       animate={{ opacity: 1, y: 0 }}
@@ -1020,7 +1038,14 @@ export default function TunerPanel() {
                     <Mic className="size-3.5" />
                     Mic Sensitivity
                   </label>
-                  <span className="text-sm font-body tabular-nums text-[hsl(var(--text-subtle))]">{sensitivity}%</span>
+                  <div className="flex items-center gap-2">
+                    {globalSettings.advancedEnabled && (
+                      <span className="text-[9px] font-body font-medium bg-[hsl(var(--color-emphasis)/0.15)] text-[hsl(var(--color-emphasis))] rounded-full px-1.5 py-0.5 flex items-center gap-1">
+                        <Zap className="size-2.5" /> Calibrated
+                      </span>
+                    )}
+                    <span className="text-sm font-body tabular-nums text-[hsl(var(--text-subtle))]">{sensitivity}%</span>
+                  </div>
                 </div>
                 <input
                   type="range"
@@ -1043,6 +1068,24 @@ export default function TunerPanel() {
                   <span>Low</span>
                   <span>High</span>
                 </div>
+              </div>
+
+              {/* Calibration shortcut */}
+              <div className="!mt-3 flex items-center justify-between rounded-lg border border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-surface)/0.4)] px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <Crosshair className="size-3.5 text-[hsl(var(--color-emphasis))]" />
+                  <span className="text-[10px] font-display font-bold text-[hsl(var(--text-subtle))] uppercase tracking-wider">Calibration</span>
+                  {globalSettings.perStringCalibration.calibrated && (
+                    <span className="text-[9px] font-body font-medium bg-[hsl(var(--semantic-success)/0.15)] text-[hsl(var(--semantic-success))] rounded-full px-1.5 py-0.5">String-tuned</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowCalibration(true)}
+                  className="flex items-center gap-1 rounded-lg border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.06)] px-2.5 py-1.5 text-[10px] font-display font-bold text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.14)] transition-colors"
+                >
+                  <Crosshair className="size-3" />
+                  Calibrate
+                </button>
               </div>
 
             </div>
@@ -1163,5 +1206,6 @@ export default function TunerPanel() {
         </div>
       </div>
     </motion.div>
+    </>
   );
 }
