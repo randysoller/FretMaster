@@ -64,7 +64,7 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  const threshold = 0.45;
+  const threshold = 0.50;
   let bestTau = -1;
   let bestVal = -Infinity;
 
@@ -114,7 +114,7 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
     }
   }
 
-  if (bestTau <= 0 || bestVal < 0.2) return -1;
+  if (bestTau <= 0 || bestVal < 0.3) return -1;
 
   // Parabolic interpolation for sub-sample precision
   let refinedTau = bestTau;
@@ -307,11 +307,28 @@ export function useChordDetection({
           nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
         }
 
+        // Voice rejection: require NSDF to find a clean periodic signal
+        // Guitar produces clean pitched tones; voice is quasi-periodic with lower NSDF peaks
+        if (nsdfPitch <= 0) {
+          // No clean pitch detected — likely noise or voice, skip
+          consecutiveMatches = 0;
+          return;
+        }
+
         const chroma = extractChroma(freqData, analyserRef.current, sens, nsdfPitch);
         if (!chroma) {
           // No signal — reset counters
           consecutiveMatches = 0;
           consecutiveMisses = 0;
+          return;
+        }
+
+        // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
+        const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
+        const minCrest = lerp(4.5, 2.5, t); // stricter at low sensitivity
+        if (crestFactor < minCrest) {
+          // Spectrum too flat / voice-like — reject
+          consecutiveMatches = 0;
           return;
         }
 
@@ -400,6 +417,36 @@ export function useChordDetection({
  * Uses NSDF-detected fundamental to boost confidence in the correct pitch class.
  * Returns null if the overall energy is below the noise gate.
  */
+/**
+ * Compute spectral crest factor (peakiness) over the guitar range.
+ * Guitar has sharp harmonic peaks → high crest; voice has broad formants → low crest.
+ */
+function computeSpectralCrest(freqData: Float32Array, analyser: AnalyserNode): number {
+  const sampleRate = analyser.context.sampleRate;
+  const fftSize = analyser.fftSize;
+  const binWidth = sampleRate / fftSize;
+
+  const minBin = Math.floor(70 / binWidth);
+  const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
+
+  let sumLin = 0;
+  let maxLin = 0;
+  let count = 0;
+
+  for (let bin = minBin; bin < maxBin; bin++) {
+    const db = freqData[bin];
+    if (db < -80) continue;
+    const lin = Math.pow(10, db / 20);
+    sumLin += lin;
+    if (lin > maxLin) maxLin = lin;
+    count++;
+  }
+
+  if (count < 5 || sumLin <= 0) return 0;
+  const meanLin = sumLin / count;
+  return meanLin > 0 ? maxLin / meanLin : 0;
+}
+
 function extractChroma(
   freqData: Float32Array,
   analyser: AnalyserNode,
