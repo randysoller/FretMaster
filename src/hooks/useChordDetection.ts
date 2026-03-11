@@ -271,7 +271,7 @@ export function useChordDetection({
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
-      const MATCH_THRESHOLD = 2;    // Need 2 consecutive matches (~140ms) to confirm
+      const MATCH_THRESHOLD = 3;    // Need 3 consecutive matches (~210ms) to confirm
       const MISS_THRESHOLD = 3;     // Need 3 consecutive misses to show wrong
 
       // Analysis loop at ~14 Hz for faster response
@@ -286,13 +286,25 @@ export function useChordDetection({
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
 
-        // NSDF time-domain pitch detection for primary pitch
+        // Hard RMS silence gate on time-domain signal before any analysis
         let nsdfPitch = -1;
         if (timeDomainBufferRef.current) {
           analyserRef.current.getFloatTimeDomainData(timeDomainBufferRef.current);
           const t = (sens - 1) / 9;
-          const rmsThreshold = lerp(0.012, 0.002, t);
-          nsdfPitch = autoCorrelateNSDF(timeDomainBufferRef.current, audioContextRef.current.sampleRate, rmsThreshold);
+          const rmsThreshold = lerp(0.018, 0.005, t);
+          // Compute RMS over the buffer
+          let rmsSum = 0;
+          const buf = timeDomainBufferRef.current;
+          const rmsLen = Math.min(buf.length, 4096);
+          for (let i = 0; i < rmsLen; i++) rmsSum += buf[i] * buf[i];
+          const rms = Math.sqrt(rmsSum / rmsLen);
+          if (rms < rmsThreshold) {
+            // Signal is too quiet — silence, skip analysis entirely
+            consecutiveMatches = 0;
+            consecutiveMisses = 0;
+            return;
+          }
+          nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
         }
 
         const chroma = extractChroma(freqData, analyserRef.current, sens, nsdfPitch);
@@ -401,7 +413,7 @@ function extractChroma(
 
   // Sensitivity-derived thresholds
   const dbFloor = lerp(-40, -72, t);
-  const noiseGateEnergy = lerp(12, 1.5, t);
+  const noiseGateEnergy = lerp(18, 4, t);
 
   const chroma = new Float64Array(12);
   let totalEnergy = 0;
@@ -464,14 +476,14 @@ function extractChroma(
   // Noise gate
   if (totalEnergy < noiseGateEnergy) return null;
 
-  // If NSDF detected a valid pitch, boost that pitch class and its expected harmonics
+  // If NSDF detected a valid pitch, boost that pitch class modestly
   if (nsdfPitch > 0) {
     const nsdfMidi = freqToMidi(nsdfPitch);
     const nsdfPc = ((Math.round(nsdfMidi) % 12) + 12) % 12;
     const maxChroma = Math.max(...chroma);
     if (maxChroma > 0) {
-      // Strong boost to NSDF-confirmed fundamental
-      chroma[nsdfPc] += maxChroma * 0.7;
+      // Moderate boost to NSDF-confirmed fundamental (reduced from 0.7 to avoid false positives)
+      chroma[nsdfPc] += maxChroma * 0.35;
     }
   }
 
@@ -503,7 +515,7 @@ function matchChroma(
   // Smaller chords (2-3 notes) need stricter matching; larger chords (5-6) can be more lenient
   const sizeBonus = Math.min((expected.size - 3) * 0.02, 0.06);
   const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus;
-  const matchRatioMin = lerp(0.68, 0.35, t);
+  const matchRatioMin = lerp(0.72, 0.40, t);
   const maxExtrasBase = lerp(2, 5, t);
 
   // Chroma is already normalized to [0,1] from extractChroma
@@ -547,6 +559,10 @@ function matchChroma(
 
   const extras = [...detected].filter((pc) => !expected.has(pc)).length;
   const maxExtras = Math.floor(maxExtrasBase) + expected.size;
+
+  // Require a minimum number of detected expected notes (at least 2, or all if chord has ≤2)
+  const minDetectedNotes = Math.min(2, expected.size);
+  if (binaryMatches < minDetectedNotes) return false;
 
   // Penalize excessive extra notes more at lower sensitivity
   const extraPenalty = extras > maxExtras ? (extras - maxExtras) * lerp(0.08, 0.02, t) : 0;
