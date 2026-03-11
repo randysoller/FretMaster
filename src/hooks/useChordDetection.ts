@@ -136,93 +136,11 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
 
 export type DetectionResult = 'correct' | 'wrong' | null;
 
-export type StringNoteStatus = 'correct' | 'missing' | 'muted' | 'idle';
 
-export interface StringFeedback {
-  stringIndex: number; // 0=low E … 5=high E
-  fret: number;
-  pitchClass: number;
-  noteName: string;
-  status: StringNoteStatus;
-  strength: number; // 0-1 how strong the chroma bin is
-}
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-/** Compute a 0–1 numeric match confidence between detected chroma and expected chord pitch classes */
-function computeMatchConfidence(
-  chroma: Float64Array,
-  expected: Set<number>,
-  sensitivity: number
-): number {
-  if (expected.size === 0) return 0;
-  const t = (sensitivity - 1) / 9;
-  const sizeBonus = Math.min((expected.size - 3) * 0.02, 0.06);
-  const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus;
-  const maxVal = Math.max(...chroma);
-  if (maxVal < 0.01) return 0;
 
-  const detected = new Set<number>();
-  for (let i = 0; i < 12; i++) {
-    if (chroma[i] >= chromaThreshold) detected.add(i);
-  }
 
-  let weightedMatches = 0;
-  let totalWeight = 0;
-  for (const pc of expected) {
-    const strength = chroma[pc];
-    if (strength >= chromaThreshold * 0.4) {
-      weightedMatches += Math.min(strength / chromaThreshold, 1.5);
-    }
-    totalWeight += 1;
-  }
-  const weightedRatio = totalWeight > 0 ? weightedMatches / totalWeight : 0;
-
-  let binaryMatches = 0;
-  for (const pc of expected) {
-    if (detected.has(pc)) binaryMatches++;
-  }
-  const binaryRatio = binaryMatches / expected.size;
-
-  const effectiveRatio = Math.max(weightedRatio, binaryRatio);
-
-  const extras = [...detected].filter((pc) => !expected.has(pc)).length;
-  const maxExtrasBase = lerp(2, 5, t);
-  const maxExtras = Math.floor(maxExtrasBase) + expected.size;
-  const extraPenalty = extras > maxExtras ? (extras - maxExtras) * lerp(0.06, 0.015, t) : 0;
-
-  return Math.max(0, Math.min(1, effectiveRatio - extraPenalty));
-}
-
-function computeStringFeedback(chord: ChordData, chroma: Float64Array | null, threshold: number): StringFeedback[] {
-  const feedback: StringFeedback[] = [];
-  for (let i = 0; i < 6; i++) {
-    const fret = chord.frets[i];
-    if (fret < 0) {
-      feedback.push({ stringIndex: i, fret, pitchClass: -1, noteName: 'X', status: 'muted', strength: 0 });
-      continue;
-    }
-    const midi = OPEN_STRING_MIDI[i] + fret;
-    const pc = ((midi % 12) + 12) % 12;
-    const name = NOTE_NAMES[pc];
-    if (!chroma) {
-      feedback.push({ stringIndex: i, fret, pitchClass: pc, noteName: name, status: 'idle', strength: 0 });
-      continue;
-    }
-    const strength = chroma[pc];
-    // Use a lower threshold for individual string feedback (more forgiving)
-    const isPresent = strength >= threshold * 0.55;
-    feedback.push({
-      stringIndex: i,
-      fret,
-      pitchClass: pc,
-      noteName: name,
-      status: isPresent ? 'correct' : 'missing',
-      strength,
-    });
-  }
-  return feedback;
-}
 
 interface UseChordDetectionOptions {
   onCorrect?: () => void;
@@ -231,8 +149,7 @@ interface UseChordDetectionOptions {
   sensitivity?: number;
   /** If true, auto-start listening on mount */
   autoStart?: boolean;
-  /** If true, compute per-string feedback (slightly more CPU) */
-  enableStringFeedback?: boolean;
+
 }
 
 export function useChordDetection({
@@ -240,17 +157,11 @@ export function useChordDetection({
   targetChord,
   sensitivity = 6,
   autoStart = false,
-  enableStringFeedback = false,
 }: UseChordDetectionOptions) {
   const [isListening, setIsListening] = useState(false);
   const [result, setResult] = useState<DetectionResult>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
-  const [stringFeedback, setStringFeedback] = useState<StringFeedback[]>([]);
-  const [matchConfidence, setMatchConfidence] = useState(0);
-  const lastChromaRef = useRef<Float64Array | null>(null);
-  const feedbackThrottleRef = useRef(0);
-  const enableStringFeedbackRef = useRef(enableStringFeedback);
-  useEffect(() => { enableStringFeedbackRef.current = enableStringFeedback; }, [enableStringFeedback]);
+
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -296,13 +207,9 @@ export function useChordDetection({
     analyserRef.current = null;
     timeDomainBufferRef.current = null;
     prevFreqDataRef.current = null;
-    lastChromaRef.current = null;
-    feedbackThrottleRef.current = 0;
     isListeningRef.current = false;
     setIsListening(false);
     setResult(null);
-    setStringFeedback([]);
-    setMatchConfidence(0);
   }, []);
 
   const startListening = useCallback(async () => {
@@ -445,18 +352,11 @@ export function useChordDetection({
 
         const chroma = extractChroma(freqData, analyserRef.current, sens, nsdfPitch);
         if (!chroma) {
-          // No signal — reset counters and clear feedback
+          // No signal — reset counters
           consecutiveMatches = 0;
           consecutiveMisses = 0;
-          lastChromaRef.current = null;
-          if (enableStringFeedbackRef.current) {
-            setStringFeedback([]);
-          }
           return;
         }
-
-        // Store latest chroma for string feedback
-        lastChromaRef.current = chroma;
 
         // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
@@ -475,20 +375,6 @@ export function useChordDetection({
             // High spectral instability — likely voice or other non-guitar source
             consecutiveMatches = 0;
             return;
-          }
-        }
-
-        // Update per-string feedback + confidence at ~7Hz (every other frame) to reduce renders
-        feedbackThrottleRef.current++;
-        if (feedbackThrottleRef.current % 2 === 0) {
-          const expected = getChordPitchClasses(chord);
-          const conf = computeMatchConfidence(chroma, expected, sens);
-          setMatchConfidence(conf);
-
-          if (enableStringFeedbackRef.current) {
-            const chromaThreshold = lerp(0.25, 0.08, t);
-            const fb = computeStringFeedback(chord, chroma, chromaThreshold);
-            setStringFeedback(fb);
           }
         }
 
@@ -569,8 +455,7 @@ export function useChordDetection({
     toggleListening,
     stopListening,
     pauseDetection,
-    stringFeedback,
-    matchConfidence,
+
   };
 }
 

@@ -8,8 +8,7 @@ import { CATEGORY_LABELS, CHORD_TYPE_LABELS, BARRE_ROOT_LABELS } from '@/types/c
 import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
-import StringFeedbackOverlay from '@/components/features/StringFeedbackOverlay';
-import ConfidenceBar from '@/components/features/ConfidenceBar';
+
 import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
@@ -96,8 +95,8 @@ export default function Practice() {
     nextChord();
   }, [revealChord, nextChord]);
 
-  const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection, stringFeedback, matchConfidence } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, enableStringFeedback: true });
+  const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
+    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {
@@ -252,38 +251,16 @@ export default function Practice() {
                     {(chord as any).isCustom ? (
                       <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
                     ) : (
-                      <ChordDiagram
-                        chord={chord}
-                        size="lg"
-                        stringStatus={isListening && stringFeedback.length === 6
-                          ? stringFeedback.map((fb) => fb.status !== 'idle' ? fb.status : null)
-                          : undefined
-                        }
-                      />
+                      <ChordDiagram chord={chord} size="lg" />
                     )}
                   </div>
                   {!(chord as any).isCustom && (
                     <div className="shrink-0 flex flex-col gap-3">
                       <ChordTablature chord={chord} size="lg" />
-                      {/* Per-string feedback panel */}
-                      {isListening && (
-                        <StringFeedbackOverlay
-                          feedback={stringFeedback}
-                          isListening={isListening}
-                        />
-                      )}
                     </div>
                   )}
-                  {/* Show feedback below diagram for custom chords */}
-                  {(chord as any).isCustom && isListening && (
-                    <StringFeedbackOverlay
-                      feedback={stringFeedback}
-                      isListening={isListening}
-                    />
-                  )}
                 </div>
-                {/* Live match confidence bar */}
-                <ConfidenceBar confidence={matchConfidence} isListening={isListening} />
+
               </motion.div>
             </div>
           </motion.div>

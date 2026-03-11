@@ -1,11 +1,8 @@
 import type { ChordData } from '@/types/chord';
-import type { StringNoteStatus } from '@/hooks/useChordDetection';
 
 interface ChordDiagramProps {
   chord: ChordData;
   size?: 'sm' | 'md' | 'lg';
-  /** Optional per-string status for real-time feedback coloring. Index 0=low E … 5=high E. */
-  stringStatus?: (StringNoteStatus | null)[];
 }
 
 const SIZES = {
@@ -17,7 +14,7 @@ const SIZES = {
 /** Extra left padding added when a fret label (e.g. "3fr") needs to be shown */
 const FRET_LABEL_PAD = { sm: 10, md: 14, lg: 20 };
 
-export default function ChordDiagram({ chord, size = 'md', stringStatus }: ChordDiagramProps) {
+export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) {
   const config = SIZES[size];
   const numStrings = 6;
   const numFrets = 5;
@@ -44,39 +41,6 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
 
   // Realistic string thickness: low E (thickest) → high e (thinnest)
   const STRING_WIDTHS = [2.6, 2.2, 1.8, 1.4, 1.0, 0.7];
-
-  // String status color helpers
-  const getStatusFill = (stringIdx: number): string | undefined => {
-    if (!stringStatus || !stringStatus[stringIdx]) return undefined;
-    const s = stringStatus[stringIdx];
-    if (s === 'correct') return 'hsl(142 71% 45%)';
-    if (s === 'missing') return 'hsl(0 84% 60%)';
-    return undefined;
-  };
-
-  const getStatusTextFill = (stringIdx: number): string | undefined => {
-    if (!stringStatus || !stringStatus[stringIdx]) return undefined;
-    const s = stringStatus[stringIdx];
-    if (s === 'correct') return 'hsl(0 0% 100%)';
-    if (s === 'missing') return 'hsl(0 0% 100%)';
-    return undefined;
-  };
-
-  const getStatusGlow = (stringIdx: number): string | undefined => {
-    if (!stringStatus || !stringStatus[stringIdx]) return undefined;
-    const s = stringStatus[stringIdx];
-    if (s === 'correct') return 'drop-shadow(0 0 6px hsl(142 71% 45% / 0.6))';
-    if (s === 'missing') return 'drop-shadow(0 0 6px hsl(0 84% 60% / 0.6))';
-    return undefined;
-  };
-
-  const getStringStroke = (stringIdx: number): string | undefined => {
-    if (!stringStatus || !stringStatus[stringIdx]) return undefined;
-    const s = stringStatus[stringIdx];
-    if (s === 'correct') return 'hsl(142 71% 45%)';
-    if (s === 'missing') return 'hsl(0 84% 60% / 0.6)';
-    return undefined;
-  };
 
   // Build a set of (stringIndex) that are rendered by the barre section, so finger-dot section can skip them
   const barreRenderedStrings = new Set<string>();
@@ -165,9 +129,8 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
           y1={getFretY(0)}
           x2={getStringX(i)}
           y2={getFretY(numFrets)}
-          stroke={getStringStroke(i) ?? 'hsl(var(--text-subtle))'}
+          stroke="hsl(var(--text-subtle))"
           strokeWidth={STRING_WIDTHS[i]}
-          style={{ transition: 'stroke 0.15s ease' }}
         />
       ))}
 
@@ -222,25 +185,16 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
             )}
             {contactStrings.map((si) => {
               const isRoot = si === rootIdx;
-              const statusFill = getStatusFill(si);
-              const statusText = getStatusTextFill(si);
-              const glow = getStatusGlow(si);
               return (
-                <g key={`barre-dot-${si}`} style={glow ? { filter: glow } : undefined}>
+                <g key={`barre-dot-${si}`}>
                   {isRoot ? (
-                    statusFill ? (
-                      <StatusDiamond x={getStringX(si)} y={y} r={config.dotRadius} fill={statusFill} />
-                    ) : (
-                      <RootDiamond x={getStringX(si)} y={y} r={config.dotRadius} />
-                    )
+                    <RootDiamond x={getStringX(si)} y={y} r={config.dotRadius} />
                   ) : (
                     <circle
                       cx={getStringX(si)}
                       cy={y}
                       r={config.dotRadius}
-                      fill={statusFill}
-                      className={statusFill ? undefined : 'chord-dot'}
-                      style={{ transition: 'fill 0.15s ease' }}
+                      className="chord-dot"
                     />
                   )}
                   {barreFingerNum > 0 && (
@@ -248,8 +202,7 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
                       x={getStringX(si)}
                       y={y + config.fontSize * 0.35}
                       textAnchor="middle"
-                      fill={statusText}
-                      className={statusText ? undefined : isRoot ? 'chord-root-text' : 'chord-dot-text'}
+                      className={isRoot ? 'chord-root-text' : 'chord-dot-text'}
                       fontSize={config.fontSize}
                     >
                       {barreFingerNum}
@@ -267,15 +220,11 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
         const x = getStringX(i);
         const y = config.topY - 4;
         const r = config.dotRadius * 0.65;
-        const statusFill = getStatusFill(i);
-        const glow = getStatusGlow(i);
 
         if (fret === 0) {
           const isRoot = i === rootIdx;
           if (isRoot) {
-            return statusFill
-              ? <g key={`open-root-${i}`} style={glow ? { filter: glow } : undefined}><StatusDiamond x={x} y={y} r={r * 1.2} fill={statusFill} /></g>
-              : <RootDiamond key={`open-root-${i}`} x={x} y={y} r={r * 1.2} />;
+            return <RootDiamond key={`open-root-${i}`} x={x} y={y} r={r * 1.2} />;
           }
           return (
             <circle
@@ -283,11 +232,7 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
               cx={x}
               cy={y}
               r={r}
-              fill={statusFill ? 'none' : undefined}
-              stroke={statusFill ?? undefined}
-              strokeWidth={statusFill ? 2 : undefined}
-              className={statusFill ? undefined : 'chord-open'}
-              style={{ ...(glow ? { filter: glow } : {}), transition: 'stroke 0.15s ease' }}
+              className="chord-open"
             />
           );
         }
@@ -327,26 +272,17 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
         const x = getStringX(i);
         const y = getFretY(relFret) - fretSpacing / 2;
         const isRoot = i === rootIdx;
-        const statusFill = getStatusFill(i);
-        const statusText = getStatusTextFill(i);
-        const glow = getStatusGlow(i);
 
         return (
-          <g key={`dot-${i}`} style={glow ? { filter: glow } : undefined}>
+          <g key={`dot-${i}`}>
             {isRoot ? (
-              statusFill ? (
-                <StatusDiamond x={x} y={y} r={config.dotRadius} fill={statusFill} />
-              ) : (
-                <RootDiamond x={x} y={y} r={config.dotRadius} />
-              )
+              <RootDiamond x={x} y={y} r={config.dotRadius} />
             ) : (
               <circle
                 cx={x}
                 cy={y}
                 r={config.dotRadius}
-                fill={statusFill}
-                className={statusFill ? undefined : 'chord-dot'}
-                style={{ transition: 'fill 0.15s ease' }}
+                className="chord-dot"
               />
             )}
             {chord.fingers[i] > 0 && (
@@ -354,8 +290,7 @@ export default function ChordDiagram({ chord, size = 'md', stringStatus }: Chord
                 x={x}
                 y={y + config.fontSize * 0.35}
                 textAnchor="middle"
-                fill={statusText}
-                className={statusText ? undefined : isRoot ? 'chord-root-text' : 'chord-dot-text'}
+                className={isRoot ? 'chord-root-text' : 'chord-dot-text'}
                 fontSize={config.fontSize}
               >
                 {chord.fingers[i]}
@@ -375,9 +310,4 @@ function RootDiamond({ x, y, r }: { x: number; y: number; r: number }) {
   return <polygon points={points} className="chord-root" />;
 }
 
-/** Colored diamond for status feedback on root notes */
-function StatusDiamond({ x, y, r, fill }: { x: number; y: number; r: number; fill: string }) {
-  const d = r * 1.15;
-  const points = `${x},${y - d} ${x + d},${y} ${x},${y + d} ${x - d},${y}`;
-  return <polygon points={points} fill={fill} style={{ transition: 'fill 0.15s ease' }} />;
-}
+
