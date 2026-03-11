@@ -114,42 +114,66 @@ function frequencyToNoteInfo(freq: number): { note: string; octave: number; cent
   return { note: NOTE_STRINGS[noteIndex], octave, cents, noteIndex };
 }
 
-function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
+interface PitchResult {
+  frequency: number;
+  confidence: number;
+}
+
+function autoCorrelate(buffer: Float32Array, sampleRate: number): PitchResult | null {
+  // Use a sub-window for consistent, efficient analysis (4096 samples is plenty for guitar)
+  const windowSize = Math.min(buffer.length, 4096);
+  const offset = Math.floor((buffer.length - windowSize) / 2);
+
   let rms = 0;
-  for (let i = 0; i < buffer.length; i++) {
+  for (let i = offset; i < offset + windowSize; i++) {
     rms += buffer[i] * buffer[i];
   }
-  rms = Math.sqrt(rms / buffer.length);
-  if (rms < ((globalThis as any).__tunerRmsThreshold ?? 0.008)) return -1;
+  rms = Math.sqrt(rms / windowSize);
+  const rmsThreshold = (globalThis as any).__tunerRmsThreshold ?? 0.008;
+  if (rms < rmsThreshold) return null;
 
-  const size = buffer.length;
-  const halfSize = Math.floor(size / 2);
+  const halfSize = Math.floor(windowSize / 2);
 
+  // Apply Hanning window for cleaner spectral analysis
+  const windowed = new Float32Array(windowSize);
+  for (let i = 0; i < windowSize; i++) {
+    const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (windowSize - 1)));
+    windowed[i] = buffer[offset + i] * w;
+  }
+
+  // Optimized lag range for guitar: ~60 Hz to ~1400 Hz
+  const minLag = Math.max(1, Math.floor(sampleRate / 1500));
+  const maxLag = Math.min(halfSize - 1, Math.ceil(sampleRate / 55));
+
+  // Normalized Square Difference Function (NSDF)
   const nsdf = new Float32Array(halfSize);
-  for (let tau = 0; tau < halfSize; tau++) {
+  for (let tau = minLag; tau <= maxLag; tau++) {
     let acf = 0;
     let divisor = 0;
-    for (let i = 0; i < halfSize; i++) {
-      acf += buffer[i] * buffer[i + tau];
-      divisor += buffer[i] * buffer[i] + buffer[i + tau] * buffer[i + tau];
+    const len = windowSize - tau;
+    for (let i = 0; i < len; i++) {
+      acf += windowed[i] * windowed[i + tau];
+      divisor += windowed[i] * windowed[i] + windowed[i + tau] * windowed[i + tau];
     }
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  const threshold = 0.35;
+  const threshold = 0.42;
   const peaks: { tau: number; val: number }[] = [];
 
-  let firstZero = 1;
-  while (firstZero < halfSize - 1 && nsdf[firstZero] > 0) {
+  // Find first zero crossing after minLag
+  let firstZero = minLag;
+  while (firstZero <= maxLag && nsdf[firstZero] > 0) {
     firstZero++;
   }
 
+  // Collect all positive-region peaks
   let idx = firstZero;
-  while (idx < halfSize - 1) {
-    while (idx < halfSize - 1 && nsdf[idx] <= 0) idx++;
+  while (idx <= maxLag) {
+    while (idx <= maxLag && nsdf[idx] <= 0) idx++;
     let peakTau = idx;
-    let peakVal = nsdf[idx];
-    while (idx < halfSize - 1 && nsdf[idx] > 0) {
+    let peakVal = nsdf[idx] ?? 0;
+    while (idx <= maxLag && nsdf[idx] > 0) {
       if (nsdf[idx] > peakVal) {
         peakVal = nsdf[idx];
         peakTau = idx;
@@ -161,8 +185,9 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     }
   }
 
-  if (peaks.length === 0) return -1;
+  if (peaks.length === 0) return null;
 
+  // Pick first peak above threshold (lowest frequency fundamental)
   let bestTau = -1;
   let bestVal = -Infinity;
   for (const p of peaks) {
@@ -173,6 +198,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     }
   }
 
+  // Fallback: strongest peak
   if (bestTau <= 0) {
     for (const p of peaks) {
       if (p.val > bestVal) {
@@ -182,10 +208,11 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
     }
   }
 
-  if (bestTau <= 0 || bestVal < 0.2) return -1;
+  if (bestTau <= 0 || bestVal < 0.25) return null;
 
+  // Parabolic interpolation for sub-sample precision
   let refinedTau = bestTau;
-  if (bestTau > 0 && bestTau < halfSize - 1) {
+  if (bestTau > minLag && bestTau < maxLag) {
     const prev = nsdf[bestTau - 1];
     const curr = nsdf[bestTau];
     const next = nsdf[bestTau + 1];
@@ -196,8 +223,9 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number): number {
   }
 
   const frequency = sampleRate / refinedTau;
-  if (frequency < 50 || frequency > 1400) return -1;
-  return frequency;
+  // Guitar range ~55Hz to ~1400Hz
+  if (frequency < 55 || frequency > 1400) return null;
+  return { frequency, confidence: bestVal };
 }
 
 function findClosestString(freq: number, strings: GuitarString[]): GuitarString | null {
@@ -244,6 +272,10 @@ export default function TunerPanel() {
   const [displayClosest, setDisplayClosest] = useState<GuitarString | null>(null);
   const holdTimerRef = useRef<number>(0);
   const smoothedFreqRef = useRef<number | null>(null);
+  // Frequency history buffer for median filtering / outlier rejection
+  const freqHistoryRef = useRef<number[]>([]);
+  const confidenceHistoryRef = useRef<number[]>([]);
+  const FREQ_HISTORY_SIZE = 5;
 
   useEffect(() => { selectedStringRef.current = selectedString; }, [selectedString]);
   useEffect(() => { selectedTuningRef.current = selectedTuning; }, [selectedTuning]);
@@ -295,6 +327,8 @@ export default function TunerPanel() {
     analyserRef.current = null;
     bufferRef.current = null;
     smoothedFreqRef.current = null;
+    freqHistoryRef.current = [];
+    confidenceHistoryRef.current = [];
     setIsListening(false);
     setFrequency(null);
     setNoteInfo(null);
@@ -318,16 +352,46 @@ export default function TunerPanel() {
       const ctx = new AudioContext();
 
       const source = ctx.createMediaStreamSource(stream);
+
+      // High-pass to remove sub-bass rumble
       const highPass = ctx.createBiquadFilter();
       highPass.type = 'highpass';
-      highPass.frequency.value = 40;
-      highPass.Q.value = 0.5;
+      highPass.frequency.value = 50;
+      highPass.Q.value = 0.71;
       source.connect(highPass);
+
+      // Notch out 50/60 Hz mains hum
+      const notch1 = ctx.createBiquadFilter();
+      notch1.type = 'notch';
+      notch1.frequency.value = 50;
+      notch1.Q.value = 12;
+      highPass.connect(notch1);
+
+      const notch2 = ctx.createBiquadFilter();
+      notch2.type = 'notch';
+      notch2.frequency.value = 60;
+      notch2.Q.value = 12;
+      notch1.connect(notch2);
+
+      // Mild boost in guitar fundamental range (80-500 Hz)
+      const midBoost = ctx.createBiquadFilter();
+      midBoost.type = 'peaking';
+      midBoost.frequency.value = 200;
+      midBoost.Q.value = 0.5;
+      midBoost.gain.value = 3;
+      notch2.connect(midBoost);
+
+      // Reduce high-frequency noise above guitar range
+      const lowPass = ctx.createBiquadFilter();
+      lowPass.type = 'lowpass';
+      lowPass.frequency.value = 4000;
+      lowPass.Q.value = 0.5;
+      midBoost.connect(lowPass);
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 8192;
       analyser.smoothingTimeConstant = 0;
-      highPass.connect(analyser);
+      lowPass.connect(analyser);
 
       audioCtxRef.current = ctx;
       analyserRef.current = analyser;
@@ -348,18 +412,73 @@ export default function TunerPanel() {
         (globalThis as any).__tunerRmsThreshold = rmsThreshold;
 
         analyserRef.current.getFloatTimeDomainData(bufferRef.current);
-        const rawFreq = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
+        const pitchResult = autoCorrelate(bufferRef.current, audioCtxRef.current.sampleRate);
 
-        if (rawFreq > 0) {
+        if (pitchResult) {
+          const { frequency: rawFreq, confidence } = pitchResult;
+
+          // ─── Outlier Rejection via Median Filter ───
+          const history = freqHistoryRef.current;
+          const confHistory = confidenceHistoryRef.current;
+
+          // Check if this reading is an outlier (octave jump, harmonic artifact)
+          let isOutlier = false;
+          if (history.length >= 3) {
+            // Compute median of recent readings
+            const sorted = [...history].sort((a, b) => a - b);
+            const median = sorted[Math.floor(sorted.length / 2)];
+            const ratio = rawFreq / median;
+            // Reject if more than ~4 semitones from median (ratio ~1.26)
+            // unless confidence is very high (strong new note)
+            if ((ratio > 1.28 || ratio < 0.78) && confidence < 0.7) {
+              isOutlier = true;
+            }
+            // Also reject likely octave errors (ratio near 2 or 0.5) with low confidence
+            if ((ratio > 1.9 && ratio < 2.1) || (ratio > 0.48 && ratio < 0.52)) {
+              if (confidence < 0.75) isOutlier = true;
+            }
+          }
+
+          if (isOutlier) {
+            // Skip this reading entirely
+            rafRef.current = requestAnimationFrame(detect);
+            return;
+          }
+
+          // Add to history buffer
+          history.push(rawFreq);
+          confHistory.push(confidence);
+          if (history.length > FREQ_HISTORY_SIZE) history.shift();
+          if (confHistory.length > FREQ_HISTORY_SIZE) confHistory.shift();
+
+          // ─── Confidence-Weighted Smoothing ───
           let freq = rawFreq;
           if (smoothedFreqRef.current !== null) {
             const ratio = rawFreq / smoothedFreqRef.current;
-            if (ratio > 0.97 && ratio < 1.03) {
-              freq = smoothedFreqRef.current * 0.75 + rawFreq * 0.25;
-            } else if (ratio > 0.93 && ratio < 1.07) {
-              freq = smoothedFreqRef.current * 0.5 + rawFreq * 0.5;
+            // Adaptive smoothing factor based on confidence and proximity
+            // High confidence + close to current = heavy smoothing (stable)
+            // Low confidence or far from current = less smoothing (responsive)
+            if (ratio > 0.96 && ratio < 1.04) {
+              // Very close: heavy smoothing weighted by confidence
+              const alpha = 0.15 + 0.15 * confidence; // 0.15-0.30
+              freq = smoothedFreqRef.current * (1 - alpha) + rawFreq * alpha;
+            } else if (ratio > 0.92 && ratio < 1.08) {
+              // Moderate change: medium smoothing
+              const alpha = 0.3 + 0.2 * confidence; // 0.30-0.50
+              freq = smoothedFreqRef.current * (1 - alpha) + rawFreq * alpha;
+            } else {
+              // Large change (new note): snap quickly if confident
+              if (confidence > 0.55) {
+                freq = rawFreq;
+                // Reset history for new note
+                freqHistoryRef.current = [rawFreq];
+                confidenceHistoryRef.current = [confidence];
+              } else {
+                freq = smoothedFreqRef.current * 0.4 + rawFreq * 0.6;
+              }
             }
           }
+
           smoothedFreqRef.current = freq;
           setFrequency(freq);
           const info = frequencyToNoteInfo(freq);
@@ -396,6 +515,8 @@ export default function TunerPanel() {
               setDisplayFreq(null);
               setDisplayClosest(null);
               smoothedFreqRef.current = null;
+              freqHistoryRef.current = [];
+              confidenceHistoryRef.current = [];
               holdTimerRef.current = 0;
             }, 400);
           }
