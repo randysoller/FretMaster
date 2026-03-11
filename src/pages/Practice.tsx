@@ -28,20 +28,20 @@ function getStoredSensitivity(): number {
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {
   return (
-    <div className="flex justify-center items-center min-h-[52px] sm:min-h-[60px] pointer-events-none">
+    <div className="flex justify-center items-center min-h-[32px] sm:min-h-[40px] pointer-events-none">
       <AnimatePresence>
         {result && (
           <motion.div
             key={result}
-            initial={{ opacity: 0, scale: 0.5, y: 10 }}
+            initial={{ opacity: 0, scale: 0.5, y: 6 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.7, y: -10 }}
+            exit={{ opacity: 0, scale: 0.7, y: -6 }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className="flex items-center justify-center"
           >
-            <div className={`px-8 py-3 sm:px-10 sm:py-4 rounded-2xl backdrop-blur-md border-2 ${result === 'correct' ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]' : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'}`}>
-              <span className={`font-display text-3xl sm:text-5xl font-extrabold uppercase tracking-wider ${result === 'correct' ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(0_84%_60%)]'}`}
-                style={{ textShadow: result === 'correct' ? '0 0 30px hsl(142 71% 45% / 0.5), 0 0 60px hsl(142 71% 45% / 0.2)' : '0 0 30px hsl(0 84% 60% / 0.5), 0 0 60px hsl(0 84% 60% / 0.2)' }}>
+            <div className={`px-5 py-1.5 sm:px-7 sm:py-2 rounded-2xl backdrop-blur-md border-2 ${result === 'correct' ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]' : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'}`}>
+              <span className={`font-display text-xl sm:text-2xl font-extrabold uppercase tracking-wider ${result === 'correct' ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(0_84%_60%)]'}`}
+                style={{ textShadow: result === 'correct' ? '0 0 20px hsl(142 71% 45% / 0.4), 0 0 40px hsl(142 71% 45% / 0.15)' : '0 0 20px hsl(0 84% 60% / 0.4), 0 0 40px hsl(0 84% 60% / 0.15)' }}>
                 {result === 'correct' ? 'Correct' : 'Wrong'}
               </span>
             </div>
@@ -243,18 +243,18 @@ export default function Practice() {
       {/* Main Practice Area */}
       <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
         <AnimatePresence mode="wait">
-          <motion.div key={`${chord.id}-${currentIndex}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex flex-col items-center gap-4 sm:gap-8 w-full max-w-lg">
+          <motion.div key={`${chord.id}-${currentIndex}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex flex-col items-center gap-2 sm:gap-4 w-full max-w-lg">
             <DetectionFeedback result={result} />
             <div className="text-center">
-              <h2 className="font-display text-4xl sm:text-7xl md:text-8xl font-extrabold text-[hsl(var(--text-default))] leading-none">{chord.symbol}</h2>
-              <p className="mt-1.5 sm:mt-3 font-body text-sm sm:text-lg text-[hsl(var(--text-muted))]">{chord.name}</p>
+              <h2 className="font-display text-3xl sm:text-5xl md:text-6xl font-extrabold text-[hsl(var(--text-default))] leading-none">{chord.symbol}</h2>
+              <p className="mt-1 sm:mt-2 font-body text-xs sm:text-base text-[hsl(var(--text-muted))]">{chord.name}</p>
             </div>
-            <div className="relative min-h-[200px] sm:min-h-[260px] flex items-center justify-center mt-2 sm:mt-6 w-full">
+            <div className="relative min-h-[180px] sm:min-h-[220px] flex items-center justify-center mt-1 sm:mt-3 w-full">
               <AnimatePresence mode="wait">
                 {showDiagrams ? (
                   <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-3 sm:gap-6 w-full">
-                    <div className="flex items-start gap-3 sm:gap-5 w-fit mx-auto max-w-[90vw] sm:max-w-none">
-                      <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis">
+                    <div className="flex items-start gap-2 sm:gap-4 w-fit mx-auto max-w-[90vw] sm:max-w-none">
+                      <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-2 sm:p-4 glow-emphasis">
                         {(chord as any).isCustom ? (
                           <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
                         ) : (
