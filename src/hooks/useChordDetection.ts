@@ -64,7 +64,7 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  const threshold = 0.50;
+  const threshold = 0.42; // Lowered for polyphonic guitar chords (multi-string)
   let bestTau = -1;
   let bestVal = -Infinity;
 
@@ -255,25 +255,33 @@ export function useChordDetection({
       notch2.Q.value = 10;
       notch1.connect(notch2);
 
-      // Mild boost in guitar fundamental range (80-500 Hz)
+      // Broader boost in guitar fundamental range (80-400 Hz)
       const midBoost = ctx.createBiquadFilter();
       midBoost.type = 'peaking';
-      midBoost.frequency.value = 220;
-      midBoost.Q.value = 0.6;
-      midBoost.gain.value = 4;
+      midBoost.frequency.value = 200;
+      midBoost.Q.value = 0.5;
+      midBoost.gain.value = 5;
       notch2.connect(midBoost);
 
-      // Reduce high-frequency string noise above guitar range
+      // Secondary boost for 2nd/3rd harmonic range (400-800 Hz)
+      const harmonicBoostFilter = ctx.createBiquadFilter();
+      harmonicBoostFilter.type = 'peaking';
+      harmonicBoostFilter.frequency.value = 500;
+      harmonicBoostFilter.Q.value = 0.7;
+      harmonicBoostFilter.gain.value = 3;
+      midBoost.connect(harmonicBoostFilter);
+
+      // Tighter low-pass: guitar useful harmonics are below 3kHz
       const lowPass = ctx.createBiquadFilter();
       lowPass.type = 'lowpass';
-      lowPass.frequency.value = 3500;
+      lowPass.frequency.value = 3000;
       lowPass.Q.value = 0.5;
-      midBoost.connect(lowPass);
+      harmonicBoostFilter.connect(lowPass);
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 16384;
-      // Lower smoothing for faster transient response
-      analyser.smoothingTimeConstant = 0.7;
+      // Balanced smoothing for harmonic clarity + transient response
+      analyser.smoothingTimeConstant = 0.65;
       lowPass.connect(analyser);
       analyserRef.current = analyser;
       timeDomainBufferRef.current = new Float32Array(analyser.fftSize);
@@ -524,7 +532,7 @@ function extractChroma(
   const chroma = new Float64Array(12);
   let totalEnergy = 0;
 
-  // Guitar range: ~70 Hz to ~2500 Hz (tighter upper bound reduces noise)
+  // Guitar range: ~70 Hz to ~2500 Hz
   const minBin = Math.floor(70 / binWidth);
   const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
 
@@ -545,6 +553,11 @@ function extractChroma(
     bandEnergies.push(count > 0 ? sum / count : 0.001);
   }
 
+  // Gaussian interpolation: spread bin energy to nearby pitch classes
+  // Prevents energy loss when notes fall between integer MIDI bins
+  const gaussSigma = 0.35; // semitones
+  const gaussDenom = 2 * gaussSigma * gaussSigma;
+
   for (let bin = minBin; bin < maxBin; bin++) {
     const db = freqData[bin];
     if (db < dbFloor) continue;
@@ -554,7 +567,7 @@ function extractChroma(
     if (freq < 65) continue;
 
     const midi = freqToMidi(freq);
-    const pc = ((Math.round(midi) % 12) + 12) % 12;
+    const fractionalPc = ((midi % 12) + 12) % 12; // fractional pitch class
 
     // Determine which octave band this falls in for normalization
     let bandIdx = 0;
@@ -563,37 +576,61 @@ function extractChroma(
     }
     const normFactor = bandEnergies[bandIdx] > 0.001 ? 1.0 / bandEnergies[bandIdx] : 1.0;
 
-    // Weight fundamentals more heavily than upper harmonics
-    let weight = 1.0;
-    if (freq <= 500) {
-      weight = 2.2;  // Strong weight on fundamentals
-    } else if (freq <= 1000) {
-      weight = 1.4;
-    } else {
-      weight = 0.5;  // Reduced weight on upper harmonics
-    }
+    // Smooth exponential frequency weighting (guitar fundamentals strongest)
+    const weight = Math.max(0.3, Math.min(2.5, Math.exp(-0.0012 * (freq - 100))));
 
     // Apply spectral whitening normalization (capped to prevent extreme values)
-    const normalizedMag = magnitude * Math.min(normFactor, 5.0);
-    chroma[pc] += normalizedMag * weight;
+    const normalizedMag = magnitude * Math.min(normFactor, 5.0) * weight;
+
+    // Distribute energy via Gaussian interpolation across nearby pitch classes
+    for (let pc = 0; pc < 12; pc++) {
+      let dist = Math.abs(fractionalPc - pc);
+      if (dist > 6) dist = 12 - dist; // wrap around circle
+      const gaussWeight = Math.exp(-(dist * dist) / gaussDenom);
+      if (gaussWeight > 0.01) {
+        chroma[pc] += normalizedMag * gaussWeight;
+      }
+    }
+
     totalEnergy += magnitude;
   }
 
   // Noise gate
   if (totalEnergy < noiseGateEnergy) return null;
 
-  // If NSDF detected a valid pitch, boost that pitch class modestly
+  // Harmonic series reinforcement:
+  // If a pitch class has energy AND its expected harmonics (3rd=+7, 5th=+4 semitones)
+  // also have energy, boost the fundamental — confirms it's a real played note
+  const harmonicReinforcement = new Float64Array(12);
+  for (let pc = 0; pc < 12; pc++) {
+    if (chroma[pc] < 0.01) continue;
+    const h3pc = (pc + 7) % 12; // 3rd harmonic (perfect 5th above)
+    const h5pc = (pc + 4) % 12; // 5th harmonic (major 3rd two octaves up)
+    const h3strength = chroma[h3pc];
+    const h5strength = chroma[h5pc];
+    // Reinforce fundamental when harmonics confirm it
+    harmonicReinforcement[pc] += (h3strength + h5strength) * 0.15;
+  }
+  for (let pc = 0; pc < 12; pc++) {
+    chroma[pc] += harmonicReinforcement[pc];
+  }
+
+  // NSDF pitch boost: reinforce detected fundamental AND its harmonic series
   if (nsdfPitch > 0) {
     const nsdfMidi = freqToMidi(nsdfPitch);
     const nsdfPc = ((Math.round(nsdfMidi) % 12) + 12) % 12;
     const maxChroma = Math.max(...chroma);
     if (maxChroma > 0) {
-      // Moderate boost to NSDF-confirmed fundamental (reduced from 0.7 to avoid false positives)
-      chroma[nsdfPc] += maxChroma * 0.35;
+      chroma[nsdfPc] += maxChroma * 0.30;
+      // Mildly boost expected harmonics of the NSDF fundamental
+      const h3 = (nsdfPc + 7) % 12;
+      const h5 = (nsdfPc + 4) % 12;
+      chroma[h3] += maxChroma * 0.10;
+      chroma[h5] += maxChroma * 0.08;
     }
   }
 
-  // Normalize chroma to [0, 1] range for more consistent matching
+  // Normalize chroma to [0, 1] range for consistent matching
   const maxVal = Math.max(...chroma);
   if (maxVal > 0) {
     for (let i = 0; i < 12; i++) {
@@ -618,50 +655,51 @@ function matchChroma(
   const t = (sensitivity - 1) / 9; // 0..1
 
   // Adaptive threshold based on the number of expected pitch classes
-  // Smaller chords (2-3 notes) need stricter matching; larger chords (5-6) can be more lenient
   const sizeBonus = Math.min((expected.size - 3) * 0.02, 0.06);
   const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus;
-  const matchRatioMin = lerp(0.72, 0.40, t);
+  const matchRatioMin = lerp(0.70, 0.38, t);
   const maxExtrasBase = lerp(2, 5, t);
 
-  // Chroma is already normalized to [0,1] from extractChroma
   const maxVal = Math.max(...chroma);
   if (maxVal < 0.01) return false;
 
-  const threshold = chromaThreshold;
   const detected = new Set<number>();
-  const detectedStrengths = new Map<number, number>();
   for (let i = 0; i < 12; i++) {
-    if (chroma[i] >= threshold) {
-      detected.add(i);
-      detectedStrengths.set(i, chroma[i]);
-    }
+    if (chroma[i] >= chromaThreshold) detected.add(i);
   }
 
-  // Weighted match: stronger detected notes count more
-  let weightedMatches = 0;
-  let totalWeight = 0;
-  for (const pc of expected) {
-    const strength = chroma[pc];
-    // Use the raw chroma value, not just binary presence
-    if (strength >= threshold * 0.6) {
-      // Partial credit for notes just below threshold
-      weightedMatches += Math.min(strength / threshold, 1.5);
-    }
-    totalWeight += 1;
-  }
-
-  const weightedRatio = totalWeight > 0 ? weightedMatches / totalWeight : 0;
-
-  // Also compute simple binary match ratio
+  // Binary match ratio
   let binaryMatches = 0;
   for (const pc of expected) {
     if (detected.has(pc)) binaryMatches++;
   }
   const binaryRatio = binaryMatches / expected.size;
 
-  // Use the higher of weighted and binary ratios
-  const effectiveRatio = Math.max(weightedRatio, binaryRatio);
+  // Weighted match: stronger detected notes get partial credit
+  let weightedMatches = 0;
+  for (const pc of expected) {
+    const strength = chroma[pc];
+    if (strength >= chromaThreshold * 0.6) {
+      weightedMatches += Math.min(strength / chromaThreshold, 1.5);
+    }
+  }
+  const weightedRatio = weightedMatches / expected.size;
+
+  // Cosine similarity between detected chroma and ideal chord template
+  // This captures the overall "shape" match, not just individual note presence
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < 12; i++) {
+    const templateVal = expected.has(i) ? 1.0 : 0;
+    dotProduct += chroma[i] * templateVal;
+    normA += chroma[i] * chroma[i];
+    normB += templateVal * templateVal;
+  }
+  const cosineSim = (normA > 0 && normB > 0) ? dotProduct / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+
+  // Use the best of all three metrics (cosine slightly scaled up as it's naturally lower)
+  const effectiveRatio = Math.max(weightedRatio, binaryRatio, cosineSim * 1.15);
 
   const extras = [...detected].filter((pc) => !expected.has(pc)).length;
   const maxExtras = Math.floor(maxExtrasBase) + expected.size;
