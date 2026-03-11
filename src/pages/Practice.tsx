@@ -21,7 +21,7 @@ function getStoredSensitivity(): number {
     const v = localStorage.getItem(SENSITIVITY_KEY);
     if (v) { const n = Number(v); if (n >= 1 && n <= 10) return n; }
   } catch {}
-  return 5;
+  return 6;
 }
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {

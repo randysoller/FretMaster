@@ -44,7 +44,7 @@ function persistFavorites(favs: Set<string>) {
 }
 
 function getStoredSensitivity(): number {
-  try { const v = localStorage.getItem(SENSITIVITY_KEY); if (v) { const n = Number(v); if (n >= 1 && n <= 10) return n; } } catch {} return 5;
+  try { const v = localStorage.getItem(SENSITIVITY_KEY); if (v) { const n = Number(v); if (n >= 1 && n <= 10) return n; } } catch {} return 6;
 }
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {

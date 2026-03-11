@@ -230,9 +230,9 @@ export default function TunerPanel() {
   const [inTuneConfirmed, setInTuneConfirmed] = useState(false);
   const [sensitivity, setSensitivity] = useState(() => {
     const saved = localStorage.getItem('tuner-mic-sensitivity');
-    return saved !== null ? Number(saved) : 50;
+    return saved !== null ? Number(saved) : 60;
   });
-  const sensitivityRef = useRef(50);
+  const sensitivityRef = useRef(60);
   const startedRef = useRef(false);
   const inTuneStartRef = useRef<number>(0);
   const inTuneSoundPlayedRef = useRef(false);
