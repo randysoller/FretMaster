@@ -39,7 +39,7 @@ export default function ShowDiagramsToggle({ enabled, onChange, compact = false 
       {enabled ? <Eye className="size-4 shrink-0" /> : <EyeOff className="size-4 shrink-0" />}
       {!compact && (
         <span className="text-xs font-display font-bold whitespace-nowrap">
-          {enabled ? 'Chord Diagrams On' : 'Chord Diagrams Off'}
+          {enabled ? 'Chord Diagram On' : 'Chord Diagram Off'}
         </span>
       )}
       {/* Sliding pill indicator */}
