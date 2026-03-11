@@ -9,7 +9,8 @@ import ChordDiagram from '@/components/features/ChordDiagram';
 import ChordTablature from '@/components/features/ChordTablature';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 
-import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal, EyeOff } from 'lucide-react';
+import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features/ShowDiagramsToggle';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
 import BeatSyncControls from '@/components/features/BeatSyncControls';
@@ -78,6 +79,7 @@ export default function Practice() {
   const { playChord } = useChordAudio();
 
   const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
+  const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
   const handleSensitivityChange = useCallback((v: number) => {
     setSensitivity(v);
     try { localStorage.setItem(SENSITIVITY_KEY, String(v)); } catch {}
@@ -157,6 +159,7 @@ export default function Practice() {
             <span className="text-[hsl(var(--border-default))]">·</span>
             <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{chordTypes.size === 0 ? 'All Types' : [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')}</span>
           </div>
+          <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} compact />
           <button onClick={toggleListening} title={isListening ? 'Stop listening' : 'Start listening'}
             className={`relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200 ${isListening ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
             {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
@@ -245,23 +248,34 @@ export default function Practice() {
               <p className="mt-1.5 sm:mt-3 font-body text-sm sm:text-lg text-[hsl(var(--text-muted))]">{chord.name}</p>
             </div>
             <div className="relative min-h-[200px] sm:min-h-[260px] flex items-center justify-center mt-2 sm:mt-6 w-full">
-              <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-3 sm:gap-6 w-full">
-                <div className="flex items-start gap-3 sm:gap-5 w-fit mx-auto max-w-[90vw] sm:max-w-none">
-                  <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis">
-                    {(chord as any).isCustom ? (
-                      <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
-                    ) : (
-                      <ChordDiagram chord={chord} size="lg" />
-                    )}
-                  </div>
-                  {!(chord as any).isCustom && (
-                    <div className="shrink-0 flex flex-col gap-3">
-                      <ChordTablature chord={chord} size="lg" />
+              <AnimatePresence mode="wait">
+                {showDiagrams ? (
+                  <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-3 sm:gap-6 w-full">
+                    <div className="flex items-start gap-3 sm:gap-5 w-fit mx-auto max-w-[90vw] sm:max-w-none">
+                      <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-3 sm:p-6 glow-emphasis">
+                        {(chord as any).isCustom ? (
+                          <CustomChordDiagram key={`custom-${chord.id}-${((chord as any).customBarres ?? []).length}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
+                        ) : (
+                          <ChordDiagram chord={chord} size="lg" />
+                        )}
+                      </div>
+                      {!(chord as any).isCustom && (
+                        <div className="shrink-0 flex flex-col gap-3">
+                          <ChordTablature chord={chord} size="lg" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-
-              </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div key="hidden-diagram" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-4">
+                    <div className="rounded-xl border-2 border-dashed border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-surface)/0.3)] px-12 sm:px-16 py-10 sm:py-14 flex flex-col items-center gap-3">
+                      <EyeOff className="size-10 sm:size-12 text-[hsl(var(--text-muted)/0.25)]" />
+                      <p className="text-sm font-body text-[hsl(var(--text-muted)/0.6)] text-center">Diagram hidden</p>
+                      <p className="text-xs font-body text-[hsl(var(--text-muted)/0.4)] text-center">Play by ear or toggle diagrams on</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         </AnimatePresence>

@@ -18,10 +18,11 @@ import { useChordAudio } from '@/hooks/useChordAudio';
 import { findChordInLibrary } from '@/stores/progressionStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Play, Music,
+  ArrowLeft, SkipForward, SkipBack, Eye, EyeOff, RotateCcw, Volume2, Play, Music,
   ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
   Save, FolderOpen, Upload, Check, Heart, KeyRound, Waves, ListMusic,
 } from 'lucide-react';
+import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features/ShowDiagramsToggle';
 
 // ─── Shared Detection UI ─────────────────────────────────
 
@@ -551,6 +552,7 @@ export default function ProgressionPractice() {
   const currentInfo = getCurrentChord();
 
   const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
+  const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
   const handleSensitivityChange = useCallback((v: number) => {
     setSensitivity(v);
     try { localStorage.setItem(SENSITIVITY_KEY, String(v)); } catch {}
@@ -650,6 +652,7 @@ export default function ProgressionPractice() {
               <Repeat className="size-3" />
               <span className="font-display font-bold text-[hsl(var(--color-primary))]">{loopCount}</span>
             </div>
+            <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} compact />
             <button onClick={toggleListening} title={isListening ? 'Stop listening' : 'Start listening'}
               className={`relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200 ${isListening ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
               {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
@@ -752,15 +755,10 @@ export default function ProgressionPractice() {
               </div>
               <div className="relative min-h-[260px] flex items-center justify-center">
                 <AnimatePresence mode="wait">
-                  {!isRevealed ? (
-                    <motion.div key="hidden" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-6">
-                      <div className="min-h-[180px] flex items-center justify-center">
-                        <div className="text-center text-[hsl(var(--text-muted))]"><Eye className="size-10 mx-auto mb-2 opacity-30" /><p className="text-sm font-body">Tap reveal to see the chord</p></div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="diagram" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
-                      {chord ? (
+                  {showDiagrams ? (
+                    /* Diagrams always visible mode */
+                    chord ? (
+                      <motion.div key="diagram-visible" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
                         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
                           {(chord as any).isCustom ? (
                             <CustomChordDiagram key={`custom-${chord.id}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
@@ -768,13 +766,40 @@ export default function ProgressionPractice() {
                             <ChordDiagram chord={chord} size="lg" />
                           )}
                         </div>
-                      ) : (
-                        <div className="rounded-xl border border-[hsl(var(--semantic-warning)/0.3)] bg-[hsl(var(--semantic-warning)/0.05)] p-8 text-center">
-                          <p className="text-sm font-body text-[hsl(var(--semantic-warning))]">No diagram available for {currentInfo.chordSymbol}</p>
-                          <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">This chord is not in your library</p>
-                        </div>
-                      )}
+                      </motion.div>
+                    ) : (
+                      <motion.div key="no-diagram" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-[hsl(var(--semantic-warning)/0.3)] bg-[hsl(var(--semantic-warning)/0.05)] p-8 text-center">
+                        <p className="text-sm font-body text-[hsl(var(--semantic-warning))]">No diagram available for {currentInfo.chordSymbol}</p>
+                        <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">This chord is not in your library</p>
+                      </motion.div>
+                    )
+                  ) : !isRevealed ? (
+                    /* Diagrams off + not revealed */
+                    <motion.div key="hidden" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-4">
+                      <div className="rounded-xl border-2 border-dashed border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-surface)/0.3)] px-12 sm:px-16 py-10 sm:py-14 flex flex-col items-center gap-3">
+                        <EyeOff className="size-10 sm:size-12 text-[hsl(var(--text-muted)/0.25)]" />
+                        <p className="text-sm font-body text-[hsl(var(--text-muted)/0.6)] text-center">Diagram hidden</p>
+                        <p className="text-xs font-body text-[hsl(var(--text-muted)/0.4)] text-center">Tap Reveal or toggle diagrams on</p>
+                      </div>
                     </motion.div>
+                  ) : (
+                    /* Diagrams off + revealed */
+                    chord ? (
+                      <motion.div key="diagram-revealed" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
+                        <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
+                          {(chord as any).isCustom ? (
+                            <CustomChordDiagram key={`custom-${chord.id}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
+                          ) : (
+                            <ChordDiagram chord={chord} size="lg" />
+                          )}
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="no-diagram-revealed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-[hsl(var(--semantic-warning)/0.3)] bg-[hsl(var(--semantic-warning)/0.05)] p-8 text-center">
+                        <p className="text-sm font-body text-[hsl(var(--semantic-warning))]">No diagram available for {currentInfo.chordSymbol}</p>
+                        <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">This chord is not in your library</p>
+                      </motion.div>
+                    )
                   )}
                 </AnimatePresence>
               </div>
