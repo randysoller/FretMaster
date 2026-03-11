@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useProgressionStore, type SavedProgression } from '@/stores/progressionStore';
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
@@ -510,6 +510,106 @@ function ProgressionTimeline({ chords, currentIndex }: { chords: { roman: string
   );
 }
 
+// ─── Progression Diagram Row (all chords at once) ────────
+
+function ProgressionDiagramRow({ chords, currentIndex }: { chords: ProgressionChordInfo[]; currentIndex: number }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to current chord on mobile
+  useLayoutEffect(() => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const currentEl = container.children[currentIndex] as HTMLElement | undefined;
+    if (!currentEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const elRect = currentEl.getBoundingClientRect();
+    const scrollLeft = currentEl.offsetLeft - containerRect.width / 2 + elRect.width / 2;
+    container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+  }, [currentIndex]);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 px-1 scrollbar-none sm:justify-center sm:flex-wrap"
+    >
+      {chords.map((pc, idx) => {
+        const isCurrent = idx === currentIndex;
+        const isPast = idx < currentIndex;
+        const cd = pc.chordData;
+
+        return (
+          <motion.div
+            key={`${pc.chordSymbol}-${idx}`}
+            animate={{
+              scale: isCurrent ? 1.05 : 1,
+              opacity: isCurrent ? 1 : isPast ? 0.55 : 0.7,
+            }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className={`shrink-0 flex flex-col items-center rounded-xl border transition-all duration-300 ${
+              isCurrent
+                ? 'border-[hsl(var(--color-primary)/0.7)] bg-[hsl(var(--color-primary)/0.08)] shadow-[0_0_20px_hsl(var(--color-primary)/0.15)]'
+                : isPast
+                  ? 'border-[hsl(var(--semantic-success)/0.25)] bg-[hsl(var(--semantic-success)/0.04)]'
+                  : 'border-[hsl(var(--border-subtle)/0.5)] bg-[hsl(var(--bg-elevated)/0.5)]'
+            } p-2 sm:p-3`}
+          >
+            {/* Roman numeral label */}
+            <span className={`text-[11px] sm:text-xs font-body mb-0.5 ${
+              isCurrent ? 'text-[hsl(var(--color-primary))]' : isPast ? 'text-[hsl(var(--semantic-success)/0.7)]' : 'text-[hsl(var(--text-muted))]'
+            }`}>
+              {pc.roman}
+            </span>
+
+            {/* Chord symbol */}
+            <span className={`text-sm sm:text-base font-display font-bold mb-1.5 ${
+              isCurrent ? 'text-[hsl(var(--color-primary))]' : isPast ? 'text-[hsl(var(--semantic-success))]' : 'text-[hsl(var(--text-subtle))]'
+            }`}>
+              {pc.chordSymbol}
+            </span>
+
+            {/* Chord diagram */}
+            {cd ? (
+              <div className={`rounded-lg bg-[hsl(var(--bg-elevated)/0.6)] p-1 sm:p-1.5 ${
+                isCurrent ? 'ring-1 ring-[hsl(var(--color-primary)/0.3)]' : ''
+              }`}>
+                {(cd as any).isCustom ? (
+                  <CustomChordDiagram
+                    chord={{
+                      id: cd.id, name: cd.name, symbol: cd.symbol, baseFret: cd.baseFret,
+                      numFrets: (cd as any).numFrets ?? 5,
+                      mutedStrings: new Set((cd as any).customMutedStrings ?? []),
+                      openStrings: new Set((cd as any).customOpenStrings ?? []),
+                      openDiamonds: new Set((cd as any).customOpenDiamonds ?? []),
+                      markers: (cd as any).customMarkers ?? [],
+                      barres: (cd as any).customBarres ?? [],
+                      createdAt: 0, updatedAt: 0,
+                    }}
+                    size="sm"
+                  />
+                ) : (
+                  <ChordDiagram chord={cd} size="sm" />
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center w-[100px] h-[100px] rounded-lg border border-dashed border-[hsl(var(--border-subtle)/0.4)] bg-[hsl(var(--bg-surface)/0.3)]">
+                <span className="text-[10px] font-body text-[hsl(var(--text-muted)/0.5)] text-center px-2">Not in library</span>
+              </div>
+            )}
+
+            {/* Current indicator dot */}
+            {isCurrent && (
+              <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[hsl(var(--color-primary))] animate-pulse" />
+            )}
+            {isPast && (
+              <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[hsl(var(--semantic-success)/0.5)]" />
+            )}
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────
 
 export default function ProgressionPractice() {
@@ -747,32 +847,22 @@ export default function ProgressionPractice() {
         <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
           <DetectionFeedback result={detectionResult} />
           <AnimatePresence mode="wait">
-            <motion.div key={`${currentInfo.chordSymbol}-${currentChordIndex}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex flex-col items-center gap-6">
+            <motion.div key={`${currentInfo.chordSymbol}-${currentChordIndex}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+              {/* Current chord name */}
               <div className="text-center">
                 <p className="font-body text-lg text-[hsl(var(--color-primary))] uppercase tracking-wider mb-1">{currentInfo.roman}</p>
                 <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold text-[hsl(var(--text-default))] leading-none">{currentInfo.chordSymbol}</h2>
                 <p className="mt-1 text-sm font-body text-[hsl(var(--text-muted))]">{currentChordIndex + 1} of {progressionChords.length}</p>
               </div>
-              <div className="relative min-h-[260px] flex items-center justify-center">
+
+              {/* Diagrams area */}
+              <div className="w-full flex items-center justify-center">
                 <AnimatePresence mode="wait">
                   {showDiagrams ? (
-                    /* Diagrams always visible mode */
-                    chord ? (
-                      <motion.div key="diagram-visible" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
-                        <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
-                          {(chord as any).isCustom ? (
-                            <CustomChordDiagram key={`custom-${chord.id}`} chord={{ id: chord.id, name: chord.name, symbol: chord.symbol, baseFret: chord.baseFret, numFrets: (chord as any).numFrets ?? 5, mutedStrings: new Set((chord as any).customMutedStrings ?? []), openStrings: new Set((chord as any).customOpenStrings ?? []), openDiamonds: new Set((chord as any).customOpenDiamonds ?? []), markers: (chord as any).customMarkers ?? [], barres: (chord as any).customBarres ?? [], createdAt: 0, updatedAt: 0 }} size="lg" />
-                          ) : (
-                            <ChordDiagram chord={chord} size="lg" />
-                          )}
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <motion.div key="no-diagram" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="rounded-xl border border-[hsl(var(--semantic-warning)/0.3)] bg-[hsl(var(--semantic-warning)/0.05)] p-8 text-center">
-                        <p className="text-sm font-body text-[hsl(var(--semantic-warning))]">No diagram available for {currentInfo.chordSymbol}</p>
-                        <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">This chord is not in your library</p>
-                      </motion.div>
-                    )
+                    /* All diagrams visible in progression order */
+                    <motion.div key="all-diagrams" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.35 }} className="w-full">
+                      <ProgressionDiagramRow chords={progressionChords} currentIndex={currentChordIndex} />
+                    </motion.div>
                   ) : !isRevealed ? (
                     /* Diagrams off + not revealed */
                     <motion.div key="hidden" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.25 }} className="flex flex-col items-center gap-4">
@@ -783,7 +873,7 @@ export default function ProgressionPractice() {
                       </div>
                     </motion.div>
                   ) : (
-                    /* Diagrams off + revealed */
+                    /* Diagrams off + revealed — show only current chord */
                     chord ? (
                       <motion.div key="diagram-revealed" initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col items-center gap-4">
                         <div className="rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.8)] backdrop-blur-sm p-6 glow-emphasis">
