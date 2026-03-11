@@ -165,6 +165,7 @@ export function useChordDetection({
   const sensitivityRef = useRef(sensitivity);
   const isListeningRef = useRef(false);
   const timeDomainBufferRef = useRef<Float32Array | null>(null);
+  const prevFreqDataRef = useRef<Float32Array | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
@@ -197,6 +198,7 @@ export function useChordDetection({
     }
     analyserRef.current = null;
     timeDomainBufferRef.current = null;
+    prevFreqDataRef.current = null;
     isListeningRef.current = false;
     setIsListening(false);
     setResult(null);
@@ -287,6 +289,31 @@ export function useChordDetection({
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
 
+        // ─── Spectral Flux: frame-to-frame spectral change ───
+        // Voice has high flux (shifting formants); guitar is stable after attack
+        let spectralFlux = -1; // -1 = no previous frame available
+        const prevFreq = prevFreqDataRef.current;
+        if (prevFreq && prevFreq.length === bufLen && audioContextRef.current) {
+          const sr = audioContextRef.current.sampleRate;
+          const ffts = analyserRef.current.fftSize;
+          const bw = sr / ffts;
+          const fMinBin = Math.floor(70 / bw);
+          const fMaxBin = Math.min(Math.ceil(2500 / bw), bufLen);
+          let flux = 0;
+          let fluxCount = 0;
+          for (let bin = fMinBin; bin < fMaxBin; bin++) {
+            const diff = freqData[bin] - prevFreq[bin];
+            if (diff > 0) flux += diff; // half-wave rectified (captures spectral onsets)
+            fluxCount++;
+          }
+          spectralFlux = fluxCount > 0 ? flux / fluxCount : 0;
+        }
+        // Always store current frame for next comparison
+        if (!prevFreqDataRef.current || prevFreqDataRef.current.length !== bufLen) {
+          prevFreqDataRef.current = new Float32Array(bufLen);
+        }
+        prevFreqDataRef.current.set(freqData);
+
         // Hard RMS silence gate on time-domain signal before any analysis
         let nsdfPitch = -1;
         if (timeDomainBufferRef.current) {
@@ -330,6 +357,17 @@ export function useChordDetection({
           // Spectrum too flat / voice-like — reject
           consecutiveMatches = 0;
           return;
+        }
+
+        // Spectral flux gate: reject signals with high frame-to-frame change
+        // Voice formants shift continuously → high flux; guitar is stable after attack → low flux
+        if (spectralFlux >= 0) {
+          const maxFlux = lerp(1.5, 3.5, t); // avg dB/bin; stricter at low sensitivity
+          if (spectralFlux > maxFlux) {
+            // High spectral instability — likely voice or other non-guitar source
+            consecutiveMatches = 0;
+            return;
+          }
         }
 
         const expected = getChordPitchClasses(chord);
