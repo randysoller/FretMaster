@@ -405,7 +405,7 @@ export function useChordDetection({
               onCorrectRef.current?.();
               setResult(null);
               cooldownRef.current = false;
-            }, 2000);
+            }, 1500);
           }
         } else {
           consecutiveMisses++;
