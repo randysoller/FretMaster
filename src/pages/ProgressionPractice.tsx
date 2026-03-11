@@ -5,7 +5,12 @@ import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } fro
 import { SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords, resolvePresetChordSymbols, KEY_SIGNATURES } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset, KeySignature } from '@/constants/scales';
 import { useChordDetection } from '@/hooks/useChordDetection';
-import type { DetectionResult } from '@/hooks/useChordDetection';
+import type { DetectionResult, AdvancedDetectionSettings } from '@/hooks/useChordDetection';
+import { useSessionStats } from '@/hooks/useSessionStats';
+import { useReferenceTone } from '@/hooks/useReferenceTone';
+import SessionSummary from '@/components/features/SessionSummary';
+import AdvancedDetectionSettingsPanel, { getStoredAdvancedSettings, getStoredAdvancedEnabled } from '@/components/features/AdvancedDetectionSettings';
+import type { AdvancedDetectionValues } from '@/components/features/AdvancedDetectionSettings';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 
@@ -20,7 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, EyeOff, RotateCcw, Volume2, Play, Music,
   ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
-  Save, FolderOpen, Upload, Check, Heart, KeyRound, Waves, ListMusic,
+  Save, FolderOpen, Upload, Check, Heart, KeyRound, Waves, ListMusic, Headphones,
 } from 'lucide-react';
 import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features/ShowDiagramsToggle';
 
@@ -655,10 +660,18 @@ export default function ProgressionPractice() {
 
   const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
   const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
+  const [advancedEnabled, setAdvancedEnabled] = useState(getStoredAdvancedEnabled);
+  const [advancedValues, setAdvancedValues] = useState<AdvancedDetectionValues>(() => getStoredAdvancedSettings() ?? { noiseGate: 50, harmonicBoost: 50, fluxTolerance: 50 });
+  const advancedSettings: AdvancedDetectionSettings | null = advancedEnabled ? advancedValues : null;
   const handleSensitivityChange = useCallback((v: number) => {
     setSensitivity(v);
     try { localStorage.setItem(SENSITIVITY_KEY, String(v)); } catch {}
   }, []);
+
+  // Session stats
+  const session = useSessionStats();
+  // Reference tone
+  const { playChordTone } = useReferenceTone();
 
   // Auto-set metronome BPM when a style progression is selected
   const handleStylePresetSelect = useCallback((preset: ProgressionPreset) => {
@@ -681,13 +694,15 @@ export default function ProgressionPractice() {
 
   const handleDetectionCorrect = useCallback(() => {
     const s = useProgressionStore.getState();
+    const ci = s.progressionChords[s.currentChordIndex];
+    if (ci) session.recordAttempt(ci.chordSymbol, ci.chordSymbol, 'correct');
     if (!s.isRevealed) revealChord();
     resetBeatCounter();
     nextChord();
-  }, [revealChord, nextChord]);
+  }, [revealChord, nextChord, session]);
 
   const { isListening, result: detectionResult, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true });
+    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true, advancedSettings });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {
@@ -724,10 +739,21 @@ export default function ProgressionPractice() {
     return () => { stopListening(); };
   }, [stopListening]);
 
-  const handleNext = () => { resetBeatCounter(); nextChord(); };
+  const handleNext = () => {
+    const ci = progressionChords[currentChordIndex];
+    if (ci) session.recordAttempt(ci.chordSymbol, ci.chordSymbol, 'skipped');
+    resetBeatCounter();
+    nextChord();
+  };
   const handlePrev = () => { resetBeatCounter(); prevChord(); };
-  const handleBack = () => { stopListening(); stopProgression(); };
-  const handleRestart = () => { resetBeatCounter(); startProgression(); };
+  const handleBack = () => {
+    if (session.attempts.length > 0) {
+      session.endSession();
+    } else {
+      stopListening(); stopProgression();
+    }
+  };
+  const handleRestart = () => { resetBeatCounter(); session.startSession(); startProgression(); };
 
   const resolvedChords = getResolvedChords();
   const hasChords = resolvedChords.length > 0;
@@ -741,6 +767,20 @@ export default function ProgressionPractice() {
 
     return (
       <div className="stage-gradient min-h-[calc(100vh-58px)] flex flex-col">
+        {/* Session Summary Overlay */}
+        <AnimatePresence>
+          {session.showSummary && (
+            <SessionSummary
+              summary={session.getSummary()}
+              onClose={() => {
+                session.dismissSummary();
+                stopListening();
+                stopProgression();
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
           <button onClick={handleBack} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-body text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] transition-colors">
@@ -793,6 +833,11 @@ export default function ProgressionPractice() {
             <SensitivitySlider value={sensitivity} onChange={handleSensitivityChange} />
           </div>
         )}
+
+        {/* Advanced Detection Settings */}
+        <div className="mx-4 sm:mx-6 mb-2">
+          <AdvancedDetectionSettingsPanel values={advancedValues} enabled={advancedEnabled} onChange={setAdvancedValues} onToggleEnabled={setAdvancedEnabled} />
+        </div>
 
         {/* Metronome status indicator */}
         {metronome.isPlaying && (() => {
@@ -910,9 +955,16 @@ export default function ProgressionPractice() {
                 <Eye className="size-5" /> Reveal Chord
               </button>
             ) : (
-              <button onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all">
-                <Volume2 className="size-5" /> Play Again
-              </button>
+              <>
+                <button onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all">
+                  <Volume2 className="size-5" /> Play Again
+                </button>
+                {chord && (
+                  <button onClick={() => { pauseDetection(3000); playChordTone(chord); }} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.18)] active:scale-95 transition-all" title="Reference Tone">
+                    <Headphones className="size-5" />
+                  </button>
+                )}
+              </>
             )}
             <button onClick={handleNext} className="flex items-center justify-center gap-1.5 rounded-xl min-h-[48px] px-5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary hover:bg-[hsl(var(--color-brand))] active:scale-95 transition-all">
               Next <SkipForward className="size-4" />

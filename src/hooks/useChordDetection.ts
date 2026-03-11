@@ -142,6 +142,12 @@ export type DetectionResult = 'correct' | 'wrong' | null;
 
 
 
+export interface AdvancedDetectionSettings {
+  noiseGate: number;       // 0-100
+  harmonicBoost: number;   // 0-100
+  fluxTolerance: number;   // 0-100
+}
+
 interface UseChordDetectionOptions {
   onCorrect?: () => void;
   targetChord?: ChordData | null;
@@ -149,7 +155,8 @@ interface UseChordDetectionOptions {
   sensitivity?: number;
   /** If true, auto-start listening on mount */
   autoStart?: boolean;
-
+  /** Optional advanced per-parameter overrides. When provided, overrides sensitivity-derived values. */
+  advancedSettings?: AdvancedDetectionSettings | null;
 }
 
 export function useChordDetection({
@@ -157,6 +164,7 @@ export function useChordDetection({
   targetChord,
   sensitivity = 6,
   autoStart = false,
+  advancedSettings = null,
 }: UseChordDetectionOptions) {
   const [isListening, setIsListening] = useState(false);
   const [result, setResult] = useState<DetectionResult>(null);
@@ -174,6 +182,7 @@ export function useChordDetection({
   const isListeningRef = useRef(false);
   const timeDomainBufferRef = useRef<Float32Array | null>(null);
   const prevFreqDataRef = useRef<Float32Array | null>(null);
+  const advancedSettingsRef = useRef(advancedSettings);
 
   // Keep refs in sync
   useEffect(() => {
@@ -190,6 +199,10 @@ export function useChordDetection({
   useEffect(() => {
     sensitivityRef.current = sensitivity;
   }, [sensitivity]);
+
+  useEffect(() => {
+    advancedSettingsRef.current = advancedSettings;
+  }, [advancedSettings]);
 
   const stopListening = useCallback(() => {
     if (intervalRef.current) {
@@ -313,6 +326,11 @@ export function useChordDetection({
 
         const sens = sensitivityRef.current;
         const t = (sens - 1) / 9; // 0..1 sensitivity normalization
+        const adv = advancedSettingsRef.current;
+        // Advanced per-parameter overrides
+        const tNoise = adv ? adv.noiseGate / 100 : t;
+        const tFlux = adv ? adv.fluxTolerance / 100 : t;
+        const effectiveSensForChroma = adv ? 1 + (adv.harmonicBoost / 100) * 9 : sens;
         const bufLen = analyserRef.current.frequencyBinCount;
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
@@ -346,7 +364,7 @@ export function useChordDetection({
         let nsdfPitch = -1;
         if (timeDomainBufferRef.current) {
           analyserRef.current.getFloatTimeDomainData(timeDomainBufferRef.current);
-          const rmsThreshold = lerp(0.018, 0.005, t);
+          const rmsThreshold = lerp(0.018, 0.005, tNoise);
           // Compute RMS over the buffer
           let rmsSum = 0;
           const buf = timeDomainBufferRef.current;
@@ -370,7 +388,7 @@ export function useChordDetection({
           return;
         }
 
-        const chroma = extractChroma(freqData, analyserRef.current, sens, nsdfPitch);
+        const chroma = extractChroma(freqData, analyserRef.current, effectiveSensForChroma, nsdfPitch);
         if (!chroma) {
           // No signal — reset counters
           consecutiveMatches = 0;
@@ -380,7 +398,7 @@ export function useChordDetection({
 
         // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
-        const minCrest = lerp(4.5, 2.5, t); // stricter at low sensitivity
+        const minCrest = lerp(4.5, 2.5, tNoise); // stricter at low sensitivity
         if (crestFactor < minCrest) {
           // Spectrum too flat / voice-like — reject
           consecutiveMatches = 0;
@@ -390,7 +408,7 @@ export function useChordDetection({
         // Spectral flux gate: reject signals with high frame-to-frame change
         // Voice formants shift continuously → high flux; guitar is stable after attack → low flux
         if (spectralFlux >= 0) {
-          const maxFlux = lerp(1.5, 3.5, t); // avg dB/bin; stricter at low sensitivity
+          const maxFlux = lerp(1.5, 3.5, tFlux); // avg dB/bin; stricter at low sensitivity
           if (spectralFlux > maxFlux) {
             // High spectral instability — likely voice or other non-guitar source
             consecutiveMatches = 0;
@@ -399,7 +417,7 @@ export function useChordDetection({
         }
 
         const expectedPc = getChordPitchClasses(chord);
-        const isMatch = matchChroma(chroma, expectedPc, sens);
+        const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma);
 
         if (isMatch) {
           consecutiveMatches++;
