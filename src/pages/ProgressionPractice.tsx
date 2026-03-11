@@ -752,7 +752,7 @@ export default function ProgressionPractice() {
               <Repeat className="size-3" />
               <span className="font-display font-bold text-[hsl(var(--color-primary))]">{loopCount}</span>
             </div>
-            <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} compact />
+            <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} />
             <button onClick={toggleListening} title={isListening ? 'Stop listening' : 'Start listening'}
               className={`relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200 ${isListening ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
               {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
