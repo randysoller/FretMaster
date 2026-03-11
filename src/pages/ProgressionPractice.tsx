@@ -22,10 +22,12 @@ import { getStyleStrumming, getCustomStrumPatterns } from '@/constants/strumming
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { findChordInLibrary } from '@/stores/progressionStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import CalibrationWizard from '@/components/features/CalibrationWizard';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, EyeOff, RotateCcw, Volume2, Play, Music,
   ChevronDown, X, Plus, Repeat, Trash2, Mic, MicOff, SlidersHorizontal,
   Save, FolderOpen, Upload, Check, Heart, KeyRound, Waves, ListMusic, Headphones,
+  BarChart3, Crosshair,
 } from 'lucide-react';
 import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features/ShowDiagramsToggle';
 
@@ -672,6 +674,8 @@ export default function ProgressionPractice() {
   const session = useSessionStats();
   // Reference tone
   const { playChordTone } = useReferenceTone();
+  // Calibration wizard
+  const [showCalibration, setShowCalibration] = useState(false);
 
   // Auto-set metronome BPM when a style progression is selected
   const handleStylePresetSelect = useCallback((preset: ProgressionPreset) => {
@@ -772,6 +776,7 @@ export default function ProgressionPractice() {
           {session.showSummary && (
             <SessionSummary
               summary={session.getSummary()}
+              mode="progression"
               onClose={() => {
                 session.dismissSummary();
                 stopListening();
@@ -780,6 +785,17 @@ export default function ProgressionPractice() {
             />
           )}
         </AnimatePresence>
+
+        {/* Calibration Wizard */}
+        <CalibrationWizard
+          open={showCalibration}
+          onClose={() => setShowCalibration(false)}
+          onApplyProfile={(p) => {
+            setAdvancedValues(p);
+            setAdvancedEnabled(true);
+            try { localStorage.setItem('fretmaster-advanced-enabled', 'true'); localStorage.setItem('fretmaster-advanced-detection', JSON.stringify(p)); } catch {}
+          }}
+        />
 
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
@@ -835,8 +851,14 @@ export default function ProgressionPractice() {
         )}
 
         {/* Advanced Detection Settings */}
-        <div className="mx-4 sm:mx-6 mb-2">
-          <AdvancedDetectionSettingsPanel values={advancedValues} enabled={advancedEnabled} onChange={setAdvancedValues} onToggleEnabled={setAdvancedEnabled} />
+        <div className="mx-4 sm:mx-6 mb-2 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <AdvancedDetectionSettingsPanel values={advancedValues} enabled={advancedEnabled} onChange={setAdvancedValues} onToggleEnabled={setAdvancedEnabled} />
+          </div>
+          <button onClick={() => setShowCalibration(true)} className="flex items-center gap-1 shrink-0 rounded-lg border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.06)] px-2.5 py-2 text-[10px] font-display font-bold text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.14)] transition-colors" title="Auto-Calibrate">
+            <Crosshair className="size-3.5" />
+            <span className="hidden sm:inline">Calibrate</span>
+          </button>
         </div>
 
         {/* Metronome status indicator */}
@@ -947,27 +969,28 @@ export default function ProgressionPractice() {
 
         {/* Fixed bottom toolbar */}
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated)/0.95)] backdrop-blur-md safe-area-bottom">
-          <div className="flex items-stretch gap-2 px-3 py-3 max-w-2xl mx-auto">
-            <button onClick={handlePrev} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Previous"><SkipBack className="size-5" /></button>
-            <button onClick={handleRestart} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Restart"><RotateCcw className="size-5" /></button>
+          <div className="flex items-stretch gap-1.5 sm:gap-2 px-2 sm:px-3 py-2.5 sm:py-3 max-w-2xl mx-auto">
+            <button onClick={handlePrev} className="flex items-center justify-center size-11 sm:size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Previous"><SkipBack className="size-4 sm:size-5" /></button>
+            <button onClick={handleRestart} className="flex items-center justify-center size-11 sm:size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Restart"><RotateCcw className="size-4 sm:size-5" /></button>
+            <button onClick={() => navigate('/history')} className="flex items-center justify-center size-11 sm:size-12 rounded-xl border border-[hsl(var(--border-default))] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-95 transition-all" title="Practice History"><BarChart3 className="size-4 sm:size-5" /></button>
             {!isRevealed ? (
-              <button onClick={() => { revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
-                <Eye className="size-5" /> Reveal Chord
+              <button onClick={() => { revealChord(); const c = getCurrentChord(); if (c?.chordData) playChord(c.chordData); }} className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl min-h-[44px] sm:min-h-[48px] bg-[hsl(var(--color-primary)/0.15)] text-[hsl(var(--color-primary))] font-display font-bold text-xs sm:text-sm border border-[hsl(var(--color-primary)/0.3)] hover:bg-[hsl(var(--color-primary)/0.25)] active:scale-[0.97] transition-all">
+                <Eye className="size-4 sm:size-5" /> <span className="hidden sm:inline">Reveal</span><span className="sm:hidden">Reveal</span>
               </button>
             ) : (
               <>
-                <button onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }} className="flex-1 flex items-center justify-center gap-2 rounded-xl min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all">
-                  <Volume2 className="size-5" /> Play Again
+                <button onClick={() => { pauseDetection(2000); if (chord) playChord(chord); }} className="flex-1 flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl min-h-[44px] sm:min-h-[48px] bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-body font-medium text-xs sm:text-sm border border-[hsl(var(--border-default))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))] active:scale-[0.97] transition-all" title="Play Again">
+                  <Volume2 className="size-4 sm:size-5" /> <span className="hidden sm:inline">Play Again</span>
                 </button>
                 {chord && (
-                  <button onClick={() => { pauseDetection(3000); playChordTone(chord); }} className="flex items-center justify-center size-12 rounded-xl border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.18)] active:scale-95 transition-all" title="Reference Tone">
-                    <Headphones className="size-5" />
+                  <button onClick={() => { pauseDetection(3000); playChordTone(chord); }} className="flex items-center justify-center size-11 sm:size-12 rounded-xl border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.08)] text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.18)] active:scale-95 transition-all" title="Reference Tone">
+                    <Headphones className="size-4 sm:size-5" />
                   </button>
                 )}
               </>
             )}
-            <button onClick={handleNext} className="flex items-center justify-center gap-1.5 rounded-xl min-h-[48px] px-5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-sm glow-primary hover:bg-[hsl(var(--color-brand))] active:scale-95 transition-all">
-              Next <SkipForward className="size-4" />
+            <button onClick={handleNext} className="flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl min-h-[44px] sm:min-h-[48px] px-3 sm:px-5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-xs sm:text-sm glow-primary hover:bg-[hsl(var(--color-brand))] active:scale-95 transition-all" title="Next">
+              <span className="hidden sm:inline">Next</span> <SkipForward className="size-4" />
             </button>
           </div>
         </div>

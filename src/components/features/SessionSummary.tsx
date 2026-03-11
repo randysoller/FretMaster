@@ -1,4 +1,6 @@
 import type { SessionSummary as SessionSummaryData } from '@/hooks/useSessionStats';
+import { usePracticeHistoryStore } from '@/stores/practiceHistoryStore';
+import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, Trophy, Clock, Target, Zap, TrendingUp, SkipForward, CheckCircle } from 'lucide-react';
 
@@ -22,11 +24,34 @@ function formatDuration(ms: number): string {
 interface SessionSummaryProps {
   summary: SessionSummaryData;
   onClose: () => void;
+  mode?: 'single' | 'progression';
 }
 
-export default function SessionSummary({ summary, onClose }: SessionSummaryProps) {
+export default function SessionSummary({ summary, onClose, mode = 'single' }: SessionSummaryProps) {
   const { attempts, totalCorrect, totalSkipped, accuracyRate, avgResponseTimeMs, fastestTimeMs, slowestTimeMs, totalDurationMs } = summary;
   const hasAttempts = attempts.length > 0;
+  const addSession = usePracticeHistoryStore((s) => s.addSession);
+
+  // Save to history on mount
+  const savedRef = useRef(false);
+  useEffect(() => {
+    if (hasAttempts && !savedRef.current) {
+      savedRef.current = true;
+      const chordSymbols = [...new Set(attempts.map((a) => a.chordSymbol))];
+      addSession({
+        date: Date.now(),
+        mode,
+        totalCorrect,
+        totalSkipped,
+        accuracyRate,
+        avgResponseTimeMs,
+        fastestTimeMs,
+        totalDurationMs,
+        attempts: attempts.map((a) => ({ chordSymbol: a.chordSymbol, chordName: a.chordName, result: a.result, timeMs: a.timeMs })),
+        chords: chordSymbols,
+      });
+    }
+  }, [hasAttempts]);
 
   return (
     <motion.div
