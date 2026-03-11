@@ -282,6 +282,7 @@ export function useChordDetection({
         if (!chord) return;
 
         const sens = sensitivityRef.current;
+        const t = (sens - 1) / 9; // 0..1 sensitivity normalization
         const bufLen = analyserRef.current.frequencyBinCount;
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
@@ -290,7 +291,6 @@ export function useChordDetection({
         let nsdfPitch = -1;
         if (timeDomainBufferRef.current) {
           analyserRef.current.getFloatTimeDomainData(timeDomainBufferRef.current);
-          const t = (sens - 1) / 9;
           const rmsThreshold = lerp(0.018, 0.005, t);
           // Compute RMS over the buffer
           let rmsSum = 0;
