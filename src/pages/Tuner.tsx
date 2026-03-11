@@ -1075,9 +1075,7 @@ export default function TunerPanel() {
                 <div className="flex items-center gap-2">
                   <Crosshair className="size-3.5 text-[hsl(var(--color-emphasis))]" />
                   <span className="text-[10px] font-display font-bold text-[hsl(var(--text-subtle))] uppercase tracking-wider">Calibration</span>
-                  {globalSettings.perStringCalibration.calibrated && (
-                    <span className="text-[9px] font-body font-medium bg-[hsl(var(--semantic-success)/0.15)] text-[hsl(var(--semantic-success))] rounded-full px-1.5 py-0.5">String-tuned</span>
-                  )}
+
                 </div>
                 <button
                   onClick={() => setShowCalibration(true)}

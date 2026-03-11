@@ -1,19 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePracticeHistoryStore, type CalibrationProfile } from '@/stores/practiceHistoryStore';
-import { useDetectionSettingsStore, type StringCalibration, type PerStringCalibration } from '@/stores/detectionSettingsStore';
+import { useDetectionSettingsStore } from '@/stores/detectionSettingsStore';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mic, Volume2, Check, ChevronRight, AlertCircle, Trash2, Upload, Zap, Guitar } from 'lucide-react';
+import { X, Mic, Volume2, Check, ChevronRight, AlertCircle, Trash2, Upload, Zap } from 'lucide-react';
 
-type WizardStep = 'intro' | 'silence' | 'strum' | 'strings' | 'results' | 'save';
-
-const OPEN_STRINGS = [
-  { index: 0, note: 'E2', display: 'E', freq: 82.41, stringNum: 6 },
-  { index: 1, note: 'A2', display: 'A', freq: 110.00, stringNum: 5 },
-  { index: 2, note: 'D3', display: 'D', freq: 146.83, stringNum: 4 },
-  { index: 3, note: 'G3', display: 'G', freq: 196.00, stringNum: 3 },
-  { index: 4, note: 'B3', display: 'B', freq: 246.94, stringNum: 2 },
-  { index: 5, note: 'E4', display: 'E', freq: 329.63, stringNum: 1 },
-];
+type WizardStep = 'intro' | 'silence' | 'strum' | 'results' | 'save';
 
 interface MeasuredData {
   noiseFloorRms: number;
@@ -39,74 +30,6 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
   );
 }
 
-// NSDF pitch detection for per-string measurement
-function detectPitchNSDF(buffer: Float32Array, sampleRate: number): { freq: number; confidence: number } | null {
-  const windowSize = Math.min(buffer.length, 4096);
-  const offset = Math.floor((buffer.length - windowSize) / 2);
-
-  let rms = 0;
-  for (let i = offset; i < offset + windowSize; i++) rms += buffer[i] * buffer[i];
-  rms = Math.sqrt(rms / windowSize);
-  if (rms < 0.005) return null;
-
-  const halfSize = Math.floor(windowSize / 2);
-  const windowed = new Float32Array(windowSize);
-  for (let i = 0; i < windowSize; i++) {
-    const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (windowSize - 1)));
-    windowed[i] = buffer[offset + i] * w;
-  }
-
-  const minLag = Math.max(1, Math.floor(sampleRate / 1500));
-  const maxLag = Math.min(halfSize - 1, Math.ceil(sampleRate / 55));
-
-  const nsdf = new Float32Array(halfSize);
-  for (let tau = minLag; tau <= maxLag; tau++) {
-    let acf = 0, divisor = 0;
-    const len = windowSize - tau;
-    for (let i = 0; i < len; i++) {
-      acf += windowed[i] * windowed[i + tau];
-      divisor += windowed[i] * windowed[i] + windowed[i + tau] * windowed[i + tau];
-    }
-    nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
-  }
-
-  let firstZero = minLag;
-  while (firstZero <= maxLag && nsdf[firstZero] > 0) firstZero++;
-
-  const peaks: { tau: number; val: number }[] = [];
-  let idx = firstZero;
-  while (idx <= maxLag) {
-    while (idx <= maxLag && nsdf[idx] <= 0) idx++;
-    let peakTau = idx, peakVal = nsdf[idx] ?? 0;
-    while (idx <= maxLag && nsdf[idx] > 0) {
-      if (nsdf[idx] > peakVal) { peakVal = nsdf[idx]; peakTau = idx; }
-      idx++;
-    }
-    if (peakVal >= 0.2) peaks.push({ tau: peakTau, val: peakVal });
-  }
-  if (peaks.length === 0) return null;
-
-  let bestTau = -1, bestVal = -Infinity;
-  for (const p of peaks) {
-    if (p.val >= 0.42) { bestTau = p.tau; bestVal = p.val; break; }
-  }
-  if (bestTau <= 0) {
-    for (const p of peaks) { if (p.val > bestVal) { bestVal = p.val; bestTau = p.tau; } }
-  }
-  if (bestTau <= 0 || bestVal < 0.25) return null;
-
-  let refinedTau = bestTau;
-  if (bestTau > minLag && bestTau < maxLag) {
-    const prev = nsdf[bestTau - 1], curr = nsdf[bestTau], next = nsdf[bestTau + 1];
-    const denom = 2 * (2 * curr - prev - next);
-    if (Math.abs(denom) > 1e-10) refinedTau = bestTau + (prev - next) / denom;
-  }
-
-  const freq = sampleRate / refinedTau;
-  if (freq < 55 || freq > 1400) return null;
-  return { freq, confidence: bestVal };
-}
-
 interface CalibrationWizardProps {
   open: boolean;
   onClose: () => void;
@@ -120,13 +43,6 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
   const [profileName, setProfileName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Per-string state
-  const [currentStringIndex, setCurrentStringIndex] = useState(0);
-  const [stringResults, setStringResults] = useState<(StringCalibration | null)[]>([null, null, null, null, null, null]);
-  const [stringMeasuring, setStringMeasuring] = useState(false);
-  const [stringCountdown, setStringCountdown] = useState(0);
-  const [stringDetectedFreq, setStringDetectedFreq] = useState<number | null>(null);
-
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -136,17 +52,8 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
   const fluxValuesRef = useRef<number[]>([]);
   const prevFreqRef = useRef<Float32Array | null>(null);
 
-  // Per-string measurement refs
-  const stringStreamRef = useRef<MediaStream | null>(null);
-  const stringCtxRef = useRef<AudioContext | null>(null);
-  const stringAnalyserRef = useRef<AnalyserNode | null>(null);
-  const stringIntervalRef = useRef<number>(0);
-  const stringFreqReadingsRef = useRef<number[]>([]);
-  const stringRmsReadingsRef = useRef<number[]>([]);
-  const stringCrestReadingsRef = useRef<number[]>([]);
-
   const { calibrationProfiles, addCalibrationProfile, deleteCalibrationProfile } = usePracticeHistoryStore();
-  const { applyCalibrationProfile, setPerStringCalibration } = useDetectionSettingsStore();
+  const { applyCalibrationProfile } = useDetectionSettingsStore();
 
   const cleanup = useCallback(() => {
     if (measureIntervalRef.current) { clearInterval(measureIntervalRef.current); measureIntervalRef.current = 0; }
@@ -156,28 +63,16 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
     prevFreqRef.current = null;
   }, []);
 
-  const cleanupString = useCallback(() => {
-    if (stringIntervalRef.current) { clearInterval(stringIntervalRef.current); stringIntervalRef.current = 0; }
-    if (stringStreamRef.current) { stringStreamRef.current.getTracks().forEach(t => t.stop()); stringStreamRef.current = null; }
-    if (stringCtxRef.current) { stringCtxRef.current.close(); stringCtxRef.current = null; }
-    stringAnalyserRef.current = null;
-  }, []);
-
   useEffect(() => {
     if (!open) {
       cleanup();
-      cleanupString();
       setStep('intro');
       setMeasured(null);
       setError(null);
       setMeasuring(false);
-      setCurrentStringIndex(0);
-      setStringResults([null, null, null, null, null, null]);
-      setStringMeasuring(false);
-      setStringDetectedFreq(null);
     }
-    return () => { cleanup(); cleanupString(); };
-  }, [open, cleanup, cleanupString]);
+    return () => { cleanup(); };
+  }, [open, cleanup]);
 
   const startMeasurement = useCallback(async (phase: 'silence' | 'strum') => {
     setError(null);
@@ -300,8 +195,7 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
               suggestedFluxTolerance,
             });
             cleanup();
-            // Now go to per-string step
-            setStep('strings');
+            setStep('results');
           }
         }
       }, 80);
@@ -313,230 +207,36 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
     }
   }, [cleanup, measured]);
 
-  // Per-string measurement
-  const measureString = useCallback(async (stringIdx: number) => {
-    setError(null);
-    setStringMeasuring(true);
-    setStringDetectedFreq(null);
-    stringFreqReadingsRef.current = [];
-    stringRmsReadingsRef.current = [];
-    stringCrestReadingsRef.current = [];
-
-    const targetString = OPEN_STRINGS[stringIdx];
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: { ideal: 48000 } },
-      });
-      stringStreamRef.current = stream;
-
-      const ctx = new AudioContext({ sampleRate: 48000 });
-      if (ctx.state === 'suspended') await ctx.resume();
-      stringCtxRef.current = ctx;
-
-      const source = ctx.createMediaStreamSource(stream);
-      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 50; hp.Q.value = 0.71;
-      source.connect(hp);
-
-      // Bandpass around the expected frequency range for this string (±1 octave)
-      const bp = ctx.createBiquadFilter();
-      bp.type = 'peaking';
-      bp.frequency.value = targetString.freq;
-      bp.Q.value = 0.5;
-      bp.gain.value = 4;
-      hp.connect(bp);
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 8192;
-      analyser.smoothingTimeConstant = 0.3;
-      bp.connect(analyser);
-      stringAnalyserRef.current = analyser;
-
-      const durationSec = 4;
-      let elapsed = 0;
-      setStringCountdown(durationSec);
-
-      const countdownInterval = setInterval(() => {
-        setStringCountdown(prev => {
-          if (prev <= 1) { clearInterval(countdownInterval); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-
-      stringIntervalRef.current = window.setInterval(() => {
-        if (!stringAnalyserRef.current || !stringCtxRef.current) return;
-        elapsed += 60;
-
-        const timeBuf = new Float32Array(stringAnalyserRef.current.fftSize);
-        stringAnalyserRef.current.getFloatTimeDomainData(timeBuf);
-
-        // RMS
-        let rmsSum = 0;
-        for (let i = 0; i < timeBuf.length; i++) rmsSum += timeBuf[i] * timeBuf[i];
-        const rms = Math.sqrt(rmsSum / timeBuf.length);
-
-        // Pitch detection
-        const pitchResult = detectPitchNSDF(timeBuf, stringCtxRef.current.sampleRate);
-
-        if (pitchResult && rms > 0.005) {
-          const { freq, confidence } = pitchResult;
-          // Only accept readings within ±1 octave of expected
-          const ratio = freq / targetString.freq;
-          if (ratio > 0.5 && ratio < 2.0 && confidence > 0.35) {
-            stringFreqReadingsRef.current.push(freq);
-            stringRmsReadingsRef.current.push(rms);
-            setStringDetectedFreq(freq);
-
-            // Compute crest for this frame
-            const freqBuf = new Float32Array(stringAnalyserRef.current.frequencyBinCount);
-            stringAnalyserRef.current.getFloatFrequencyData(freqBuf);
-            const sr = stringCtxRef.current.sampleRate;
-            const bw = sr / stringAnalyserRef.current.fftSize;
-            const minBin = Math.floor(70 / bw);
-            const maxBin = Math.min(Math.ceil(2500 / bw), freqBuf.length);
-            let sumLin = 0, maxLin = 0, count = 0;
-            for (let b = minBin; b < maxBin; b++) {
-              if (freqBuf[b] < -80) continue;
-              const lin = Math.pow(10, freqBuf[b] / 20);
-              sumLin += lin; if (lin > maxLin) maxLin = lin; count++;
-            }
-            if (count > 5 && sumLin > 0) {
-              stringCrestReadingsRef.current.push(maxLin / (sumLin / count));
-            }
-          }
-        }
-
-        if (elapsed >= durationSec * 1000) {
-          clearInterval(stringIntervalRef.current);
-          clearInterval(countdownInterval);
-          stringIntervalRef.current = 0;
-          setStringMeasuring(false);
-
-          const readings = stringFreqReadingsRef.current;
-          if (readings.length >= 5) {
-            // Use median frequency for robustness
-            const sorted = [...readings].sort((a, b) => a - b);
-            const medianFreq = sorted[Math.floor(sorted.length / 2)];
-            const avgRms = stringRmsReadingsRef.current.reduce((a, b) => a + b, 0) / stringRmsReadingsRef.current.length;
-            const avgCrest = stringCrestReadingsRef.current.length > 0
-              ? stringCrestReadingsRef.current.reduce((a, b) => a + b, 0) / stringCrestReadingsRef.current.length
-              : 3;
-            const centsOffset = Math.round(1200 * Math.log2(medianFreq / targetString.freq));
-
-            const cal: StringCalibration = {
-              measuredFreq: medianFreq,
-              signalStrength: avgRms,
-              crestFactor: avgCrest,
-              expectedFreq: targetString.freq,
-              centsOffset,
-            };
-
-            setStringResults(prev => {
-              const next = [...prev];
-              next[stringIdx] = cal;
-              return next;
-            });
-          } else {
-            // Not enough readings — mark as failed (null)
-            setStringResults(prev => {
-              const next = [...prev];
-              next[stringIdx] = null;
-              return next;
-            });
-            setError(`Could not detect ${targetString.note}. Try plucking louder.`);
-          }
-
-          cleanupString();
-          setStringDetectedFreq(null);
-        }
-      }, 60);
-    } catch (e) {
-      console.error('[Calibration] String mic error:', e);
-      setError('Microphone access denied.');
-      setStringMeasuring(false);
-      cleanupString();
-    }
-  }, [cleanupString]);
-
-  const handleSkipStrings = useCallback(() => {
-    setStep('results');
-  }, []);
-
-  const handleFinishStrings = useCallback(() => {
-    setStep('results');
-  }, []);
-
-  // Derive per-string calibration from results
-  const deriveStringCalibration = useCallback((): PerStringCalibration | null => {
-    const validStrings = stringResults.filter((s): s is StringCalibration => s !== null);
-    if (validStrings.length === 0) return null;
-
-    const weakestRms = Math.min(...validStrings.map(s => s.signalStrength));
-    const avgCrest = validStrings.reduce((sum, s) => sum + s.crestFactor, 0) / validStrings.length;
-
-    // Derive optimal RMS threshold: slightly below weakest string signal
-    const derivedRmsThreshold = Math.max(0.003, weakestRms * 0.4);
-
-    // Derive harmonic sensitivity: higher crest = sharper harmonics = can use lower sensitivity
-    const derivedHarmonicSensitivity = Math.round(
-      Math.min(85, Math.max(20, avgCrest > 6 ? 35 : avgCrest > 4 ? 50 : avgCrest > 3 ? 65 : 75))
-    );
-
-    return {
-      strings: stringResults,
-      calibrated: true,
-      derivedRmsThreshold,
-      derivedHarmonicSensitivity,
-    };
-  }, [stringResults]);
-
   const handleSave = useCallback(() => {
     if (!measured || !profileName.trim()) return;
-
-    // Factor in per-string data to adjust harmonic boost
-    const stringCal = deriveStringCalibration();
-    const finalHarmonicBoost = stringCal
-      ? Math.round((measured.suggestedHarmonicBoost + stringCal.derivedHarmonicSensitivity) / 2)
-      : measured.suggestedHarmonicBoost;
 
     addCalibrationProfile({
       name: profileName.trim(),
       createdAt: Date.now(),
       noiseGate: measured.suggestedNoiseGate,
-      harmonicBoost: finalHarmonicBoost,
+      harmonicBoost: measured.suggestedHarmonicBoost,
       fluxTolerance: measured.suggestedFluxTolerance,
       noiseFloorRms: measured.noiseFloorRms,
       signalRms: measured.signalRms,
     });
     applyCalibrationProfile({
       noiseGate: measured.suggestedNoiseGate,
-      harmonicBoost: finalHarmonicBoost,
+      harmonicBoost: measured.suggestedHarmonicBoost,
       fluxTolerance: measured.suggestedFluxTolerance,
     });
-    if (stringCal) {
-      setPerStringCalibration(stringCal);
-    }
     onClose();
-  }, [measured, profileName, addCalibrationProfile, applyCalibrationProfile, setPerStringCalibration, deriveStringCalibration, onClose]);
+  }, [measured, profileName, addCalibrationProfile, applyCalibrationProfile, onClose]);
 
   const handleApplyWithoutSave = useCallback(() => {
     if (!measured) return;
 
-    const stringCal = deriveStringCalibration();
-    const finalHarmonicBoost = stringCal
-      ? Math.round((measured.suggestedHarmonicBoost + stringCal.derivedHarmonicSensitivity) / 2)
-      : measured.suggestedHarmonicBoost;
-
     applyCalibrationProfile({
       noiseGate: measured.suggestedNoiseGate,
-      harmonicBoost: finalHarmonicBoost,
+      harmonicBoost: measured.suggestedHarmonicBoost,
       fluxTolerance: measured.suggestedFluxTolerance,
     });
-    if (stringCal) {
-      setPerStringCalibration(stringCal);
-    }
     onClose();
-  }, [measured, applyCalibrationProfile, setPerStringCalibration, deriveStringCalibration, onClose]);
+  }, [measured, applyCalibrationProfile, onClose]);
 
   const handleLoadProfile = useCallback((profile: CalibrationProfile) => {
     applyCalibrationProfile({
@@ -549,9 +249,7 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
 
   if (!open) return null;
 
-  const stepIndex = { intro: 0, silence: 1, strum: 2, strings: 3, results: 4, save: 4 }[step];
-  const currentString = OPEN_STRINGS[currentStringIndex];
-  const completedStrings = stringResults.filter(s => s !== null).length;
+  const stepIndex = { intro: 0, silence: 1, strum: 2, results: 3, save: 3 }[step];
 
   return (
     <motion.div
@@ -583,7 +281,7 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
               <X className="size-4" />
             </button>
           </div>
-          <StepIndicator current={stepIndex} total={5} />
+          <StepIndicator current={stepIndex} total={4} />
         </div>
 
         {error && (
@@ -601,13 +299,12 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
                 <div className="text-center py-2">
                   <Mic className="size-12 mx-auto mb-3 text-[hsl(var(--color-primary)/0.5)]" />
                   <h3 className="font-display text-base font-bold text-[hsl(var(--text-default))] mb-1.5">Auto-Tune Detection Settings</h3>
-                  <p className="text-sm font-body text-[hsl(var(--text-muted))] leading-relaxed">This wizard measures your environment, guitar signal, and individual string response to find optimal settings. Applies globally to all practice pages and the tuner.</p>
+                  <p className="text-sm font-body text-[hsl(var(--text-muted))] leading-relaxed">This wizard measures your environment and guitar signal to find optimal detection settings. Applies globally to all practice pages and the tuner.</p>
                 </div>
                 <div className="space-y-2 text-sm font-body text-[hsl(var(--text-subtle))]">
                   <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">1.</span> Measure silence (3 seconds)</div>
                   <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">2.</span> Strum your guitar (5 seconds)</div>
-                  <div className="flex items-start gap-2"><span className="font-display font-bold text-cyan-400 shrink-0">3.</span> Play each open string (4s each)</div>
-                  <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">4.</span> Review and save optimized settings</div>
+                  <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">3.</span> Review and save optimized settings</div>
                 </div>
 
                 {calibrationProfiles.length > 0 && (
@@ -700,176 +397,7 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
               </motion.div>
             )}
 
-            {/* Step 4: Per-string measurement */}
-            {step === 'strings' && (
-              <motion.div key="strings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-                <div className="text-center">
-                  <div className="flex items-center justify-center size-14 mx-auto rounded-full bg-cyan-500/10 border-2 border-cyan-500/30 mb-2">
-                    <Guitar className="size-7 text-cyan-400" />
-                  </div>
-                  <h3 className="font-display text-base font-bold text-[hsl(var(--text-default))] mb-1">Per-String Calibration</h3>
-                  <p className="text-xs font-body text-[hsl(var(--text-muted))] leading-relaxed">
-                    Play each open string individually. This measures how your guitar responds at each frequency to fine-tune harmonic detection.
-                  </p>
-                </div>
-
-                {/* String grid */}
-                <div className="grid grid-cols-6 gap-1.5">
-                  {OPEN_STRINGS.map((s, i) => {
-                    const result = stringResults[i];
-                    const isCurrent = i === currentStringIndex;
-                    const isCompleted = result !== null;
-                    const isInTune = result && Math.abs(result.centsOffset) <= 10;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => { setCurrentStringIndex(i); setError(null); }}
-                        disabled={stringMeasuring}
-                        className={`flex flex-col items-center rounded-lg py-2 px-1 border transition-all duration-200 ${
-                          isCurrent && !isCompleted
-                            ? 'border-cyan-400/60 bg-cyan-500/10 ring-1 ring-cyan-400/30'
-                            : isCompleted
-                              ? isInTune
-                                ? 'border-[hsl(var(--semantic-success)/0.4)] bg-[hsl(var(--semantic-success)/0.08)]'
-                                : 'border-amber-400/40 bg-amber-500/8'
-                              : 'border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg-surface))] hover:bg-[hsl(var(--bg-overlay))]'
-                        } ${stringMeasuring ? 'opacity-60' : ''}`}
-                      >
-                        {/* String gauge */}
-                        <div className="w-full flex justify-center mb-1">
-                          <div
-                            className="rounded-full"
-                            style={{
-                              width: '60%',
-                              height: [2, 2.5, 3, 4, 5, 6][i],
-                              background: isCompleted
-                                ? isInTune
-                                  ? 'linear-gradient(180deg, hsl(142 71% 58%), hsl(142 71% 38%), hsl(142 71% 58%))'
-                                  : 'linear-gradient(180deg, hsl(45 93% 60%), hsl(45 93% 40%), hsl(45 93% 60%))'
-                                : isCurrent
-                                  ? 'linear-gradient(180deg, hsl(190 80% 60%), hsl(190 80% 40%), hsl(190 80% 60%))'
-                                  : 'linear-gradient(180deg, hsl(40 22% 72%), hsl(33 14% 52%), hsl(40 22% 72%))',
-                            }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-body text-[hsl(var(--text-muted))]">Str {s.stringNum}</span>
-                        <span className={`text-sm font-display font-bold ${
-                          isCompleted
-                            ? isInTune ? 'text-[hsl(var(--semantic-success))]' : 'text-amber-400'
-                            : isCurrent ? 'text-cyan-400' : 'text-[hsl(var(--text-default))]'
-                        }`}>{s.display}</span>
-                        {isCompleted && (
-                          <span className={`text-[9px] font-display font-bold tabular-nums ${isInTune ? 'text-[hsl(var(--semantic-success))]' : 'text-amber-400'}`}>
-                            {result.centsOffset > 0 ? '+' : ''}{result.centsOffset}c
-                          </span>
-                        )}
-                        {!isCompleted && isCurrent && !stringMeasuring && (
-                          <span className="text-[9px] font-body text-cyan-400">Ready</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Current string measurement */}
-                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 text-center">
-                  {stringMeasuring ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="font-display text-2xl font-extrabold text-cyan-400">{currentString.note}</span>
-                        <span className="font-display text-3xl font-extrabold text-cyan-300">{stringCountdown}</span>
-                      </div>
-                      <p className="text-sm font-body text-[hsl(var(--text-muted))]">Play the {currentString.note} string now...</p>
-                      {stringDetectedFreq !== null && (
-                        <div className="flex items-center justify-center gap-3">
-                          <span className="text-xs font-body text-[hsl(var(--text-muted))]">Detected:</span>
-                          <span className="font-display text-lg font-bold text-cyan-400 tabular-nums">{stringDetectedFreq.toFixed(1)} Hz</span>
-                          <span className="text-xs font-body text-[hsl(var(--text-muted))]">Target: {currentString.freq.toFixed(1)} Hz</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-center gap-1">
-                        {[0,1,2,3,4].map((i) => (
-                          <motion.div key={i} className="w-1 rounded-full bg-cyan-400" animate={{ height: [6, 20, 6] }} transition={{ duration: 0.65, repeat: Infinity, delay: i * 0.09 }} />
-                        ))}
-                      </div>
-                    </div>
-                  ) : stringResults[currentStringIndex] ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2">
-                        <Check className="size-5 text-[hsl(var(--semantic-success))]" />
-                        <span className="font-display text-base font-bold text-[hsl(var(--text-default))]">{currentString.note} Measured</span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <p className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">Frequency</p>
-                          <p className="text-sm font-display font-bold text-cyan-400 tabular-nums">{stringResults[currentStringIndex]!.measuredFreq.toFixed(1)} Hz</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">Offset</p>
-                          <p className={`text-sm font-display font-bold tabular-nums ${Math.abs(stringResults[currentStringIndex]!.centsOffset) <= 10 ? 'text-[hsl(var(--semantic-success))]' : 'text-amber-400'}`}>
-                            {stringResults[currentStringIndex]!.centsOffset > 0 ? '+' : ''}{stringResults[currentStringIndex]!.centsOffset}c
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">Strength</p>
-                          <p className="text-sm font-display font-bold text-[hsl(var(--text-default))] tabular-nums">{(stringResults[currentStringIndex]!.signalStrength * 1000).toFixed(1)}</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => measureString(currentStringIndex)}
-                        className="text-xs font-body text-cyan-400 hover:underline"
-                      >
-                        Re-measure this string
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <p className="text-sm font-body text-[hsl(var(--text-muted))]">
-                        Play the <span className="font-display font-bold text-cyan-400">{currentString.note}</span> string (String {currentString.stringNum}, {currentString.freq.toFixed(1)} Hz)
-                      </p>
-                      <button
-                        onClick={() => measureString(currentStringIndex)}
-                        className="w-full rounded-xl py-3 bg-cyan-500 text-white font-display font-bold text-sm hover:bg-cyan-600 active:scale-[0.97] transition-all"
-                      >
-                        Measure {currentString.note}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Auto-advance to next unmeasured string */}
-                {stringResults[currentStringIndex] !== null && !stringMeasuring && (() => {
-                  const nextUnmeasured = OPEN_STRINGS.findIndex((_, i) => i > currentStringIndex && stringResults[i] === null);
-                  if (nextUnmeasured >= 0) {
-                    return (
-                      <button
-                        onClick={() => { setCurrentStringIndex(nextUnmeasured); setError(null); }}
-                        className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-subtle))] font-display font-bold text-sm border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-all"
-                      >
-                        Next: {OPEN_STRINGS[nextUnmeasured].note} <ChevronRight className="size-4" />
-                      </button>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* Footer actions */}
-                <div className="flex gap-2 pt-1">
-                  <button onClick={handleSkipStrings} className="flex-1 rounded-xl py-2.5 bg-[hsl(var(--bg-surface))] text-[hsl(var(--text-muted))] font-display font-bold text-xs border border-[hsl(var(--border-default))] hover:bg-[hsl(var(--bg-overlay))] transition-all">
-                    Skip
-                  </button>
-                  <button
-                    onClick={handleFinishStrings}
-                    disabled={completedStrings === 0}
-                    className="flex-1 rounded-xl py-2.5 bg-[hsl(var(--color-primary))] text-[hsl(var(--bg-base))] font-display font-bold text-xs hover:bg-[hsl(var(--color-brand))] disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
-                  >
-                    Continue ({completedStrings}/6)
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Step 5: Results */}
+            {/* Step 4: Results */}
             {(step === 'results' || step === 'save') && measured && (
               <motion.div key="results" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="text-center">
@@ -891,35 +419,6 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
                   </div>
                 </div>
 
-                {/* Per-string results */}
-                {completedStrings > 0 && (
-                  <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
-                    <h4 className="text-xs font-display font-bold text-cyan-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Guitar className="size-3.5" /> Per-String Response
-                    </h4>
-                    <div className="grid grid-cols-6 gap-1">
-                      {OPEN_STRINGS.map((s, i) => {
-                        const r = stringResults[i];
-                        return (
-                          <div key={i} className="text-center">
-                            <span className="text-[10px] font-display font-bold text-[hsl(var(--text-default))]">{s.display}</span>
-                            {r ? (
-                              <>
-                                <p className={`text-[9px] font-display font-bold tabular-nums ${Math.abs(r.centsOffset) <= 10 ? 'text-[hsl(var(--semantic-success))]' : 'text-amber-400'}`}>
-                                  {r.centsOffset > 0 ? '+' : ''}{r.centsOffset}c
-                                </p>
-                                <p className="text-[8px] font-body text-[hsl(var(--text-muted))] tabular-nums">{(r.signalStrength * 1000).toFixed(0)}</p>
-                              </>
-                            ) : (
-                              <p className="text-[9px] font-body text-[hsl(var(--text-muted))]">—</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                   <h4 className="text-xs font-display font-bold text-[hsl(var(--text-muted))] uppercase tracking-wider">Optimized Settings</h4>
                   <div className="flex items-center justify-between rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2">
@@ -928,15 +427,7 @@ export default function CalibrationWizard({ open, onClose }: CalibrationWizardPr
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-cyan-500/8 border border-cyan-500/20 px-3 py-2">
                     <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Harmonic Sensitivity</span>
-                    <span className="font-display text-sm font-bold text-cyan-400">
-                      {(() => {
-                        const stringCal = deriveStringCalibration();
-                        return stringCal
-                          ? Math.round((measured.suggestedHarmonicBoost + stringCal.derivedHarmonicSensitivity) / 2)
-                          : measured.suggestedHarmonicBoost;
-                      })()}%
-                      {completedStrings > 0 && <span className="text-[9px] text-cyan-400/60 ml-1">(string-tuned)</span>}
-                    </span>
+                    <span className="font-display text-sm font-bold text-cyan-400">{measured.suggestedHarmonicBoost}%</span>
                   </div>
                   <div className="flex items-center justify-between rounded-lg bg-violet-500/8 border border-violet-500/20 px-3 py-2">
                     <span className="text-xs font-body text-[hsl(var(--text-subtle))]">Flux Tolerance</span>

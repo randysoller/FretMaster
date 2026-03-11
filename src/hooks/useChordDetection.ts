@@ -312,7 +312,7 @@ export function useChordDetection({
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
-      const MATCH_THRESHOLD = 3;    // Need 3 consecutive matches (~210ms) to confirm
+      const MATCH_THRESHOLD = 2;    // Need 2 consecutive matches (~140ms) to confirm
       const MISS_THRESHOLD = 3;     // Need 3 consecutive misses to show wrong
 
       // Analysis loop at ~14 Hz for faster response
@@ -380,13 +380,10 @@ export function useChordDetection({
           nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
         }
 
-        // Voice rejection: require NSDF to find a clean periodic signal
-        // Guitar produces clean pitched tones; voice is quasi-periodic with lower NSDF peaks
-        if (nsdfPitch <= 0) {
-          // No clean pitch detected — likely noise or voice, skip
-          consecutiveMatches = 0;
-          return;
-        }
+        // NSDF pitch is a bonus signal for chroma extraction, NOT a hard gate.
+        // Polyphonic chords (multiple simultaneous strings) often don't produce
+        // a single clean periodic signal, so gating on NSDF rejects valid chords.
+        // Voice rejection relies on crest factor + spectral flux instead.
 
         const chroma = extractChroma(freqData, analyserRef.current, effectiveSensForChroma, nsdfPitch);
         if (!chroma) {
@@ -398,7 +395,7 @@ export function useChordDetection({
 
         // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
-        const minCrest = lerp(4.5, 2.5, tNoise); // stricter at low sensitivity
+        const minCrest = lerp(3.0, 1.5, tNoise); // lower threshold allows polyphonic chords through
         if (crestFactor < minCrest) {
           // Spectrum too flat / voice-like — reject
           consecutiveMatches = 0;
