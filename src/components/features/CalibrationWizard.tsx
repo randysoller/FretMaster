@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { usePracticeHistoryStore, type CalibrationProfile } from '@/stores/practiceHistoryStore';
+import { useDetectionSettingsStore } from '@/stores/detectionSettingsStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, Volume2, Check, ChevronRight, AlertCircle, Trash2, Upload, Zap } from 'lucide-react';
 
@@ -32,10 +33,9 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 interface CalibrationWizardProps {
   open: boolean;
   onClose: () => void;
-  onApplyProfile: (profile: { noiseGate: number; harmonicBoost: number; fluxTolerance: number }) => void;
 }
 
-export default function CalibrationWizard({ open, onClose, onApplyProfile }: CalibrationWizardProps) {
+export default function CalibrationWizard({ open, onClose }: CalibrationWizardProps) {
   const [step, setStep] = useState<WizardStep>('intro');
   const [measuring, setMeasuring] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -53,6 +53,7 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
   const prevFreqRef = useRef<Float32Array | null>(null);
 
   const { calibrationProfiles, addCalibrationProfile, deleteCalibrationProfile } = usePracticeHistoryStore();
+  const applyCalibrationProfile = useDetectionSettingsStore((s) => s.applyCalibrationProfile);
 
   const cleanup = useCallback(() => {
     if (measureIntervalRef.current) { clearInterval(measureIntervalRef.current); measureIntervalRef.current = 0; }
@@ -106,12 +107,10 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
         });
       }, 1000);
 
-      // Collect samples
       measureIntervalRef.current = window.setInterval(() => {
         if (!analyserRef.current || !ctxRef.current) return;
         elapsed += 80;
 
-        // RMS from time domain
         const timeBuf = new Float32Array(analyserRef.current.fftSize);
         analyserRef.current.getFloatTimeDomainData(timeBuf);
         let rmsSum = 0;
@@ -119,7 +118,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
         const rms = Math.sqrt(rmsSum / timeBuf.length);
         rmsValuesRef.current.push(rms);
 
-        // Frequency data for crest and flux
         const freqBuf = new Float32Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getFloatFrequencyData(freqBuf);
         const sr = ctxRef.current.sampleRate;
@@ -127,7 +125,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
         const minBin = Math.floor(70 / bw);
         const maxBin = Math.min(Math.ceil(2500 / bw), freqBuf.length);
 
-        // Spectral crest
         let sumLin = 0, maxLin = 0, count = 0;
         for (let b = minBin; b < maxBin; b++) {
           if (freqBuf[b] < -80) continue;
@@ -138,7 +135,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
           crestValuesRef.current.push(maxLin / (sumLin / count));
         }
 
-        // Spectral flux
         if (prevFreqRef.current && prevFreqRef.current.length === freqBuf.length) {
           let flux = 0, fluxCount = 0;
           for (let b = minBin; b < maxBin; b++) {
@@ -150,7 +146,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
         }
         prevFreqRef.current = new Float32Array(freqBuf);
 
-        // Done?
         if (elapsed >= durationSec * 1000) {
           clearInterval(measureIntervalRef.current);
           clearInterval(countdownInterval);
@@ -158,7 +153,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
           setMeasuring(false);
 
           if (phase === 'silence') {
-            // Store noise floor
             const avgRms = rmsValuesRef.current.length > 0
               ? rmsValuesRef.current.reduce((a, b) => a + b, 0) / rmsValuesRef.current.length
               : 0;
@@ -169,7 +163,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
             cleanup();
             setStep('strum');
           } else {
-            // Calculate final settings
             const avgRms = rmsValuesRef.current.length > 0
               ? rmsValuesRef.current.reduce((a, b) => a + b, 0) / rmsValuesRef.current.length
               : 0;
@@ -182,15 +175,9 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
 
             const noiseFloor = measured?.noiseFloorRms ?? 0.005;
 
-            // Noise gate: set between noise floor and signal level
-            // Higher ratio means cleaner environment → lower gate needed → higher slider value
             const snr = avgRms > 0 && noiseFloor > 0 ? avgRms / noiseFloor : 10;
             const suggestedNoiseGate = Math.round(Math.min(90, Math.max(15, snr > 20 ? 75 : snr > 10 ? 60 : snr > 5 ? 45 : 30)));
-
-            // Harmonic boost: based on crest factor (higher crest = cleaner harmonics)
             const suggestedHarmonicBoost = Math.round(Math.min(85, Math.max(20, avgCrest > 6 ? 40 : avgCrest > 4 ? 55 : avgCrest > 3 ? 65 : 75)));
-
-            // Flux tolerance: based on measured flux variability
             const suggestedFluxTolerance = Math.round(Math.min(80, Math.max(20, avgFlux > 3 ? 65 : avgFlux > 2 ? 50 : avgFlux > 1 ? 40 : 30)));
 
             setMeasured({
@@ -226,32 +213,32 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
       noiseFloorRms: measured.noiseFloorRms,
       signalRms: measured.signalRms,
     });
-    onApplyProfile({
+    applyCalibrationProfile({
       noiseGate: measured.suggestedNoiseGate,
       harmonicBoost: measured.suggestedHarmonicBoost,
       fluxTolerance: measured.suggestedFluxTolerance,
     });
     onClose();
-  }, [measured, profileName, addCalibrationProfile, onApplyProfile, onClose]);
+  }, [measured, profileName, addCalibrationProfile, applyCalibrationProfile, onClose]);
 
   const handleApplyWithoutSave = useCallback(() => {
     if (!measured) return;
-    onApplyProfile({
+    applyCalibrationProfile({
       noiseGate: measured.suggestedNoiseGate,
       harmonicBoost: measured.suggestedHarmonicBoost,
       fluxTolerance: measured.suggestedFluxTolerance,
     });
     onClose();
-  }, [measured, onApplyProfile, onClose]);
+  }, [measured, applyCalibrationProfile, onClose]);
 
   const handleLoadProfile = useCallback((profile: CalibrationProfile) => {
-    onApplyProfile({
+    applyCalibrationProfile({
       noiseGate: profile.noiseGate,
       harmonicBoost: profile.harmonicBoost,
       fluxTolerance: profile.fluxTolerance,
     });
     onClose();
-  }, [onApplyProfile, onClose]);
+  }, [applyCalibrationProfile, onClose]);
 
   if (!open) return null;
 
@@ -305,7 +292,7 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
                 <div className="text-center py-2">
                   <Mic className="size-12 mx-auto mb-3 text-[hsl(var(--color-primary)/0.5)]" />
                   <h3 className="font-display text-base font-bold text-[hsl(var(--text-default))] mb-1.5">Auto-Tune Detection Settings</h3>
-                  <p className="text-sm font-body text-[hsl(var(--text-muted))] leading-relaxed">This wizard will measure your environment's noise level and your guitar's signal to find optimal detection settings.</p>
+                  <p className="text-sm font-body text-[hsl(var(--text-muted))] leading-relaxed">This wizard will measure your environment's noise level and your guitar's signal to find optimal detection settings. Settings apply globally across all practice pages.</p>
                 </div>
                 <div className="space-y-2 text-sm font-body text-[hsl(var(--text-subtle))]">
                   <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">1.</span> Measure silence (3 seconds)</div>
@@ -313,7 +300,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
                   <div className="flex items-start gap-2"><span className="font-display font-bold text-[hsl(var(--color-primary))] shrink-0">3.</span> Review and save optimized settings</div>
                 </div>
 
-                {/* Saved profiles */}
                 {calibrationProfiles.length > 0 && (
                   <div className="border-t border-[hsl(var(--border-subtle)/0.3)] pt-3 mt-3">
                     <h4 className="text-xs font-display font-bold text-[hsl(var(--text-muted))] uppercase tracking-wider mb-2">Saved Profiles</h4>
@@ -412,10 +398,9 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
                     <Check className="size-7 text-[hsl(var(--semantic-success))]" />
                   </div>
                   <h3 className="font-display text-base font-bold text-[hsl(var(--text-default))]">Calibration Complete</h3>
-                  <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">Settings optimized for your environment and guitar.</p>
+                  <p className="text-xs font-body text-[hsl(var(--text-muted))] mt-1">Settings optimized for your environment and guitar. Applies to all practice pages.</p>
                 </div>
 
-                {/* Measured values */}
                 <div className="grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-lg bg-[hsl(var(--bg-surface))] border border-[hsl(var(--border-subtle))] p-2">
                     <p className="text-[10px] font-body text-[hsl(var(--text-muted))] uppercase">Noise Floor</p>
@@ -427,7 +412,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
                   </div>
                 </div>
 
-                {/* Suggested settings */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-display font-bold text-[hsl(var(--text-muted))] uppercase tracking-wider">Optimized Settings</h4>
                   <div className="flex items-center justify-between rounded-lg bg-amber-500/8 border border-amber-500/20 px-3 py-2">
@@ -444,7 +428,6 @@ export default function CalibrationWizard({ open, onClose, onApplyProfile }: Cal
                   </div>
                 </div>
 
-                {/* Save section */}
                 {step === 'save' ? (
                   <div className="space-y-2">
                     <input

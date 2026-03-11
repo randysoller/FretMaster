@@ -4,13 +4,13 @@ import { useProgressionStore, type SavedProgression } from '@/stores/progression
 import { useMetronomeStore, onChordAdvance, onAutoReveal, resetBeatCounter } from '@/stores/metronomeStore';
 import { SCALES, COMMON_PROGRESSIONS, STYLE_PROGRESSIONS, resolveScaleChords, resolvePresetChordSymbols, KEY_SIGNATURES } from '@/constants/scales';
 import type { NoteName, ScaleDefinition, ProgressionPreset, KeySignature } from '@/constants/scales';
+import { useDetectionSettingsStore } from '@/stores/detectionSettingsStore';
 import { useChordDetection } from '@/hooks/useChordDetection';
 import type { DetectionResult, AdvancedDetectionSettings } from '@/hooks/useChordDetection';
 import { useSessionStats } from '@/hooks/useSessionStats';
 import { useReferenceTone } from '@/hooks/useReferenceTone';
 import SessionSummary from '@/components/features/SessionSummary';
-import AdvancedDetectionSettingsPanel, { getStoredAdvancedSettings, getStoredAdvancedEnabled } from '@/components/features/AdvancedDetectionSettings';
-import type { AdvancedDetectionValues } from '@/components/features/AdvancedDetectionSettings';
+import AdvancedDetectionSettingsPanel from '@/components/features/AdvancedDetectionSettings';
 import ChordDiagram from '@/components/features/ChordDiagram';
 import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 
@@ -33,7 +33,6 @@ import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features
 
 // ─── Shared Detection UI ─────────────────────────────────
 
-const SENSITIVITY_KEY = 'fretmaster-detection-sensitivity';
 const FAVORITES_KEY = 'fretmaster-favorite-progressions';
 
 function getStoredFavorites(): Set<string> {
@@ -49,10 +48,6 @@ function getStoredFavorites(): Set<string> {
 
 function persistFavorites(favs: Set<string>) {
   try { localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favs])); } catch {}
-}
-
-function getStoredSensitivity(): number {
-  try { const v = localStorage.getItem(SENSITIVITY_KEY); if (v) { const n = Number(v); if (n >= 1 && n <= 10) return n; } } catch {} return 6;
 }
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {
@@ -660,15 +655,12 @@ export default function ProgressionPractice() {
   const { playChord } = useChordAudio();
   const currentInfo = getCurrentChord();
 
-  const [sensitivity, setSensitivity] = useState(getStoredSensitivity);
+  const { sensitivity, advancedEnabled, advancedValues, setSensitivity } = useDetectionSettingsStore();
   const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
-  const [advancedEnabled, setAdvancedEnabled] = useState(getStoredAdvancedEnabled);
-  const [advancedValues, setAdvancedValues] = useState<AdvancedDetectionValues>(() => getStoredAdvancedSettings() ?? { noiseGate: 50, harmonicBoost: 50, fluxTolerance: 50 });
   const advancedSettings: AdvancedDetectionSettings | null = advancedEnabled ? advancedValues : null;
   const handleSensitivityChange = useCallback((v: number) => {
     setSensitivity(v);
-    try { localStorage.setItem(SENSITIVITY_KEY, String(v)); } catch {}
-  }, []);
+  }, [setSensitivity]);
 
   // Session stats
   const session = useSessionStats();
@@ -790,11 +782,6 @@ export default function ProgressionPractice() {
         <CalibrationWizard
           open={showCalibration}
           onClose={() => setShowCalibration(false)}
-          onApplyProfile={(p) => {
-            setAdvancedValues(p);
-            setAdvancedEnabled(true);
-            try { localStorage.setItem('fretmaster-advanced-enabled', 'true'); localStorage.setItem('fretmaster-advanced-detection', JSON.stringify(p)); } catch {}
-          }}
         />
 
         {/* Top Bar */}
@@ -853,7 +840,7 @@ export default function ProgressionPractice() {
         {/* Advanced Detection Settings */}
         <div className="mx-4 sm:mx-6 mb-2 flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <AdvancedDetectionSettingsPanel values={advancedValues} enabled={advancedEnabled} onChange={setAdvancedValues} onToggleEnabled={setAdvancedEnabled} />
+            <AdvancedDetectionSettingsPanel />
           </div>
           <button onClick={() => setShowCalibration(true)} className="flex items-center gap-1 shrink-0 rounded-lg border border-[hsl(var(--color-emphasis)/0.3)] bg-[hsl(var(--color-emphasis)/0.06)] px-2.5 py-2 text-[10px] font-display font-bold text-[hsl(var(--color-emphasis))] hover:bg-[hsl(var(--color-emphasis)/0.14)] transition-colors" title="Auto-Calibrate">
             <Crosshair className="size-3.5" />
