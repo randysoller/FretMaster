@@ -50,18 +50,20 @@ function getStoredSensitivity(): number {
 
 function DetectionFeedback({ result }: { result: DetectionResult }) {
   return (
-    <AnimatePresence>
-      {result && (
-        <motion.div key={result} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none pb-[8px]">
-          <div className={`px-10 py-[17px] rounded-2xl backdrop-blur-md border-2 ${result === 'correct' ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]' : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'}`}>
-            <span className={`font-display text-5xl sm:text-6xl font-extrabold uppercase tracking-wider ${result === 'correct' ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(0_84%_60%)]'}`}
-              style={{ textShadow: result === 'correct' ? '0 0 30px hsl(142 71% 45% / 0.5), 0 0 60px hsl(142 71% 45% / 0.2)' : '0 0 30px hsl(0 84% 60% / 0.5), 0 0 60px hsl(0 84% 60% / 0.2)' }}>
-              {result === 'correct' ? 'Correct' : 'Wrong'}
-            </span>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="flex justify-center items-center min-h-[52px] sm:min-h-[60px] pointer-events-none">
+      <AnimatePresence>
+        {result && (
+          <motion.div key={result} initial={{ opacity: 0, scale: 0.5, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.7, y: -10 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="flex items-center justify-center">
+            <div className={`px-8 py-3 sm:px-10 sm:py-4 rounded-2xl backdrop-blur-md border-2 ${result === 'correct' ? 'bg-[hsl(142_71%_45%/0.15)] border-[hsl(142_71%_45%/0.5)]' : 'bg-[hsl(0_84%_60%/0.15)] border-[hsl(0_84%_60%/0.5)]'}`}>
+              <span className={`font-display text-3xl sm:text-5xl font-extrabold uppercase tracking-wider ${result === 'correct' ? 'text-[hsl(142_71%_45%)]' : 'text-[hsl(0_84%_60%)]'}`}
+                style={{ textShadow: result === 'correct' ? '0 0 30px hsl(142 71% 45% / 0.5), 0 0 60px hsl(142 71% 45% / 0.2)' : '0 0 30px hsl(0 84% 60% / 0.5), 0 0 60px hsl(0 84% 60% / 0.2)' }}>
+                {result === 'correct' ? 'Correct' : 'Wrong'}
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -845,9 +847,10 @@ export default function ProgressionPractice() {
 
         {/* Main practice area */}
         <div className="relative flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-[140px] sm:pb-12">
-          <DetectionFeedback result={detectionResult} />
           <AnimatePresence mode="wait">
             <motion.div key={`${currentInfo.chordSymbol}-${currentChordIndex}`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }} className="flex flex-col items-center gap-4 sm:gap-6 w-full">
+              {/* Detection feedback above chord name */}
+              <DetectionFeedback result={detectionResult} />
               {/* Current chord name */}
               <div className="text-center">
                 <p className="font-body text-lg text-[hsl(var(--color-primary))] uppercase tracking-wider mb-1">{currentInfo.roman}</p>

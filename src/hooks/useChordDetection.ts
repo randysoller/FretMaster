@@ -227,6 +227,10 @@ export function useChordDetection({
       streamRef.current = stream;
 
       const ctx = new AudioContext({ sampleRate: 48000 });
+      // Ensure AudioContext is running (may be suspended without direct user gesture)
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
       audioContextRef.current = ctx;
 
       const source = ctx.createMediaStreamSource(stream);
@@ -278,6 +282,12 @@ export function useChordDetection({
       setIsListening(true);
       setPermissionDenied(false);
 
+      // Double-check AudioContext is running before starting analysis
+      if (ctx.state !== 'running') {
+        console.warn('[FretMaster] AudioContext not running, state:', ctx.state);
+        await ctx.resume();
+      }
+
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
@@ -287,6 +297,8 @@ export function useChordDetection({
       // Analysis loop at ~14 Hz for faster response
       intervalRef.current = window.setInterval(() => {
         if (!analyserRef.current || cooldownRef.current || !audioContextRef.current) return;
+        // Skip if AudioContext got suspended
+        if (audioContextRef.current.state !== 'running') return;
 
         const chord = targetChordRef.current;
         if (!chord) return;
