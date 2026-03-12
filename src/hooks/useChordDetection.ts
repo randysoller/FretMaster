@@ -382,9 +382,11 @@ export function useChordDetection({
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
       let activeSignalFrames = 0;   // Frames with signal above noise floor
+      let silenceFrames = 0;        // Track sustained silence to know when to reset miss counter
       const MATCH_THRESHOLD = 3;    // Need 3 consecutive matches (~210ms) to confirm — brief plosives can't sustain this
-      const MISS_THRESHOLD = 3;     // Need 3 consecutive misses to show wrong
+      const MISS_THRESHOLD = 2;     // Need 2 consecutive misses to show wrong (lowered for responsiveness)
       const MIN_ACTIVE_FRAMES = 3;  // Signal must be present for 3+ frames (~210ms) before matches count
+      const SILENCE_RESET_FRAMES = 8; // Only reset miss counter after ~560ms sustained silence
 
       // Analysis loop at ~14 Hz for faster response
       intervalRef.current = window.setInterval(() => {
@@ -445,10 +447,16 @@ export function useChordDetection({
           if (rms < rmsThreshold) {
             // Signal is too quiet — silence, skip analysis entirely
             consecutiveMatches = 0;
-            consecutiveMisses = 0;
             activeSignalFrames = 0;
+            silenceFrames++;
+            // Only reset miss counter after sustained silence — brief gaps between
+            // strums should NOT reset it, otherwise "wrong" never accumulates
+            if (silenceFrames >= SILENCE_RESET_FRAMES) {
+              consecutiveMisses = 0;
+            }
             return;
           }
+          silenceFrames = 0; // Signal present, reset silence counter
           nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
         }
 
@@ -462,9 +470,9 @@ export function useChordDetection({
 
         const chroma = extractChroma(freqData, analyserRef.current, effectiveSensForChroma, nsdfPitch);
         if (!chroma) {
-          // No signal — reset counters
+          // Signal present but too weak for chroma — reset match counter
+          // but do NOT reset miss counter, otherwise wrong never triggers
           consecutiveMatches = 0;
-          consecutiveMisses = 0;
           return;
         }
 
@@ -483,10 +491,10 @@ export function useChordDetection({
         const spectralFlatness = computeSpectralFlatness(freqData, analyserRef.current);
         const barreFlat = isBarre ? 0.08 : 0; // allow more spectral spread for barre chords
         const maxFlatness = lerp(0.20, 0.40, tNoise) + barreFlat;
+        let gateBlocked = false;
         if (spectralFlatness > maxFlatness) {
           // Energy is too uniformly distributed — broadband noise, not guitar harmonics
-          consecutiveMatches = 0;
-          return;
+          gateBlocked = true;
         }
 
         // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
@@ -495,35 +503,32 @@ export function useChordDetection({
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
         const barreCrestReduction = isBarre ? 0.6 : 0;
         const minCrest = lerp(3.0, 1.5, tNoise) - barreCrestReduction;
-        if (crestFactor < minCrest) {
+        if (!gateBlocked && crestFactor < minCrest) {
           // Spectrum too flat / voice-like — reject
-          consecutiveMatches = 0;
-          return;
+          gateBlocked = true;
         }
 
         // Formant detection: voice has characteristic F1/F2 two-hump spectral envelope
         // Guitar chords produce a flatter smoothed envelope without the formant dip
         const formantScore = computeFormantScore(freqData, analyserRef.current);
         const maxFormant = lerp(0.25, 0.55, tNoise); // stricter at low sensitivity
-        if (formantScore > maxFormant) {
+        if (!gateBlocked && formantScore > maxFormant) {
           // Spectral envelope matches human vowel formant pattern — reject
-          consecutiveMatches = 0;
-          return;
+          gateBlocked = true;
         }
 
         // Spectral flux gate: reject signals with high frame-to-frame change
         // Voice formants shift continuously → high flux; guitar is stable after attack → low flux
-        if (spectralFlux >= 0) {
+        if (!gateBlocked && spectralFlux >= 0) {
           const maxFlux = lerp(1.5, 3.5, tFlux); // avg dB/bin; stricter at low sensitivity
           if (spectralFlux > maxFlux) {
             // High spectral instability — likely voice or other non-guitar source
-            consecutiveMatches = 0;
-            return;
+            gateBlocked = true;
           }
         }
 
         const expectedPc = getChordPitchClasses(chord);
-        const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma, isBarre);
+        const isMatch = !gateBlocked && matchChroma(chroma, expectedPc, effectiveSensForChroma, isBarre);
 
         if (isMatch) {
           // Only count matches after signal has been stable for enough frames
@@ -544,7 +549,11 @@ export function useChordDetection({
             }, 1500);
           }
         } else {
-          consecutiveMisses++;
+          // Gate-blocked signals (voice, noise) should NOT count as wrong guitar chord.
+          // Only count as a miss if we have valid chroma (real signal) that doesn't match.
+          if (!gateBlocked && activeSignalFrames >= MIN_ACTIVE_FRAMES) {
+            consecutiveMisses++;
+          }
           consecutiveMatches = 0;
 
           if (consecutiveMisses >= MISS_THRESHOLD) {
