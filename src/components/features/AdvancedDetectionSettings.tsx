@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { ChevronDown, RotateCcw, Shield, Waves, Zap } from 'lucide-react';
+import { ChevronDown, RotateCcw, Shield, Waves, Zap, Cpu, Sliders, Combine } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDetectionSettingsStore, type AdvancedDetectionValues } from '@/stores/detectionSettingsStore';
+import { useDetectionSettingsStore, type AdvancedDetectionValues, type DetectionEngine } from '@/stores/detectionSettingsStore';
 
 // Re-export type for convenience
 export type { AdvancedDetectionValues } from '@/stores/detectionSettingsStore';
@@ -33,6 +33,47 @@ function SliderRow({ icon, label, description, value, onChange, color }: {
         onChange={(e) => onChange(Number(e.target.value))}
         className="volume-slider w-full"
       />
+    </div>
+  );
+}
+
+const ENGINE_OPTIONS: { value: DetectionEngine; label: string; icon: React.ReactNode; desc: string }[] = [
+  { value: 'dsp', label: 'DSP', icon: <Sliders className="size-3.5" />, desc: 'Classic signal processing with weighted templates' },
+  { value: 'ml', label: 'ML', icon: <Cpu className="size-3.5" />, desc: 'Neural network chord classifier' },
+  { value: 'hybrid', label: 'Hybrid', icon: <Combine className="size-3.5" />, desc: 'DSP + ML combined for best accuracy' },
+];
+
+function DetectionEngineSelector() {
+  const { detectionEngine, setDetectionEngine } = useDetectionSettingsStore();
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <Cpu className="size-3.5 text-emerald-400" />
+        <span className="text-xs font-display font-bold text-[hsl(var(--text-default))]">Detection Engine</span>
+      </div>
+      <p className="text-[10px] font-body text-[hsl(var(--text-muted))] leading-relaxed -mt-0.5">
+        {ENGINE_OPTIONS.find(e => e.value === detectionEngine)?.desc}
+      </p>
+      <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--bg-surface))] p-0.5">
+        {ENGINE_OPTIONS.map((opt) => {
+          const isActive = detectionEngine === opt.value;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setDetectionEngine(opt.value)}
+              className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-display font-bold transition-all duration-200 ${
+                isActive
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] border border-transparent'
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -91,6 +132,8 @@ export default function AdvancedDetectionSettings() {
 
               {advancedEnabled && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3.5">
+                  <DetectionEngineSelector />
+                  <div className="h-px bg-[hsl(var(--border-subtle)/0.3)]" />
                   <SliderRow
                     icon={<Shield className="size-3.5 text-amber-400" />}
                     label="Noise Gate"

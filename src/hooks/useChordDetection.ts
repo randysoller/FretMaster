@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ChordData } from '@/types/chord';
+import { matchWithWeightedTemplate } from '@/lib/chordTemplates';
+import { mlMatchesChord, initMLModel } from '@/lib/mlChordDetector';
+import type { DetectionEngine } from '@/stores/detectionSettingsStore';
 
 // Standard guitar tuning MIDI notes: E2=40, A2=45, D3=50, G3=55, B3=59, E4=64
 const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64];
@@ -27,7 +30,6 @@ function lerp(a: number, b: number, t: number): number {
 // ─── NSDF (YIN-style) pitch detection for chord detection ───
 
 function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshold: number): number {
-  // Use a sub-window of the buffer for faster computation (4096 samples is plenty for guitar)
   const windowSize = Math.min(buffer.length, 4096);
   const offset = Math.floor((buffer.length - windowSize) / 2);
 
@@ -40,16 +42,13 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
 
   const halfSize = Math.floor(windowSize / 2);
 
-  // Apply Hanning window for cleaner spectral analysis
   const windowed = new Float32Array(windowSize);
   for (let i = 0; i < windowSize; i++) {
     const w = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (windowSize - 1)));
     windowed[i] = buffer[offset + i] * w;
   }
 
-  // Normalized Square Difference Function (NSDF)
   const nsdf = new Float32Array(halfSize);
-  // Only compute for guitar-relevant lag range: ~34 samples (1400Hz@48k) to ~740 samples (65Hz@48k)
   const minLag = Math.max(1, Math.floor(sampleRate / 1500));
   const maxLag = Math.min(halfSize - 1, Math.ceil(sampleRate / 60));
 
@@ -64,17 +63,15 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
     nsdf[tau] = divisor > 0 ? (2 * acf) / divisor : 0;
   }
 
-  const threshold = 0.42; // Lowered for polyphonic guitar chords (multi-string)
+  const threshold = 0.42;
   let bestTau = -1;
   let bestVal = -Infinity;
 
-  // Find first zero crossing after minLag
   let firstZero = minLag;
   while (firstZero <= maxLag && nsdf[firstZero] > 0) {
     firstZero++;
   }
 
-  // Collect all positive-region peaks
   const peaks: { tau: number; val: number }[] = [];
   let idx = firstZero;
   while (idx <= maxLag) {
@@ -95,7 +92,6 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
 
   if (peaks.length === 0) return -1;
 
-  // Pick first peak above threshold (lowest frequency fundamental)
   for (const p of peaks) {
     if (p.val >= threshold) {
       bestTau = p.tau;
@@ -104,7 +100,6 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
     }
   }
 
-  // Fallback: strongest peak
   if (bestTau <= 0) {
     for (const p of peaks) {
       if (p.val > bestVal) {
@@ -116,7 +111,6 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
 
   if (bestTau <= 0 || bestVal < 0.3) return -1;
 
-  // Parabolic interpolation for sub-sample precision
   let refinedTau = bestTau;
   if (bestTau > minLag && bestTau < maxLag) {
     const prev = nsdf[bestTau - 1];
@@ -129,18 +123,11 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
   }
 
   const frequency = sampleRate / refinedTau;
-  // Guitar range ~60Hz to ~1400Hz
   if (frequency < 60 || frequency > 1400) return -1;
   return frequency;
 }
 
 export type DetectionResult = 'correct' | 'wrong' | null;
-
-
-
-
-
-
 
 export interface AdvancedDetectionSettings {
   noiseGate: number;       // 0-100
@@ -155,8 +142,10 @@ interface UseChordDetectionOptions {
   sensitivity?: number;
   /** If true, auto-start listening on mount */
   autoStart?: boolean;
-  /** Optional advanced per-parameter overrides. When provided, overrides sensitivity-derived values. */
+  /** Optional advanced per-parameter overrides. */
   advancedSettings?: AdvancedDetectionSettings | null;
+  /** Detection engine mode: 'dsp' | 'ml' | 'hybrid' (default: 'hybrid') */
+  detectionEngine?: DetectionEngine;
 }
 
 export function useChordDetection({
@@ -165,11 +154,11 @@ export function useChordDetection({
   sensitivity = 6,
   autoStart = false,
   advancedSettings = null,
+  detectionEngine = 'hybrid',
 }: UseChordDetectionOptions) {
   const [isListening, setIsListening] = useState(false);
   const [result, setResult] = useState<DetectionResult>(null);
   const [permissionDenied, setPermissionDenied] = useState(false);
-
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -183,15 +172,21 @@ export function useChordDetection({
   const timeDomainBufferRef = useRef<Float32Array | null>(null);
   const prevFreqDataRef = useRef<Float32Array | null>(null);
   const advancedSettingsRef = useRef(advancedSettings);
+  const detectionEngineRef = useRef(detectionEngine);
 
-  // Keep refs in sync
+  // Initialize ML model eagerly if engine uses it
+  useEffect(() => {
+    if (detectionEngine === 'ml' || detectionEngine === 'hybrid') {
+      initMLModel();
+    }
+  }, [detectionEngine]);
+
   useEffect(() => {
     onCorrectRef.current = onCorrect;
   }, [onCorrect]);
 
   useEffect(() => {
     targetChordRef.current = targetChord;
-    // Reset result when chord changes
     setResult(null);
     cooldownRef.current = false;
   }, [targetChord]);
@@ -203,6 +198,10 @@ export function useChordDetection({
   useEffect(() => {
     advancedSettingsRef.current = advancedSettings;
   }, [advancedSettings]);
+
+  useEffect(() => {
+    detectionEngineRef.current = detectionEngine;
+  }, [detectionEngine]);
 
   const stopListening = useCallback(() => {
     if (intervalRef.current) {
@@ -226,7 +225,7 @@ export function useChordDetection({
   }, []);
 
   const startListening = useCallback(async () => {
-    if (isListeningRef.current) return; // prevent double-start
+    if (isListeningRef.current) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -240,7 +239,6 @@ export function useChordDetection({
       streamRef.current = stream;
 
       const ctx = new AudioContext({ sampleRate: 48000 });
-      // Ensure AudioContext is running (may be suspended without direct user gesture)
       if (ctx.state === 'suspended') {
         await ctx.resume();
       }
@@ -293,7 +291,6 @@ export function useChordDetection({
 
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 16384;
-      // Balanced smoothing for harmonic clarity + transient response
       analyser.smoothingTimeConstant = 0.65;
       lowPass.connect(analyser);
       analyserRef.current = analyser;
@@ -303,7 +300,6 @@ export function useChordDetection({
       setIsListening(true);
       setPermissionDenied(false);
 
-      // Double-check AudioContext is running before starting analysis
       if (ctx.state !== 'running') {
         console.warn('[FretMaster] AudioContext not running, state:', ctx.state);
         await ctx.resume();
@@ -312,34 +308,34 @@ export function useChordDetection({
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
-      let activeSignalFrames = 0;   // Frames with signal above noise floor
-      const MATCH_THRESHOLD = 3;    // Need 3 consecutive matches (~210ms) to confirm — brief plosives can't sustain this
-      const MISS_THRESHOLD = 3;     // Need 3 consecutive misses to show wrong
-      const MIN_ACTIVE_FRAMES = 3;  // Signal must be present for 3+ frames (~210ms) before matches count
+      let activeSignalFrames = 0;
+      const MATCH_THRESHOLD = 3;    // ~210ms
+      const MISS_THRESHOLD = 3;
+      const MIN_ACTIVE_FRAMES = 3;
 
-      // Analysis loop at ~14 Hz for faster response
+      // Analysis loop at ~14 Hz
       intervalRef.current = window.setInterval(() => {
         if (!analyserRef.current || cooldownRef.current || !audioContextRef.current) return;
-        // Skip if AudioContext got suspended
         if (audioContextRef.current.state !== 'running') return;
 
         const chord = targetChordRef.current;
         if (!chord) return;
 
         const sens = sensitivityRef.current;
-        const t = (sens - 1) / 9; // 0..1 sensitivity normalization
+        const t = (sens - 1) / 9;
         const adv = advancedSettingsRef.current;
-        // Advanced per-parameter overrides
+        const engine = detectionEngineRef.current;
+
         const tNoise = adv ? adv.noiseGate / 100 : t;
         const tFlux = adv ? adv.fluxTolerance / 100 : t;
         const effectiveSensForChroma = adv ? 1 + (adv.harmonicBoost / 100) * 9 : sens;
+
         const bufLen = analyserRef.current.frequencyBinCount;
         const freqData = new Float32Array(bufLen);
         analyserRef.current.getFloatFrequencyData(freqData);
 
-        // ─── Spectral Flux: frame-to-frame spectral change ───
-        // Voice has high flux (shifting formants); guitar is stable after attack
-        let spectralFlux = -1; // -1 = no previous frame available
+        // ─── Spectral Flux ───
+        let spectralFlux = -1;
         const prevFreq = prevFreqDataRef.current;
         if (prevFreq && prevFreq.length === bufLen && audioContextRef.current) {
           const sr = audioContextRef.current.sampleRate;
@@ -351,30 +347,27 @@ export function useChordDetection({
           let fluxCount = 0;
           for (let bin = fMinBin; bin < fMaxBin; bin++) {
             const diff = freqData[bin] - prevFreq[bin];
-            if (diff > 0) flux += diff; // half-wave rectified (captures spectral onsets)
+            if (diff > 0) flux += diff;
             fluxCount++;
           }
           spectralFlux = fluxCount > 0 ? flux / fluxCount : 0;
         }
-        // Always store current frame for next comparison
         if (!prevFreqDataRef.current || prevFreqDataRef.current.length !== bufLen) {
           prevFreqDataRef.current = new Float32Array(bufLen);
         }
         prevFreqDataRef.current.set(freqData);
 
-        // Hard RMS silence gate on time-domain signal before any analysis
+        // Hard RMS silence gate
         let nsdfPitch = -1;
         if (timeDomainBufferRef.current) {
           analyserRef.current.getFloatTimeDomainData(timeDomainBufferRef.current);
           const rmsThreshold = lerp(0.018, 0.005, tNoise);
-          // Compute RMS over the buffer
           let rmsSum = 0;
           const buf = timeDomainBufferRef.current;
           const rmsLen = Math.min(buf.length, 4096);
           for (let i = 0; i < rmsLen; i++) rmsSum += buf[i] * buf[i];
           const rms = Math.sqrt(rmsSum / rmsLen);
           if (rms < rmsThreshold) {
-            // Signal is too quiet — silence, skip analysis entirely
             consecutiveMatches = 0;
             consecutiveMisses = 0;
             activeSignalFrames = 0;
@@ -383,70 +376,81 @@ export function useChordDetection({
           nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
         }
 
-        // NSDF pitch is a bonus signal for chroma extraction, NOT a hard gate.
-        // Polyphonic chords (multiple simultaneous strings) often don't produce
-        // a single clean periodic signal, so gating on NSDF rejects valid chords.
-        // Voice rejection relies on crest factor + spectral flux instead.
-
         const chroma = extractChroma(freqData, analyserRef.current, effectiveSensForChroma, nsdfPitch);
         if (!chroma) {
-          // No signal — reset counters
           consecutiveMatches = 0;
           consecutiveMisses = 0;
           return;
         }
 
-        // Track how long signal has been active — prevents transient bursts
-        // (plosive consonants, claps, etc.) from immediately counting as matches
         activeSignalFrames++;
 
-        // Spectral flatness gate: broadband noise (plosives like "ha", "ka", claps)
-        // has energy uniformly spread across all frequencies → high flatness.
-        // Guitar chords concentrate energy at harmonic peaks → low flatness.
+        // ─── Voice rejection gates ───
         const spectralFlatness = computeSpectralFlatness(freqData, analyserRef.current);
-        const maxFlatness = lerp(0.20, 0.40, tNoise); // stricter at low sensitivity
+        const maxFlatness = lerp(0.20, 0.40, tNoise);
         if (spectralFlatness > maxFlatness) {
-          // Energy is too uniformly distributed — broadband noise, not guitar harmonics
           consecutiveMatches = 0;
           return;
         }
 
-        // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
-        const minCrest = lerp(3.0, 1.5, tNoise); // lower threshold allows polyphonic chords through
+        const minCrest = lerp(3.0, 1.5, tNoise);
         if (crestFactor < minCrest) {
-          // Spectrum too flat / voice-like — reject
           consecutiveMatches = 0;
           return;
         }
 
-        // Formant detection: voice has characteristic F1/F2 two-hump spectral envelope
-        // Guitar chords produce a flatter smoothed envelope without the formant dip
         const formantScore = computeFormantScore(freqData, analyserRef.current);
-        const maxFormant = lerp(0.25, 0.55, tNoise); // stricter at low sensitivity
+        const maxFormant = lerp(0.25, 0.55, tNoise);
         if (formantScore > maxFormant) {
-          // Spectral envelope matches human vowel formant pattern — reject
           consecutiveMatches = 0;
           return;
         }
 
-        // Spectral flux gate: reject signals with high frame-to-frame change
-        // Voice formants shift continuously → high flux; guitar is stable after attack → low flux
         if (spectralFlux >= 0) {
-          const maxFlux = lerp(1.5, 3.5, tFlux); // avg dB/bin; stricter at low sensitivity
+          const maxFlux = lerp(1.5, 3.5, tFlux);
           if (spectralFlux > maxFlux) {
-            // High spectral instability — likely voice or other non-guitar source
             consecutiveMatches = 0;
             return;
           }
         }
 
-        const expectedPc = getChordPitchClasses(chord);
-        const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma);
+        // ─── Chord matching using selected engine ───
+        let isMatch = false;
+
+        if (engine === 'dsp') {
+          // DSP-only: weighted template matching (upgraded from flat binary)
+          const dspResult = matchWithWeightedTemplate(chroma, chord, effectiveSensForChroma);
+          isMatch = dspResult.isMatch;
+        } else if (engine === 'ml') {
+          // ML-only: neural network classification
+          const mlResult = mlMatchesChord(chroma, chord, effectiveSensForChroma);
+          isMatch = mlResult.isMatch;
+        } else {
+          // Hybrid: combine DSP + ML with voting
+          const dspResult = matchWithWeightedTemplate(chroma, chord, effectiveSensForChroma);
+          const mlResult = mlMatchesChord(chroma, chord, effectiveSensForChroma);
+
+          // Hybrid decision logic:
+          // - Both agree → use that result
+          // - DSP match + ML high confidence (>0.10) → match
+          // - ML match + DSP confidence > 0.40 → match
+          // - Otherwise → no match
+          if (dspResult.isMatch && mlResult.isMatch) {
+            isMatch = true;
+          } else if (dspResult.isMatch && mlResult.mlConfidence > 0.10) {
+            isMatch = true;
+          } else if (mlResult.isMatch && dspResult.confidence > 0.40) {
+            isMatch = true;
+          } else {
+            // Combined confidence threshold — if both are borderline, accept
+            const combinedConfidence = (dspResult.confidence * 0.55) + (mlResult.mlConfidence * 0.45);
+            const hybridThreshold = lerp(0.55, 0.30, t);
+            isMatch = combinedConfidence >= hybridThreshold;
+          }
+        }
 
         if (isMatch) {
-          // Only count matches after signal has been stable for enough frames
-          // This prevents brief plosive bursts from triggering false positives
           if (activeSignalFrames >= MIN_ACTIVE_FRAMES) {
             consecutiveMatches++;
           }
@@ -491,7 +495,6 @@ export function useChordDetection({
     }
   }, [startListening, stopListening]);
 
-  // Auto-start mic on mount
   useEffect(() => {
     if (autoStart && !isListeningRef.current) {
       const t = setTimeout(() => {
@@ -501,7 +504,6 @@ export function useChordDetection({
     }
   }, [autoStart, startListening]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopListening();
@@ -522,39 +524,15 @@ export function useChordDetection({
     toggleListening,
     stopListening,
     pauseDetection,
-
   };
 }
 
-/**
- * Build a 12-bin chromagram from FFT frequency data + NSDF pitch.
- * Uses NSDF-detected fundamental to boost confidence in the correct pitch class.
- * Returns null if the overall energy is below the noise gate.
- */
-/**
- * Compute spectral crest factor (peakiness) over the guitar range.
- * Guitar has sharp harmonic peaks → high crest; voice has broad formants → low crest.
- */
-/**
- * Detect human voice formant structure in the spectral envelope.
- * Voice has characteristic broad peaks at F1 (300-900Hz) and F2 (900-2500Hz)
- * with a valley between them. Guitar harmonics are sharper and more evenly
- * distributed, producing a flatter smoothed envelope.
- * Returns 0..1 where higher = more voice-like.
- */
-/**
- * Spectral flatness (Wiener entropy): geometric mean / arithmetic mean of magnitude spectrum.
- * Broadband noise (plosive consonants like "ha", "ka") → flatness close to 1.0
- * Harmonic signals (guitar chords with discrete peaks) → flatness close to 0.0
- * This is mathematically distinct from crest factor: crest measures peak prominence,
- * flatness measures how uniformly energy is distributed across frequencies.
- */
+// ─── Spectral analysis functions ───
+
 function computeSpectralFlatness(freqData: Float32Array, analyser: AnalyserNode): number {
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
   const binWidth = sampleRate / fftSize;
-
-  // Analyze guitar-relevant range: 70–2500 Hz
   const minBin = Math.floor(70 / binWidth);
   const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
 
@@ -572,10 +550,8 @@ function computeSpectralFlatness(freqData: Float32Array, analyser: AnalyserNode)
   }
 
   if (count < 10 || linSum <= 0) return 0;
-
   const geometricMean = Math.exp(logSum / count);
   const arithmeticMean = linSum / count;
-
   return arithmeticMean > 1e-12 ? geometricMean / arithmeticMean : 0;
 }
 
@@ -583,8 +559,6 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
   const binWidth = sampleRate / fftSize;
-
-  // Analyze 200–3000 Hz (covers both F1 and F2 ranges)
   const rangeMinHz = 200;
   const rangeMaxHz = 3000;
   const minBin = Math.floor(rangeMinHz / binWidth);
@@ -592,15 +566,12 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
   const rangeLen = maxBin - minBin;
   if (rangeLen < 30) return 0;
 
-  // Convert dB → linear magnitude
   const linear = new Float64Array(rangeLen);
   for (let i = 0; i < rangeLen; i++) {
     const db = freqData[minBin + i];
     linear[i] = db > -80 ? Math.pow(10, db / 20) : 0;
   }
 
-  // Heavy moving-average smoothing (~100 Hz window) to blur individual harmonics
-  // but preserve the broad formant peaks that define vowel sounds
   const smoothWindow = Math.max(7, Math.round(100 / binWidth));
   const halfWin = Math.floor(smoothWindow / 2);
   const envelope = new Float64Array(rangeLen);
@@ -616,7 +587,6 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
     envelope[i] = count > 0 ? sum / count : 0;
   }
 
-  // Find peak in F1 range (300–900 Hz)
   const f1Lo = Math.max(0, Math.floor((300 - rangeMinHz) / binWidth));
   const f1Hi = Math.min(rangeLen, Math.ceil((900 - rangeMinHz) / binWidth));
   let f1Peak = 0;
@@ -625,7 +595,6 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
     if (envelope[i] > f1Peak) { f1Peak = envelope[i]; f1PeakIdx = i; }
   }
 
-  // Find peak in F2 range (900–2500 Hz)
   const f2Lo = Math.max(0, Math.floor((900 - rangeMinHz) / binWidth));
   const f2Hi = Math.min(rangeLen, Math.ceil((2500 - rangeMinHz) / binWidth));
   let f2Peak = 0;
@@ -634,11 +603,8 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
     if (envelope[i] > f2Peak) { f2Peak = envelope[i]; f2PeakIdx = i; }
   }
 
-  // Both formant peaks must have meaningful energy
   if (f1Peak < 1e-6 || f2Peak < 1e-6) return 0;
 
-  // Find the valley (minimum) between the two peaks
-  // Voice formants create a characteristic "two-hump" shape with a dip between F1 and F2
   const valleyStart = Math.min(f1PeakIdx, f2PeakIdx) + 1;
   const valleyEnd = Math.max(f1PeakIdx, f2PeakIdx);
   let valleyMin = Infinity;
@@ -647,12 +613,9 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
   }
   if (!isFinite(valleyMin) || valleyMin < 1e-8) valleyMin = 1e-8;
 
-  // Compute prominence: how much each peak stands above the valley
   const f1Prominence = f1Peak / valleyMin;
   const f2Prominence = f2Peak / valleyMin;
 
-  // Measure F1 bandwidth: count smoothed bins above 70% of peak
-  // Voice F1 formants are broad (80–200+ Hz); guitar harmonics even after smoothing are narrower
   const f1Thresh = f1Peak * 0.7;
   let f1WidthBins = 0;
   for (let i = f1Lo; i < f1Hi; i++) {
@@ -660,7 +623,6 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
   }
   const f1BandwidthHz = f1WidthBins * binWidth;
 
-  // Measure F2 bandwidth similarly
   const f2Thresh = f2Peak * 0.7;
   let f2WidthBins = 0;
   for (let i = f2Lo; i < f2Hi; i++) {
@@ -668,23 +630,16 @@ function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): nu
   }
   const f2BandwidthHz = f2WidthBins * binWidth;
 
-  // Voice requires:
-  //  - Both peaks prominent above valley (prominence > 1.4)
-  //  - F1 bandwidth ≥ 60 Hz (broad, not a single harmonic)
-  //  - F2 bandwidth ≥ 40 Hz
-  //  - Peaks must be in separate regions (not both clustered in the same spot)
   const peakSeparationHz = Math.abs(f2PeakIdx - f1PeakIdx) * binWidth;
   const hasTwoHumpStructure =
     f1Prominence > 1.4 &&
     f2Prominence > 1.3 &&
     f1BandwidthHz >= 60 &&
     f2BandwidthHz >= 40 &&
-    peakSeparationHz > 300; // F1 and F2 must be well-separated
+    peakSeparationHz > 300;
 
   if (!hasTwoHumpStructure) return 0;
 
-  // Score: combine prominence depth and bandwidth broadness
-  // Higher score = more voice-like
   const prominenceScore = Math.min(1.0,
     ((f1Prominence - 1.0) * 0.25) + ((f2Prominence - 1.0) * 0.25)
   );
@@ -699,7 +654,6 @@ function computeSpectralCrest(freqData: Float32Array, analyser: AnalyserNode): n
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
   const binWidth = sampleRate / fftSize;
-
   const minBin = Math.floor(70 / binWidth);
   const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
 
@@ -727,23 +681,21 @@ function extractChroma(
   sensitivity: number,
   nsdfPitch: number
 ): Float64Array | null {
-  const t = (sensitivity - 1) / 9; // 0..1
+  const t = (sensitivity - 1) / 9;
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
   const binWidth = sampleRate / fftSize;
 
-  // Sensitivity-derived thresholds
   const dbFloor = lerp(-40, -72, t);
   const noiseGateEnergy = lerp(18, 4, t);
 
   const chroma = new Float64Array(12);
   let totalEnergy = 0;
 
-  // Guitar range: ~70 Hz to ~2500 Hz
   const minBin = Math.floor(70 / binWidth);
   const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
 
-  // Spectral whitening: compute average energy per octave band to normalize
+  // Spectral whitening
   const octaveBands = [70, 140, 280, 560, 1120, 2500];
   const bandEnergies: number[] = [];
   for (let b = 0; b < octaveBands.length - 1; b++) {
@@ -760,9 +712,7 @@ function extractChroma(
     bandEnergies.push(count > 0 ? sum / count : 0.001);
   }
 
-  // Gaussian interpolation: spread bin energy to nearby pitch classes
-  // Prevents energy loss when notes fall between integer MIDI bins
-  const gaussSigma = 0.35; // semitones
+  const gaussSigma = 0.35;
   const gaussDenom = 2 * gaussSigma * gaussSigma;
 
   for (let bin = minBin; bin < maxBin; bin++) {
@@ -774,25 +724,20 @@ function extractChroma(
     if (freq < 65) continue;
 
     const midi = freqToMidi(freq);
-    const fractionalPc = ((midi % 12) + 12) % 12; // fractional pitch class
+    const fractionalPc = ((midi % 12) + 12) % 12;
 
-    // Determine which octave band this falls in for normalization
     let bandIdx = 0;
     for (let b = 0; b < octaveBands.length - 1; b++) {
       if (freq >= octaveBands[b] && freq < octaveBands[b + 1]) { bandIdx = b; break; }
     }
     const normFactor = bandEnergies[bandIdx] > 0.001 ? 1.0 / bandEnergies[bandIdx] : 1.0;
 
-    // Smooth exponential frequency weighting (guitar fundamentals strongest)
     const weight = Math.max(0.3, Math.min(2.5, Math.exp(-0.0012 * (freq - 100))));
-
-    // Apply spectral whitening normalization (capped to prevent extreme values)
     const normalizedMag = magnitude * Math.min(normFactor, 5.0) * weight;
 
-    // Distribute energy via Gaussian interpolation across nearby pitch classes
     for (let pc = 0; pc < 12; pc++) {
       let dist = Math.abs(fractionalPc - pc);
-      if (dist > 6) dist = 12 - dist; // wrap around circle
+      if (dist > 6) dist = 12 - dist;
       const gaussWeight = Math.exp(-(dist * dist) / gaussDenom);
       if (gaussWeight > 0.01) {
         chroma[pc] += normalizedMag * gaussWeight;
@@ -802,34 +747,27 @@ function extractChroma(
     totalEnergy += magnitude;
   }
 
-  // Noise gate
   if (totalEnergy < noiseGateEnergy) return null;
 
-  // Harmonic series reinforcement:
-  // If a pitch class has energy AND its expected harmonics (3rd=+7, 5th=+4 semitones)
-  // also have energy, boost the fundamental — confirms it's a real played note
+  // Harmonic series reinforcement
   const harmonicReinforcement = new Float64Array(12);
   for (let pc = 0; pc < 12; pc++) {
     if (chroma[pc] < 0.01) continue;
-    const h3pc = (pc + 7) % 12; // 3rd harmonic (perfect 5th above)
-    const h5pc = (pc + 4) % 12; // 5th harmonic (major 3rd two octaves up)
-    const h3strength = chroma[h3pc];
-    const h5strength = chroma[h5pc];
-    // Reinforce fundamental when harmonics confirm it
-    harmonicReinforcement[pc] += (h3strength + h5strength) * 0.15;
+    const h3pc = (pc + 7) % 12;
+    const h5pc = (pc + 4) % 12;
+    harmonicReinforcement[pc] += (chroma[h3pc] + chroma[h5pc]) * 0.15;
   }
   for (let pc = 0; pc < 12; pc++) {
     chroma[pc] += harmonicReinforcement[pc];
   }
 
-  // NSDF pitch boost: reinforce detected fundamental AND its harmonic series
+  // NSDF pitch boost
   if (nsdfPitch > 0) {
     const nsdfMidi = freqToMidi(nsdfPitch);
     const nsdfPc = ((Math.round(nsdfMidi) % 12) + 12) % 12;
     const maxChroma = Math.max(...chroma);
     if (maxChroma > 0) {
       chroma[nsdfPc] += maxChroma * 0.30;
-      // Mildly boost expected harmonics of the NSDF fundamental
       const h3 = (nsdfPc + 7) % 12;
       const h5 = (nsdfPc + 4) % 12;
       chroma[h3] += maxChroma * 0.10;
@@ -837,7 +775,7 @@ function extractChroma(
     }
   }
 
-  // Normalize chroma to [0, 1] range for consistent matching
+  // Normalize
   const maxVal = Math.max(...chroma);
   if (maxVal > 0) {
     for (let i = 0; i < 12; i++) {
@@ -846,77 +784,4 @@ function extractChroma(
   }
 
   return chroma;
-}
-
-/**
- * Compare a detected chromagram against expected pitch classes.
- * Returns true if the detected audio likely matches the chord.
- */
-function matchChroma(
-  chroma: Float64Array,
-  expected: Set<number>,
-  sensitivity: number
-): boolean {
-  if (expected.size === 0) return false;
-
-  const t = (sensitivity - 1) / 9; // 0..1
-
-  // Adaptive threshold based on the number of expected pitch classes
-  const sizeBonus = Math.min((expected.size - 3) * 0.02, 0.06);
-  const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus;
-  const matchRatioMin = lerp(0.70, 0.38, t);
-  const maxExtrasBase = lerp(2, 5, t);
-
-  const maxVal = Math.max(...chroma);
-  if (maxVal < 0.01) return false;
-
-  const detected = new Set<number>();
-  for (let i = 0; i < 12; i++) {
-    if (chroma[i] >= chromaThreshold) detected.add(i);
-  }
-
-  // Binary match ratio
-  let binaryMatches = 0;
-  for (const pc of expected) {
-    if (detected.has(pc)) binaryMatches++;
-  }
-  const binaryRatio = binaryMatches / expected.size;
-
-  // Weighted match: stronger detected notes get partial credit
-  let weightedMatches = 0;
-  for (const pc of expected) {
-    const strength = chroma[pc];
-    if (strength >= chromaThreshold * 0.6) {
-      weightedMatches += Math.min(strength / chromaThreshold, 1.5);
-    }
-  }
-  const weightedRatio = weightedMatches / expected.size;
-
-  // Cosine similarity between detected chroma and ideal chord template
-  // This captures the overall "shape" match, not just individual note presence
-  let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < 12; i++) {
-    const templateVal = expected.has(i) ? 1.0 : 0;
-    dotProduct += chroma[i] * templateVal;
-    normA += chroma[i] * chroma[i];
-    normB += templateVal * templateVal;
-  }
-  const cosineSim = (normA > 0 && normB > 0) ? dotProduct / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
-
-  // Use the best of all three metrics (cosine slightly scaled up as it's naturally lower)
-  const effectiveRatio = Math.max(weightedRatio, binaryRatio, cosineSim * 1.15);
-
-  const extras = [...detected].filter((pc) => !expected.has(pc)).length;
-  const maxExtras = Math.floor(maxExtrasBase) + expected.size;
-
-  // Require a minimum number of detected expected notes (at least 2, or all if chord has ≤2)
-  const minDetectedNotes = Math.min(2, expected.size);
-  if (binaryMatches < minDetectedNotes) return false;
-
-  // Penalize excessive extra notes more at lower sensitivity
-  const extraPenalty = extras > maxExtras ? (extras - maxExtras) * lerp(0.08, 0.02, t) : 0;
-
-  return (effectiveRatio - extraPenalty) >= matchRatioMin;
 }

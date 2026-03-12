@@ -655,7 +655,7 @@ export default function ProgressionPractice() {
   const { playChord } = useChordAudio();
   const currentInfo = getCurrentChord();
 
-  const { sensitivity, advancedEnabled, advancedValues, setSensitivity } = useDetectionSettingsStore();
+  const { sensitivity, advancedEnabled, advancedValues, detectionEngine, setSensitivity } = useDetectionSettingsStore();
   const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
   const advancedSettings: AdvancedDetectionSettings | null = advancedEnabled ? advancedValues : null;
   const handleSensitivityChange = useCallback((v: number) => {
@@ -698,7 +698,7 @@ export default function ProgressionPractice() {
   }, [revealChord, nextChord, session]);
 
   const { isListening, result: detectionResult, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true, advancedSettings });
+    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true, advancedSettings, detectionEngine });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {

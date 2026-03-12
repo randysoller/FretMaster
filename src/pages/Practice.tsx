@@ -79,7 +79,7 @@ export default function Practice() {
   const chord = getCurrentChord();
   const { playChord } = useChordAudio();
 
-  const { sensitivity, advancedEnabled, advancedValues, setSensitivity } = useDetectionSettingsStore();
+  const { sensitivity, advancedEnabled, advancedValues, detectionEngine, setSensitivity } = useDetectionSettingsStore();
   const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
   const advancedSettings: AdvancedDetectionSettingsType | null = advancedEnabled ? advancedValues : null;
   const handleSensitivityChange = useCallback((v: number) => {
@@ -109,7 +109,7 @@ export default function Practice() {
   }, [revealChord, nextChord, session]);
 
   const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, advancedSettings });
+    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, advancedSettings, detectionEngine });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {
