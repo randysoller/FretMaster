@@ -22,6 +22,7 @@ import { getStyleStrumming, getCustomStrumPatterns } from '@/constants/strumming
 import { useChordAudio } from '@/hooks/useChordAudio';
 import { findChordInLibrary } from '@/stores/progressionStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePracticeHistoryStore } from '@/stores/practiceHistoryStore';
 import CalibrationWizard from '@/components/features/CalibrationWizard';
 import {
   ArrowLeft, SkipForward, SkipBack, Eye, EyeOff, RotateCcw, Volume2, Play, Music,
@@ -688,6 +689,17 @@ export default function ProgressionPractice() {
     if (current?.chordData) playChord(current.chordData);
   }, [revealChord, getCurrentChord, playChord]);
 
+  // Confusion matrix tracking
+  const recordConfusion = usePracticeHistoryStore((s) => s.recordConfusion);
+
+  const handleWrongDetected = useCallback((detectedSymbol: string) => {
+    const s = useProgressionStore.getState();
+    const ci = s.progressionChords[s.currentChordIndex];
+    if (ci) {
+      recordConfusion(ci.chordSymbol, detectedSymbol);
+    }
+  }, [recordConfusion]);
+
   const handleDetectionCorrect = useCallback(() => {
     const s = useProgressionStore.getState();
     const ci = s.progressionChords[s.currentChordIndex];
@@ -698,7 +710,7 @@ export default function ProgressionPractice() {
   }, [revealChord, nextChord, session]);
 
   const { isListening, result: detectionResult, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true, advancedSettings });
+    useChordDetection({ onCorrect: handleDetectionCorrect, onWrongDetected: handleWrongDetected, targetChord: currentInfo?.chordData ?? undefined, sensitivity, autoStart: true, advancedSettings });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {

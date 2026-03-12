@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ChordData } from '@/types/chord';
+import { CHORDS } from '@/constants/chords';
 
 // Standard guitar tuning MIDI notes: E2=40, A2=45, D3=50, G3=55, B3=59, E4=64
 const OPEN_STRING_MIDI = [40, 45, 50, 55, 59, 64];
@@ -136,6 +137,66 @@ function autoCorrelateNSDF(buffer: Float32Array, sampleRate: number, rmsThreshol
 
 export type DetectionResult = 'correct' | 'wrong' | null;
 
+/** Detect if a chord is a barre chord based on its data */
+function isBarreChord(chord: ChordData): boolean {
+  // Check explicit barre markers
+  if (chord.barres && chord.barres.length > 0) return true;
+  // Check category
+  if (chord.category === 'barre') return true;
+  // Heuristic: if most strings are fretted at or above a common minimum fret (>=1)
+  const fretted = chord.frets.filter(f => f > 0);
+  if (fretted.length >= 4) {
+    const minFret = Math.min(...fretted);
+    const sameMinCount = fretted.filter(f => f === minFret).length;
+    if (sameMinCount >= 3 && minFret >= 1) return true;
+  }
+  return false;
+}
+
+// Pre-compute pitch class sets for all known chords for confusion matching
+const ALL_CHORD_TEMPLATES: { chord: ChordData; pitchClasses: Set<number>; chromaTemplate: Float64Array }[] = (() => {
+  const templates: typeof ALL_CHORD_TEMPLATES = [];
+  // Use a Set to avoid duplicate symbols (some chords appear in multiple categories)
+  const seenSymbols = new Set<string>();
+  for (const chord of CHORDS) {
+    if (seenSymbols.has(chord.symbol)) continue;
+    seenSymbols.add(chord.symbol);
+    const pc = getChordPitchClasses(chord);
+    const template = new Float64Array(12);
+    for (const p of pc) template[p] = 1.0;
+    templates.push({ chord, pitchClasses: pc, chromaTemplate: template });
+  }
+  return templates;
+})();
+
+/**
+ * Identify the best-matching chord from the full library given a chromagram.
+ * Returns the chord symbol or null if no good match.
+ */
+function identifyBestMatch(chroma: Float64Array, excludeSymbol?: string): string | null {
+  let bestSim = -1;
+  let bestSymbol: string | null = null;
+
+  for (const { chord, chromaTemplate } of ALL_CHORD_TEMPLATES) {
+    if (chord.symbol === excludeSymbol) continue;
+    // Cosine similarity
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i < 12; i++) {
+      dot += chroma[i] * chromaTemplate[i];
+      normA += chroma[i] * chroma[i];
+      normB += chromaTemplate[i] * chromaTemplate[i];
+    }
+    const sim = (normA > 0 && normB > 0) ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+    if (sim > bestSim) {
+      bestSim = sim;
+      bestSymbol = chord.symbol;
+    }
+  }
+
+  // Only return if similarity is reasonably high
+  return bestSim >= 0.35 ? bestSymbol : null;
+}
+
 
 
 
@@ -150,6 +211,7 @@ export interface AdvancedDetectionSettings {
 
 interface UseChordDetectionOptions {
   onCorrect?: () => void;
+  onWrongDetected?: (detectedSymbol: string) => void;
   targetChord?: ChordData | null;
   /** 1 (strict) – 10 (lenient). Default 6. */
   sensitivity?: number;
@@ -161,6 +223,7 @@ interface UseChordDetectionOptions {
 
 export function useChordDetection({
   onCorrect,
+  onWrongDetected,
   targetChord,
   sensitivity = 6,
   autoStart = false,
@@ -177,17 +240,23 @@ export function useChordDetection({
   const intervalRef = useRef<number>(0);
   const cooldownRef = useRef(false);
   const onCorrectRef = useRef(onCorrect);
+  const onWrongDetectedRef = useRef(onWrongDetected);
   const targetChordRef = useRef(targetChord);
   const sensitivityRef = useRef(sensitivity);
   const isListeningRef = useRef(false);
   const timeDomainBufferRef = useRef<Float32Array | null>(null);
   const prevFreqDataRef = useRef<Float32Array | null>(null);
   const advancedSettingsRef = useRef(advancedSettings);
+  const lastDetectedChromaRef = useRef<Float64Array | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
     onCorrectRef.current = onCorrect;
   }, [onCorrect]);
+
+  useEffect(() => {
+    onWrongDetectedRef.current = onWrongDetected;
+  }, [onWrongDetected]);
 
   useEffect(() => {
     targetChordRef.current = targetChord;
@@ -388,6 +457,9 @@ export function useChordDetection({
         // a single clean periodic signal, so gating on NSDF rejects valid chords.
         // Voice rejection relies on crest factor + spectral flux instead.
 
+        // Determine if target is a barre chord for adapted thresholds
+        const isBarre = isBarreChord(chord);
+
         const chroma = extractChroma(freqData, analyserRef.current, effectiveSensForChroma, nsdfPitch);
         if (!chroma) {
           // No signal — reset counters
@@ -396,6 +468,9 @@ export function useChordDetection({
           return;
         }
 
+        // Store latest chroma for confusion identification
+        lastDetectedChromaRef.current = chroma;
+
         // Track how long signal has been active — prevents transient bursts
         // (plosive consonants, claps, etc.) from immediately counting as matches
         activeSignalFrames++;
@@ -403,8 +478,11 @@ export function useChordDetection({
         // Spectral flatness gate: broadband noise (plosives like "ha", "ka", claps)
         // has energy uniformly spread across all frequencies → high flatness.
         // Guitar chords concentrate energy at harmonic peaks → low flatness.
+        // Barre chords produce more dampened harmonics with slightly higher flatness,
+        // so we relax the threshold when targeting a barre chord.
         const spectralFlatness = computeSpectralFlatness(freqData, analyserRef.current);
-        const maxFlatness = lerp(0.20, 0.40, tNoise); // stricter at low sensitivity
+        const barreFlat = isBarre ? 0.08 : 0; // allow more spectral spread for barre chords
+        const maxFlatness = lerp(0.20, 0.40, tNoise) + barreFlat;
         if (spectralFlatness > maxFlatness) {
           // Energy is too uniformly distributed — broadband noise, not guitar harmonics
           consecutiveMatches = 0;
@@ -412,8 +490,11 @@ export function useChordDetection({
         }
 
         // Spectral crest factor: guitar has sharp harmonic peaks, voice has broad formants
+        // Barre chords have weaker/muffled harmonics → lower crest factor than open chords,
+        // so we reduce the minimum threshold when targeting a barre chord.
         const crestFactor = computeSpectralCrest(freqData, analyserRef.current);
-        const minCrest = lerp(3.0, 1.5, tNoise); // lower threshold allows polyphonic chords through
+        const barreCrestReduction = isBarre ? 0.6 : 0;
+        const minCrest = lerp(3.0, 1.5, tNoise) - barreCrestReduction;
         if (crestFactor < minCrest) {
           // Spectrum too flat / voice-like — reject
           consecutiveMatches = 0;
@@ -442,7 +523,7 @@ export function useChordDetection({
         }
 
         const expectedPc = getChordPitchClasses(chord);
-        const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma);
+        const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma, isBarre);
 
         if (isMatch) {
           // Only count matches after signal has been stable for enough frames
@@ -470,6 +551,16 @@ export function useChordDetection({
             consecutiveMisses = 0;
             cooldownRef.current = true;
             setResult('wrong');
+
+            // Identify what chord was actually detected for confusion tracking
+            const lastChroma = lastDetectedChromaRef.current;
+            if (lastChroma && onWrongDetectedRef.current) {
+              const detectedSymbol = identifyBestMatch(lastChroma, chord.symbol);
+              if (detectedSymbol) {
+                onWrongDetectedRef.current(detectedSymbol);
+              }
+            }
+
             setTimeout(() => {
               setResult(null);
               cooldownRef.current = false;
@@ -851,21 +942,33 @@ function extractChroma(
 /**
  * Compare a detected chromagram against expected pitch classes.
  * Returns true if the detected audio likely matches the chord.
+ * When isBarre is true, thresholds are relaxed to account for the
+ * muffled, dampened harmonics that barre chords produce.
  */
 function matchChroma(
   chroma: Float64Array,
   expected: Set<number>,
-  sensitivity: number
+  sensitivity: number,
+  isBarre: boolean = false
 ): boolean {
   if (expected.size === 0) return false;
 
   const t = (sensitivity - 1) / 9; // 0..1
 
+  // Barre chords produce weaker harmonics due to finger damping across all strings.
+  // Some notes may be partially muted, so we need:
+  // - Lower chroma threshold (notes are quieter)
+  // - Lower match ratio requirement (some notes may be missing)
+  // - Allow more extra pitch classes (sympathetic string buzz from barre pressure)
+  const barreThresholdBonus = isBarre ? 0.04 : 0;
+  const barreRatioReduction = isBarre ? 0.06 : 0;
+  const barreExtrasBonus = isBarre ? 1.5 : 0;
+
   // Adaptive threshold based on the number of expected pitch classes
   const sizeBonus = Math.min((expected.size - 3) * 0.02, 0.06);
-  const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus;
-  const matchRatioMin = lerp(0.70, 0.38, t);
-  const maxExtrasBase = lerp(2, 5, t);
+  const chromaThreshold = lerp(0.25, 0.08, t) - sizeBonus - barreThresholdBonus;
+  const matchRatioMin = lerp(0.70, 0.38, t) - barreRatioReduction;
+  const maxExtrasBase = lerp(2, 5, t) + barreExtrasBonus;
 
   const maxVal = Math.max(...chroma);
   if (maxVal < 0.01) return false;

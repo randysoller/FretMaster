@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePracticeHistoryStore, type PracticeSession } from '@/stores/practiceHistoryStore';
+import ConfusionMatrix from '@/components/features/ConfusionMatrix';
 import { ArrowLeft, Trophy, Clock, Target, Zap, TrendingUp, Calendar, Music, Trash2, BarChart3, Guitar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -250,7 +251,7 @@ function TrendBar({ value, max, label }: { value: number; max: number; label: st
 
 export default function PracticeHistory() {
   const navigate = useNavigate();
-  const { sessions, clearHistory } = usePracticeHistoryStore();
+  const { sessions, clearHistory, confusionMatrix, clearConfusionMatrix } = usePracticeHistoryStore();
   const [showConfirmClear, setShowConfirmClear] = useState(false);
   const stats = useStats(sessions);
 
@@ -346,6 +347,11 @@ export default function PracticeHistory() {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Chord Confusion Matrix */}
+          {confusionMatrix.length > 0 && (
+            <ConfusionMatrix data={confusionMatrix} onClear={clearConfusionMatrix} />
           )}
 
           {/* Most Practiced Chords */}

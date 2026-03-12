@@ -16,7 +16,7 @@ import CustomChordDiagram from '@/components/features/CustomChordDiagram';
 
 import CalibrationWizard from '@/components/features/CalibrationWizard';
 import { ArrowLeft, SkipForward, SkipBack, Eye, RotateCcw, Volume2, Mic, MicOff, SlidersHorizontal, EyeOff, Headphones, BarChart3, Crosshair } from 'lucide-react';
-import type { AdvancedDetectionSettings as AdvancedDetectionSettingsType } from '@/hooks/useChordDetection';
+import { usePracticeHistoryStore } from '@/stores/practiceHistoryStore';
 import ShowDiagramsToggle, { getStoredShowDiagrams } from '@/components/features/ShowDiagramsToggle';
 import { useChordAudio } from '@/hooks/useChordAudio';
 import VolumeControl from '@/components/features/VolumeControl';
@@ -99,6 +99,16 @@ export default function Practice() {
     if (current) playChord(current);
   }, [revealChord, getCurrentChord, playChord]);
 
+  // Confusion matrix tracking
+  const recordConfusion = usePracticeHistoryStore((s) => s.recordConfusion);
+
+  const handleWrongDetected = useCallback((detectedSymbol: string) => {
+    const ch = usePracticeStore.getState().practiceChords[usePracticeStore.getState().currentIndex];
+    if (ch) {
+      recordConfusion(ch.symbol, detectedSymbol);
+    }
+  }, [recordConfusion]);
+
   const handleDetectionCorrect = useCallback(() => {
     const s = usePracticeStore.getState();
     const ch = s.practiceChords[s.currentIndex];
@@ -109,7 +119,7 @@ export default function Practice() {
   }, [revealChord, nextChord, session]);
 
   const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, advancedSettings });
+    useChordDetection({ onCorrect: handleDetectionCorrect, onWrongDetected: handleWrongDetected, targetChord: chord, sensitivity, autoStart: true, advancedSettings });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {

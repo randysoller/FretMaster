@@ -8,6 +8,12 @@ export interface HistoryAttempt {
   timeMs: number;
 }
 
+export interface ConfusionEntry {
+  expected: string;
+  detected: string;
+  count: number;
+}
+
 export interface PracticeSession {
   id: string;
   date: number; // timestamp
@@ -39,10 +45,13 @@ export interface CalibrationProfile {
 interface PracticeHistoryState {
   sessions: PracticeSession[];
   calibrationProfiles: CalibrationProfile[];
+  confusionMatrix: ConfusionEntry[];
   addSession: (session: Omit<PracticeSession, 'id'>) => void;
   clearHistory: () => void;
   addCalibrationProfile: (profile: Omit<CalibrationProfile, 'id'>) => void;
   deleteCalibrationProfile: (id: string) => void;
+  recordConfusion: (expected: string, detected: string) => void;
+  clearConfusionMatrix: () => void;
 }
 
 export const usePracticeHistoryStore = create<PracticeHistoryState>()(
@@ -50,6 +59,7 @@ export const usePracticeHistoryStore = create<PracticeHistoryState>()(
     (set) => ({
       sessions: [],
       calibrationProfiles: [],
+      confusionMatrix: [],
       addSession: (session) =>
         set((state) => ({
           sessions: [
@@ -69,10 +79,39 @@ export const usePracticeHistoryStore = create<PracticeHistoryState>()(
         set((state) => ({
           calibrationProfiles: state.calibrationProfiles.filter((p) => p.id !== id),
         })),
+      recordConfusion: (expected, detected) =>
+        set((state) => {
+          const existing = state.confusionMatrix.find(
+            (e) => e.expected === expected && e.detected === detected
+          );
+          if (existing) {
+            return {
+              confusionMatrix: state.confusionMatrix.map((e) =>
+                e.expected === expected && e.detected === detected
+                  ? { ...e, count: e.count + 1 }
+                  : e
+              ),
+            };
+          }
+          return {
+            confusionMatrix: [...state.confusionMatrix, { expected, detected, count: 1 }],
+          };
+        }),
+      clearConfusionMatrix: () => set({ confusionMatrix: [] }),
     }),
     {
       name: 'fretmaster-practice-history',
-      version: 1,
+      version: 2,
+      partialize: (state) => ({
+        sessions: state.sessions,
+        calibrationProfiles: state.calibrationProfiles,
+        confusionMatrix: state.confusionMatrix,
+      }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        ...(persisted as object),
+        confusionMatrix: (persisted as any)?.confusionMatrix ?? [],
+      }),
     }
   )
 );
