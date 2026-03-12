@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { ChordData } from '@/types/chord';
 import { matchWithWeightedTemplate } from '@/lib/chordTemplates';
-import { mlMatchesChord, initMLModel } from '@/lib/mlChordDetector';
+import { mlMatchesChord, initMLModel, isMLReady } from '@/lib/mlChordDetector';
 import type { DetectionEngine } from '@/stores/detectionSettingsStore';
 
 // Standard guitar tuning MIDI notes: E2=40, A2=45, D3=50, G3=55, B3=59, E4=64
@@ -174,10 +174,16 @@ export function useChordDetection({
   const advancedSettingsRef = useRef(advancedSettings);
   const detectionEngineRef = useRef(detectionEngine);
 
-  // Initialize ML model eagerly if engine uses it
+  // Initialize ML model in background — non-blocking, won't stall AudioContext
   useEffect(() => {
     if (detectionEngine === 'ml' || detectionEngine === 'hybrid') {
-      initMLModel();
+      // Defer ML init to avoid blocking audio startup
+      const timer = setTimeout(() => {
+        initMLModel().then(() => {
+          console.log('[FretMaster] ML model ready for detection');
+        });
+      }, 800);
+      return () => clearTimeout(timer);
     }
   }, [detectionEngine]);
 
@@ -226,23 +232,34 @@ export function useChordDetection({
 
   const startListening = useCallback(async () => {
     if (isListeningRef.current) return;
+    console.log('[FretMaster] Starting microphone...');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-          sampleRate: { ideal: 48000 },
           channelCount: { ideal: 1 },
         },
       });
       streamRef.current = stream;
+      console.log('[FretMaster] Microphone stream acquired, tracks:', stream.getAudioTracks().length);
 
-      const ctx = new AudioContext({ sampleRate: 48000 });
+      // Create AudioContext — let browser choose optimal sample rate
+      let ctx: AudioContext;
+      try {
+        ctx = new AudioContext({ sampleRate: 48000 });
+      } catch {
+        // Fallback: some browsers reject explicit sampleRate
+        console.warn('[FretMaster] 48kHz AudioContext failed, using default');
+        ctx = new AudioContext();
+      }
+      // Ensure AudioContext is running
       if (ctx.state === 'suspended') {
         await ctx.resume();
       }
       audioContextRef.current = ctx;
+      console.log('[FretMaster] AudioContext created, sampleRate:', ctx.sampleRate, 'state:', ctx.state);
 
       const source = ctx.createMediaStreamSource(stream);
 
@@ -300,15 +317,18 @@ export function useChordDetection({
       setIsListening(true);
       setPermissionDenied(false);
 
+      // Final resume check
       if (ctx.state !== 'running') {
-        console.warn('[FretMaster] AudioContext not running, state:', ctx.state);
+        console.warn('[FretMaster] AudioContext not running after setup, state:', ctx.state);
         await ctx.resume();
       }
+      console.log('[FretMaster] Audio pipeline ready, starting analysis loop');
 
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
       let activeSignalFrames = 0;
+      let logCounter = 0;
       const MATCH_THRESHOLD = 3;    // ~210ms
       const MISS_THRESHOLD = 3;
       const MIN_ACTIVE_FRAMES = 3;
@@ -316,6 +336,12 @@ export function useChordDetection({
       // Analysis loop at ~14 Hz
       intervalRef.current = window.setInterval(() => {
         if (!analyserRef.current || cooldownRef.current || !audioContextRef.current) return;
+
+        // Auto-resume AudioContext if browser suspended it
+        if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume().catch(() => {});
+          return;
+        }
         if (audioContextRef.current.state !== 'running') return;
 
         const chord = targetChordRef.current;
@@ -329,6 +355,12 @@ export function useChordDetection({
         const tNoise = adv ? adv.noiseGate / 100 : t;
         const tFlux = adv ? adv.fluxTolerance / 100 : t;
         const effectiveSensForChroma = adv ? 1 + (adv.harmonicBoost / 100) * 9 : sens;
+
+        // Periodic diagnostic log (every ~5 seconds)
+        logCounter++;
+        if (logCounter % 70 === 1) {
+          console.log('[FretMaster] Detection tick #' + logCounter + ' | target:', chord.symbol, '| engine:', engine, '| sensitivity:', sens, '| ML ready:', isMLReady());
+        }
 
         const bufLen = analyserRef.current.frequencyBinCount;
         const freqData = new Float32Array(bufLen);
@@ -367,6 +399,12 @@ export function useChordDetection({
           const rmsLen = Math.min(buf.length, 4096);
           for (let i = 0; i < rmsLen; i++) rmsSum += buf[i] * buf[i];
           const rms = Math.sqrt(rmsSum / rmsLen);
+
+          // Log RMS periodically so user can see if audio is flowing
+          if (logCounter % 70 === 1) {
+            console.log('[FretMaster] RMS:', rms.toFixed(6), '| threshold:', rmsThreshold.toFixed(6), '| gate:', rms < rmsThreshold ? 'BLOCKED' : 'PASS');
+          }
+
           if (rms < rmsThreshold) {
             consecutiveMatches = 0;
             consecutiveMisses = 0;
@@ -481,9 +519,15 @@ export function useChordDetection({
           }
         }
       }, 70);
-    } catch (e) {
-      console.error('[FretMaster] Microphone access denied:', e);
-      setPermissionDenied(true);
+    } catch (e: any) {
+      console.error('[FretMaster] Microphone error:', e?.name, e?.message, e);
+      if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
+        setPermissionDenied(true);
+      } else {
+        // Other errors (NotFoundError, NotReadableError, etc.)
+        setPermissionDenied(true);
+        console.error('[FretMaster] Audio device error — no microphone found or device busy');
+      }
     }
   }, []);
 

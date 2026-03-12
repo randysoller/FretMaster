@@ -140,6 +140,7 @@ let mlpBiasesL2: number[] | null = null;
 let mlpWeightsOut: number[][] | null = null;
 let mlpBiasesOut: number[] | null = null;
 let isInitialized = false;
+let isInitializing = false;
 
 /**
  * Train the MLP on synthetic chroma data.
@@ -147,7 +148,8 @@ let isInitialized = false;
  * synthetic samples + noise augmentation.
  */
 function initializeWeights(): void {
-  if (isInitialized) return;
+  if (isInitialized || isInitializing) return;
+  isInitializing = true;
 
   const nClasses = CHORD_CLASSES.length;
   const inputSize = 12;
@@ -263,6 +265,7 @@ function initializeWeights(): void {
   }
 
   isInitialized = true;
+  isInitializing = false;
   console.log('[FretMaster ML] Neural network initialized with', nClasses, 'chord classes');
 }
 
@@ -321,6 +324,10 @@ export function mlMatchesChord(
   chord: ChordData,
   sensitivity: number
 ): { isMatch: boolean; mlConfidence: number; topPrediction: string } {
+  // If ML model is not ready yet, return a non-match with 0 confidence
+  if (!isInitialized) {
+    return { isMatch: false, mlConfidence: 0, topPrediction: 'N' };
+  }
   const predictions = mlPredict(chroma, 10);
   const targetPcs = getChordPitchClassesFromData(chord);
 
@@ -359,15 +366,36 @@ export function mlMatchesChord(
 }
 
 /**
- * Initialize the ML model. Call this early to avoid latency on first detection.
+ * Initialize the ML model asynchronously to avoid blocking the main thread.
+ * Uses chunked training via setTimeout to keep the UI responsive.
  */
-export function initMLModel(): void {
-  if (!isInitialized) {
-    console.log('[FretMaster ML] Initializing neural network...');
-    const start = performance.now();
-    initializeWeights();
-    console.log(`[FretMaster ML] Ready in ${(performance.now() - start).toFixed(1)}ms`);
+export function initMLModel(): Promise<void> {
+  if (isInitialized) return Promise.resolve();
+  if (isInitializing) {
+    // Return a promise that resolves when init completes
+    return new Promise((resolve) => {
+      const check = () => {
+        if (isInitialized) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
   }
+  console.log('[FretMaster ML] Initializing neural network (async)...');
+  const start = performance.now();
+  return new Promise((resolve) => {
+    // Use setTimeout(0) to yield to the event loop before heavy computation
+    setTimeout(() => {
+      initializeWeights();
+      console.log(`[FretMaster ML] Ready in ${(performance.now() - start).toFixed(1)}ms`);
+      resolve();
+    }, 0);
+  });
+}
+
+/** Check if the ML model is ready for inference. */
+export function isMLReady(): boolean {
+  return isInitialized;
 }
 
 // ─── Helpers ───
