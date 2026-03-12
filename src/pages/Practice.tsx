@@ -79,7 +79,7 @@ export default function Practice() {
   const chord = getCurrentChord();
   const { playChord } = useChordAudio();
 
-  const { sensitivity, advancedEnabled, advancedValues, detectionEngine, setSensitivity } = useDetectionSettingsStore();
+  const { sensitivity, advancedEnabled, advancedValues, setSensitivity } = useDetectionSettingsStore();
   const [showDiagrams, setShowDiagrams] = useState(getStoredShowDiagrams);
   const advancedSettings: AdvancedDetectionSettingsType | null = advancedEnabled ? advancedValues : null;
   const handleSensitivityChange = useCallback((v: number) => {
@@ -109,7 +109,7 @@ export default function Practice() {
   }, [revealChord, nextChord, session]);
 
   const { isListening, result, permissionDenied, toggleListening, stopListening, pauseDetection } =
-    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, advancedSettings, detectionEngine });
+    useChordDetection({ onCorrect: handleDetectionCorrect, targetChord: chord, sensitivity, autoStart: true, advancedSettings });
 
   // Subscribe to metronome beat-sync chord advance
   useEffect(() => {
@@ -202,6 +202,7 @@ export default function Practice() {
             <span className="text-[hsl(var(--border-default))]">·</span>
             <span className="px-2 py-1 rounded bg-[hsl(var(--bg-surface))]">{chordTypes.size === 0 ? 'All Types' : [...chordTypes].map((t) => CHORD_TYPE_LABELS[t]).join(', ')}</span>
           </div>
+          <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} />
           <button onClick={toggleListening} title={isListening ? 'Stop listening' : 'Start listening'}
             className={`relative flex items-center justify-center size-9 rounded-lg border transition-all duration-200 ${isListening ? 'border-[hsl(var(--semantic-success)/0.6)] bg-[hsl(var(--semantic-success)/0.12)] text-[hsl(var(--semantic-success))]' : 'border-[hsl(var(--border-default))] bg-[hsl(var(--bg-elevated))] text-[hsl(var(--text-muted))] hover:text-[hsl(var(--text-default))] hover:bg-[hsl(var(--bg-overlay))]'}`}>
             {isListening ? <Mic className="size-4" /> : <MicOff className="size-4" />}
@@ -289,11 +290,6 @@ export default function Practice() {
       {/* Beat Sync Controls */}
       <div className="px-4 sm:px-6 mb-2">
         <BeatSyncControls />
-      </div>
-
-      {/* Chord Diagram Toggle */}
-      <div className="flex justify-center px-4 sm:px-6 mb-2">
-        <ShowDiagramsToggle enabled={showDiagrams} onChange={setShowDiagrams} />
       </div>
 
       {/* Main Practice Area */}
