@@ -312,8 +312,10 @@ export function useChordDetection({
       // Consecutive match tracking for debounced confirmation
       let consecutiveMatches = 0;
       let consecutiveMisses = 0;
-      const MATCH_THRESHOLD = 2;    // Need 2 consecutive matches (~140ms) to confirm
+      let activeSignalFrames = 0;   // Frames with signal above noise floor
+      const MATCH_THRESHOLD = 3;    // Need 3 consecutive matches (~210ms) to confirm — brief plosives can't sustain this
       const MISS_THRESHOLD = 3;     // Need 3 consecutive misses to show wrong
+      const MIN_ACTIVE_FRAMES = 3;  // Signal must be present for 3+ frames (~210ms) before matches count
 
       // Analysis loop at ~14 Hz for faster response
       intervalRef.current = window.setInterval(() => {
@@ -375,6 +377,7 @@ export function useChordDetection({
             // Signal is too quiet — silence, skip analysis entirely
             consecutiveMatches = 0;
             consecutiveMisses = 0;
+            activeSignalFrames = 0;
             return;
           }
           nsdfPitch = autoCorrelateNSDF(buf, audioContextRef.current.sampleRate, rmsThreshold);
@@ -390,6 +393,21 @@ export function useChordDetection({
           // No signal — reset counters
           consecutiveMatches = 0;
           consecutiveMisses = 0;
+          return;
+        }
+
+        // Track how long signal has been active — prevents transient bursts
+        // (plosive consonants, claps, etc.) from immediately counting as matches
+        activeSignalFrames++;
+
+        // Spectral flatness gate: broadband noise (plosives like "ha", "ka", claps)
+        // has energy uniformly spread across all frequencies → high flatness.
+        // Guitar chords concentrate energy at harmonic peaks → low flatness.
+        const spectralFlatness = computeSpectralFlatness(freqData, analyserRef.current);
+        const maxFlatness = lerp(0.20, 0.40, tNoise); // stricter at low sensitivity
+        if (spectralFlatness > maxFlatness) {
+          // Energy is too uniformly distributed — broadband noise, not guitar harmonics
+          consecutiveMatches = 0;
           return;
         }
 
@@ -427,7 +445,11 @@ export function useChordDetection({
         const isMatch = matchChroma(chroma, expectedPc, effectiveSensForChroma);
 
         if (isMatch) {
-          consecutiveMatches++;
+          // Only count matches after signal has been stable for enough frames
+          // This prevents brief plosive bursts from triggering false positives
+          if (activeSignalFrames >= MIN_ACTIVE_FRAMES) {
+            consecutiveMatches++;
+          }
           consecutiveMisses = 0;
 
           if (consecutiveMatches >= MATCH_THRESHOLD) {
@@ -520,6 +542,43 @@ export function useChordDetection({
  * distributed, producing a flatter smoothed envelope.
  * Returns 0..1 where higher = more voice-like.
  */
+/**
+ * Spectral flatness (Wiener entropy): geometric mean / arithmetic mean of magnitude spectrum.
+ * Broadband noise (plosive consonants like "ha", "ka") → flatness close to 1.0
+ * Harmonic signals (guitar chords with discrete peaks) → flatness close to 0.0
+ * This is mathematically distinct from crest factor: crest measures peak prominence,
+ * flatness measures how uniformly energy is distributed across frequencies.
+ */
+function computeSpectralFlatness(freqData: Float32Array, analyser: AnalyserNode): number {
+  const sampleRate = analyser.context.sampleRate;
+  const fftSize = analyser.fftSize;
+  const binWidth = sampleRate / fftSize;
+
+  // Analyze guitar-relevant range: 70–2500 Hz
+  const minBin = Math.floor(70 / binWidth);
+  const maxBin = Math.min(Math.ceil(2500 / binWidth), freqData.length);
+
+  let logSum = 0;
+  let linSum = 0;
+  let count = 0;
+
+  for (let bin = minBin; bin < maxBin; bin++) {
+    const db = freqData[bin];
+    if (db < -80) continue;
+    const lin = Math.pow(10, db / 20);
+    logSum += Math.log(lin + 1e-12);
+    linSum += lin;
+    count++;
+  }
+
+  if (count < 10 || linSum <= 0) return 0;
+
+  const geometricMean = Math.exp(logSum / count);
+  const arithmeticMean = linSum / count;
+
+  return arithmeticMean > 1e-12 ? geometricMean / arithmeticMean : 0;
+}
+
 function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): number {
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
