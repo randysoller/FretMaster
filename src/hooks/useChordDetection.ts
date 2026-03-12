@@ -402,6 +402,16 @@ export function useChordDetection({
           return;
         }
 
+        // Formant detection: voice has characteristic F1/F2 two-hump spectral envelope
+        // Guitar chords produce a flatter smoothed envelope without the formant dip
+        const formantScore = computeFormantScore(freqData, analyserRef.current);
+        const maxFormant = lerp(0.25, 0.55, tNoise); // stricter at low sensitivity
+        if (formantScore > maxFormant) {
+          // Spectral envelope matches human vowel formant pattern — reject
+          consecutiveMatches = 0;
+          return;
+        }
+
         // Spectral flux gate: reject signals with high frame-to-frame change
         // Voice formants shift continuously → high flux; guitar is stable after attack → low flux
         if (spectralFlux >= 0) {
@@ -503,6 +513,129 @@ export function useChordDetection({
  * Compute spectral crest factor (peakiness) over the guitar range.
  * Guitar has sharp harmonic peaks → high crest; voice has broad formants → low crest.
  */
+/**
+ * Detect human voice formant structure in the spectral envelope.
+ * Voice has characteristic broad peaks at F1 (300-900Hz) and F2 (900-2500Hz)
+ * with a valley between them. Guitar harmonics are sharper and more evenly
+ * distributed, producing a flatter smoothed envelope.
+ * Returns 0..1 where higher = more voice-like.
+ */
+function computeFormantScore(freqData: Float32Array, analyser: AnalyserNode): number {
+  const sampleRate = analyser.context.sampleRate;
+  const fftSize = analyser.fftSize;
+  const binWidth = sampleRate / fftSize;
+
+  // Analyze 200–3000 Hz (covers both F1 and F2 ranges)
+  const rangeMinHz = 200;
+  const rangeMaxHz = 3000;
+  const minBin = Math.floor(rangeMinHz / binWidth);
+  const maxBin = Math.min(Math.ceil(rangeMaxHz / binWidth), freqData.length);
+  const rangeLen = maxBin - minBin;
+  if (rangeLen < 30) return 0;
+
+  // Convert dB → linear magnitude
+  const linear = new Float64Array(rangeLen);
+  for (let i = 0; i < rangeLen; i++) {
+    const db = freqData[minBin + i];
+    linear[i] = db > -80 ? Math.pow(10, db / 20) : 0;
+  }
+
+  // Heavy moving-average smoothing (~100 Hz window) to blur individual harmonics
+  // but preserve the broad formant peaks that define vowel sounds
+  const smoothWindow = Math.max(7, Math.round(100 / binWidth));
+  const halfWin = Math.floor(smoothWindow / 2);
+  const envelope = new Float64Array(rangeLen);
+  for (let i = 0; i < rangeLen; i++) {
+    let sum = 0;
+    let count = 0;
+    const lo = Math.max(0, i - halfWin);
+    const hi = Math.min(rangeLen - 1, i + halfWin);
+    for (let j = lo; j <= hi; j++) {
+      sum += linear[j];
+      count++;
+    }
+    envelope[i] = count > 0 ? sum / count : 0;
+  }
+
+  // Find peak in F1 range (300–900 Hz)
+  const f1Lo = Math.max(0, Math.floor((300 - rangeMinHz) / binWidth));
+  const f1Hi = Math.min(rangeLen, Math.ceil((900 - rangeMinHz) / binWidth));
+  let f1Peak = 0;
+  let f1PeakIdx = f1Lo;
+  for (let i = f1Lo; i < f1Hi; i++) {
+    if (envelope[i] > f1Peak) { f1Peak = envelope[i]; f1PeakIdx = i; }
+  }
+
+  // Find peak in F2 range (900–2500 Hz)
+  const f2Lo = Math.max(0, Math.floor((900 - rangeMinHz) / binWidth));
+  const f2Hi = Math.min(rangeLen, Math.ceil((2500 - rangeMinHz) / binWidth));
+  let f2Peak = 0;
+  let f2PeakIdx = f2Lo;
+  for (let i = f2Lo; i < f2Hi; i++) {
+    if (envelope[i] > f2Peak) { f2Peak = envelope[i]; f2PeakIdx = i; }
+  }
+
+  // Both formant peaks must have meaningful energy
+  if (f1Peak < 1e-6 || f2Peak < 1e-6) return 0;
+
+  // Find the valley (minimum) between the two peaks
+  // Voice formants create a characteristic "two-hump" shape with a dip between F1 and F2
+  const valleyStart = Math.min(f1PeakIdx, f2PeakIdx) + 1;
+  const valleyEnd = Math.max(f1PeakIdx, f2PeakIdx);
+  let valleyMin = Infinity;
+  for (let i = valleyStart; i < valleyEnd && i < rangeLen; i++) {
+    if (envelope[i] < valleyMin) valleyMin = envelope[i];
+  }
+  if (!isFinite(valleyMin) || valleyMin < 1e-8) valleyMin = 1e-8;
+
+  // Compute prominence: how much each peak stands above the valley
+  const f1Prominence = f1Peak / valleyMin;
+  const f2Prominence = f2Peak / valleyMin;
+
+  // Measure F1 bandwidth: count smoothed bins above 70% of peak
+  // Voice F1 formants are broad (80–200+ Hz); guitar harmonics even after smoothing are narrower
+  const f1Thresh = f1Peak * 0.7;
+  let f1WidthBins = 0;
+  for (let i = f1Lo; i < f1Hi; i++) {
+    if (envelope[i] >= f1Thresh) f1WidthBins++;
+  }
+  const f1BandwidthHz = f1WidthBins * binWidth;
+
+  // Measure F2 bandwidth similarly
+  const f2Thresh = f2Peak * 0.7;
+  let f2WidthBins = 0;
+  for (let i = f2Lo; i < f2Hi; i++) {
+    if (envelope[i] >= f2Thresh) f2WidthBins++;
+  }
+  const f2BandwidthHz = f2WidthBins * binWidth;
+
+  // Voice requires:
+  //  - Both peaks prominent above valley (prominence > 1.4)
+  //  - F1 bandwidth ≥ 60 Hz (broad, not a single harmonic)
+  //  - F2 bandwidth ≥ 40 Hz
+  //  - Peaks must be in separate regions (not both clustered in the same spot)
+  const peakSeparationHz = Math.abs(f2PeakIdx - f1PeakIdx) * binWidth;
+  const hasTwoHumpStructure =
+    f1Prominence > 1.4 &&
+    f2Prominence > 1.3 &&
+    f1BandwidthHz >= 60 &&
+    f2BandwidthHz >= 40 &&
+    peakSeparationHz > 300; // F1 and F2 must be well-separated
+
+  if (!hasTwoHumpStructure) return 0;
+
+  // Score: combine prominence depth and bandwidth broadness
+  // Higher score = more voice-like
+  const prominenceScore = Math.min(1.0,
+    ((f1Prominence - 1.0) * 0.25) + ((f2Prominence - 1.0) * 0.25)
+  );
+  const bandwidthScore = Math.min(1.0,
+    (Math.min(f1BandwidthHz, 250) / 250) * 0.3 + (Math.min(f2BandwidthHz, 200) / 200) * 0.2
+  );
+
+  return Math.min(1.0, prominenceScore + bandwidthScore);
+}
+
 function computeSpectralCrest(freqData: Float32Array, analyser: AnalyserNode): number {
   const sampleRate = analyser.context.sampleRate;
   const fftSize = analyser.fftSize;
