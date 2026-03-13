@@ -105,8 +105,9 @@
   }
 
   .chord-fret {
-    stroke: #ffffff;
-    stroke-width: 2;
+    stroke: hsl(var(--text-subtle));
+    stroke-opacity: 0.35;
+    stroke-width: 1.5;
   }
 
   .chord-nut {
@@ -119,14 +120,14 @@
   }
 
   .chord-dot-text {
-    fill: hsl(var(--bg-base));
-    font-weight: 700;
+    fill: hsl(30 25% 4%);
+    font-weight: 800;
     font-family: 'DM Sans', sans-serif;
   }
 
   .chord-open {
-    stroke: hsl(var(--text-subtle));
-    stroke-width: 1.5;
+    stroke: hsl(var(--text-default));
+    stroke-width: 2;
     fill: none;
   }
 
@@ -145,7 +146,7 @@
 
   .chord-root-text {
     fill: hsl(220 20% 10%);
-    font-weight: 700;
+    font-weight: 800;
     font-family: 'DM Sans', sans-serif;
   }
 
