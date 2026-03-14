@@ -1,0 +1,423 @@
+{
+  "colors": {
+    "brand": {
+      "primary": { "hsl": "hsl(38, 75%, 52%)", "hex": "#D4952A" },
+      "brand": { "hsl": "hsl(30, 62%, 44%)", "hex": "#B57028" },
+      "emphasis": { "hsl": "hsl(43, 83%, 65%)", "hex": "#E8C55C" }
+    },
+    "text": {
+      "default": { "hsl": "hsl(36, 33%, 93%)", "hex": "#F2EDE5" },
+      "subtle": { "hsl": "hsl(33, 14%, 72%)", "hex": "#BFB6AA" },
+      "muted": { "hsl": "hsl(30, 7%, 47%)", "hex": "#807A73" }
+    },
+    "background": {
+      "base": { "hsl": "hsl(30, 25%, 4%)", "hex": "#0D0B08" },
+      "elevated": { "hsl": "hsl(28, 20%, 8%)", "hex": "#181310" },
+      "overlay": { "hsl": "hsl(28, 17%, 11%)", "hex": "#211D18" },
+      "surface": { "hsl": "hsl(28, 14%, 15%)", "hex": "#2C2723" }
+    },
+    "border": {
+      "default": { "hsl": "hsl(28, 12%, 21%)", "hex": "#3D3731" },
+      "subtle": { "hsl": "hsl(28, 10%, 16%)", "hex": "#2E2A25" }
+    },
+    "semantic": {
+      "success": { "hsl": "hsl(142, 71%, 45%)", "hex": "#22C55E" },
+      "warning": { "hsl": "hsl(43, 96%, 56%)", "hex": "#FACC15" },
+      "error": { "hsl": "hsl(0, 84%, 60%)", "hex": "#EF4444" },
+      "info": { "hsl": "hsl(217, 91%, 60%)", "hex": "#3B82F6" }
+    },
+    "accent": {
+      "rootNoteBlue": { "hsl": "hsl(200, 80%, 62%)", "hex": "#4DB8E8" },
+      "amber": { "hsl": "hsl(38, 92%, 50%)", "hex": "#F59E0B" },
+      "emerald": { "hsl": "hsl(152, 69%, 31%)", "hex": "#10B981" },
+      "violet": { "hsl": "hsl(258, 90%, 66%)", "hex": "#8B5CF6" },
+      "cyan": { "hsl": "hsl(187, 100%, 42%)", "hex": "#06B6D4" },
+      "rose": { "hsl": "hsl(350, 89%, 60%)", "hex": "#F43F5E" }
+    },
+    "misc": {
+      "fretInlay": { "hsl": "hsl(30, 15%, 50%)", "hex": "#8C7D6B", "opacity": 0.5 }
+    }
+  },
+  "typography": {
+    "families": {
+      "display": {
+        "name": "Sora",
+        "fallback": "sans-serif",
+        "googleFontsUrl": "https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800"
+      },
+      "body": {
+        "name": "DM Sans",
+        "fallback": "sans-serif",
+        "googleFontsUrl": "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700"
+      }
+    },
+    "scale": {
+      "appTitle": {
+        "family": "Sora",
+        "size": 18,
+        "weight": 600,
+        "letterSpacing": -0.45,
+        "color": "text.default"
+      },
+      "pageTitle": {
+        "family": "Sora",
+        "sizeMobile": 30,
+        "sizeTablet": 48,
+        "weight": 800,
+        "letterSpacing": 0,
+        "color": "text.default"
+      },
+      "sectionHeading": {
+        "family": "Sora",
+        "size": 14,
+        "weight": 600,
+        "letterSpacing": 0.7,
+        "textTransform": "uppercase",
+        "color": "text.default"
+      },
+      "cardTitle": {
+        "family": "Sora",
+        "sizeMobile": 24,
+        "sizeTablet": 30,
+        "weight": 700,
+        "letterSpacing": 0,
+        "color": "text.default"
+      },
+      "chordSymbol": {
+        "family": "Sora",
+        "sizeMobile": 30,
+        "sizeDesktop": 60,
+        "weight": 800,
+        "letterSpacing": 0,
+        "color": "text.default"
+      },
+      "chordName": {
+        "family": "DM Sans",
+        "sizeMobile": 12,
+        "sizeDesktop": 16,
+        "weight": 400,
+        "letterSpacing": 0,
+        "color": "text.muted"
+      },
+      "body": {
+        "family": "DM Sans",
+        "size": 14,
+        "weight": 400,
+        "letterSpacing": 0,
+        "color": "text.subtle"
+      },
+      "buttonPrimary": {
+        "family": "Sora",
+        "size": 18,
+        "weight": 700,
+        "letterSpacing": 0.9,
+        "textTransform": "uppercase",
+        "color": "background.base"
+      },
+      "buttonSecondary": {
+        "family": "Sora",
+        "size": 14,
+        "weight": 700,
+        "letterSpacing": 0,
+        "color": "varies"
+      },
+      "label": {
+        "family": "DM Sans",
+        "size": 11,
+        "weight": 500,
+        "letterSpacing": 1.1,
+        "textTransform": "uppercase",
+        "color": "text.muted"
+      },
+      "tabBarLabel": {
+        "family": "Sora",
+        "size": 14,
+        "weight": 600,
+        "letterSpacing": 0,
+        "colorActive": "brand.primary",
+        "colorInactive": "text.muted"
+      },
+      "badgeText": {
+        "family": "Sora",
+        "sizeMobile": 20,
+        "sizeDesktop": 24,
+        "weight": 800,
+        "letterSpacing": 0.5,
+        "textTransform": "uppercase"
+      },
+      "filterChip": {
+        "family": "DM Sans",
+        "size": 14,
+        "weight": 500,
+        "letterSpacing": 0
+      },
+      "filterPill": {
+        "family": "DM Sans",
+        "size": 11,
+        "weight": 500,
+        "letterSpacing": 0
+      },
+      "statNumber": {
+        "family": "Sora",
+        "size": 24,
+        "weight": 800,
+        "letterSpacing": 0
+      },
+      "tooltip": {
+        "family": "DM Sans",
+        "size": 10,
+        "weight": 500,
+        "letterSpacing": 0.5,
+        "textTransform": "uppercase",
+        "color": "text.muted"
+      },
+      "chordDiagramFinger": {
+        "family": "DM Sans",
+        "weight": 700,
+        "sizes": { "sm": 14, "md": 18, "lg": 24 },
+        "colorOnPrimary": "background.base",
+        "colorOnRoot": "#1A1D24"
+      },
+      "fretLabel": {
+        "family": "DM Sans",
+        "weight": 600,
+        "sizes": { "sm": 9, "md": 11, "lg": 14 },
+        "color": "text.subtle"
+      }
+    }
+  },
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "base": 16,
+    "lg": 24,
+    "xl": 32,
+    "xxl": 48,
+    "xxxl": 64
+  },
+  "borderRadius": {
+    "sm": 4,
+    "md": 8,
+    "lg": 10,
+    "xl": 12,
+    "xxl": 16,
+    "full": 9999
+  },
+  "dimensions": {
+    "headerHeight": 58,
+    "tabBarHeight": 56,
+    "practiceToolbarHeight": 66,
+    "touchTargetMin": 44,
+    "tabIcon": 30,
+    "navIcon": 23,
+    "logoIcon": 31,
+    "tabIndicator": { "width": 32, "height": 2 },
+    "ctaButtonHeight": 56,
+    "practiceButtonMobile": 44,
+    "practiceButtonDesktop": 48,
+    "iconBadge": 48,
+    "toggleTrack": { "width": 32, "height": 18 },
+    "toggleCircle": 14,
+    "sliderTrackHeight": 6,
+    "sliderThumb": 18
+  },
+  "chordDiagram": {
+    "sizes": {
+      "sm": { "svgWidth": 100, "svgHeight": 130, "dotRadius": 7, "fontSize": 14, "topPaddingY": 18, "fretLabelSize": 9 },
+      "md": { "svgWidth": 140, "svgHeight": 175, "dotRadius": 9.5, "fontSize": 18, "topPaddingY": 22, "fretLabelSize": 11 },
+      "lg": { "svgWidth": 200, "svgHeight": 250, "dotRadius": 13, "fontSize": 24, "topPaddingY": 30, "fretLabelSize": 14 }
+    },
+    "elements": {
+      "fretLine": { "color": "#FFFFFF", "strokeWidth": 2 },
+      "nutBar": { "color": "text.default", "height": 6, "borderRadius": 1 },
+      "stringWidths": [2.6, 2.2, 1.8, 1.4, 1.0, 0.7],
+      "fingerDot": { "fillColor": "brand.primary" },
+      "rootNote": {
+        "shape": "diamond",
+        "color": "#4DB8E8",
+        "scaleFactor": 1.15,
+        "textColor": "#1A1D24"
+      },
+      "barreBar": {
+        "color": "brand.primary",
+        "heightRatio": 0.38
+      },
+      "openMarker": {
+        "color": "text.subtle",
+        "strokeWidth": 1.5,
+        "radiusRatio": 0.65
+      },
+      "openRootMarker": {
+        "color": "#4DB8E8",
+        "shape": "diamond",
+        "radiusRatio": 0.78
+      },
+      "mutedMarker": {
+        "color": "text.muted",
+        "strokeWidth": 1.5,
+        "radiusRatio": 0.65
+      },
+      "fretInlays": {
+        "color": "#8C7D6B",
+        "opacity": 0.5,
+        "radiusRatio": 0.5,
+        "singleDotFrets": [3, 5, 7, 9, 15, 17, 19, 21],
+        "doubleDotFrets": [12, 24]
+      }
+    }
+  },
+  "gradients": {
+    "textGradient": {
+      "type": "linear",
+      "angle": 135,
+      "stops": [
+        { "color": "#E8C55C", "position": 0 },
+        { "color": "#D4952A", "position": 50 },
+        { "color": "#B57028", "position": 100 }
+      ]
+    },
+    "ctaButton": {
+      "type": "linear",
+      "direction": "toRight",
+      "stops": [
+        { "color": "#B57028", "position": 0 },
+        { "color": "#D4952A", "position": 50 },
+        { "color": "#E8C55C", "position": 100 }
+      ]
+    },
+    "stageBackground": [
+      {
+        "type": "radialEllipse",
+        "position": "50% 0%",
+        "color": "#D4952A",
+        "opacity": 0.08,
+        "extent": "60%"
+      },
+      {
+        "type": "radialEllipse",
+        "position": "80% 50%",
+        "color": "#B57028",
+        "opacity": 0.05,
+        "extent": "50%"
+      }
+    ],
+    "accentBars": {
+      "key": { "from": "#F59E0B", "via": "#FBBF24", "to": "rgba(245,158,11,0.3)" },
+      "scale": { "from": "#06B6D4", "via": "#22D3EE", "to": "rgba(6,182,212,0.3)" },
+      "progression": { "from": "#8B5CF6", "via": "#A78BFA", "to": "rgba(139,92,246,0.3)" },
+      "myProgressions": { "from": "#F43F5E", "via": "#FB7185", "to": "rgba(244,63,94,0.3)" },
+      "readyToPractice": { "from": "#B57028", "via": "#D4952A", "to": "rgba(232,197,92,0.3)" }
+    }
+  },
+  "shadows": {
+    "glowPrimary": {
+      "layers": [
+        { "x": 0, "y": 0, "blur": 20, "color": "rgba(212,149,42,0.25)" },
+        { "x": 0, "y": 0, "blur": 60, "color": "rgba(212,149,42,0.1)" }
+      ]
+    },
+    "glowEmphasis": {
+      "layers": [
+        { "x": 0, "y": 0, "blur": 30, "color": "rgba(232,197,92,0.2)" },
+        { "x": 0, "y": 0, "blur": 80, "color": "rgba(232,197,92,0.08)" }
+      ]
+    },
+    "glowPrimaryHover": {
+      "layers": [
+        { "x": 0, "y": 0, "blur": 30, "color": "rgba(212,149,42,0.4)" },
+        { "x": 0, "y": 0, "blur": 80, "color": "rgba(212,149,42,0.15)" }
+      ]
+    },
+    "sliderThumb": {
+      "layers": [
+        { "x": 0, "y": 0, "blur": 6, "color": "rgba(212,149,42,0.4)" }
+      ]
+    },
+    "correctBadgeGlow": {
+      "textShadow": [
+        { "x": 0, "y": 0, "blur": 20, "color": "rgba(34,197,94,0.4)" },
+        { "x": 0, "y": 0, "blur": 40, "color": "rgba(34,197,94,0.15)" }
+      ]
+    },
+    "wrongBadgeGlow": {
+      "textShadow": [
+        { "x": 0, "y": 0, "blur": 20, "color": "rgba(239,68,68,0.4)" },
+        { "x": 0, "y": 0, "blur": 40, "color": "rgba(239,68,68,0.15)" }
+      ]
+    }
+  },
+  "opacity": {
+    "activeBackground": { "min": 0.08, "max": 0.15 },
+    "activeBorder": { "min": 0.25, "max": 0.5 },
+    "hoverBackground": { "min": 0.1, "max": 0.2 },
+    "disabled": 0.4,
+    "backdropBlur": { "min": 0.85, "max": 0.95 },
+    "subtleDecorative": { "min": 0.05, "max": 0.08 },
+    "glowInner": 0.25,
+    "glowOuter": { "min": 0.08, "max": 0.15 }
+  },
+  "animations": {
+    "badgeEntrance": { "duration": 300, "easing": [0.16, 1, 0.3, 1], "scaleFrom": 0.5, "scaleTo": 1, "yFrom": 6, "yTo": 0 },
+    "badgeExit": { "duration": 300, "easing": [0.16, 1, 0.3, 1], "scaleFrom": 1, "scaleTo": 0.7, "yFrom": 0, "yTo": -6 },
+    "chordTransition": { "duration": 300, "yEnterFrom": 20, "yExitTo": -20 },
+    "dropdownOpen": { "duration": 150, "yFrom": -8 },
+    "bottomSheet": { "type": "spring", "stiffness": 400, "damping": 36 },
+    "buttonPress": { "scale": 0.97 },
+    "audioBarWave": { "duration": 800, "heightMin": 4, "heightMax": 12, "barCount": 5, "staggerDelay": 120 },
+    "hoverSweep": { "duration": 700, "easing": "ease-in-out" },
+    "tabIndicator": { "type": "spring", "stiffness": 500, "damping": 35 },
+    "generalTransition": { "duration": 200 }
+  },
+  "theme": {
+    "mode": "dark",
+    "themeColor": "#0D0B08",
+    "colorScheme": "dark"
+  },
+  "sensitivityLabels": {
+    "strict": { "range": [1, 3], "color": "#3B82F6", "label": "Strict" },
+    "balanced": { "range": [4, 7], "color": "#D4952A", "label": "Balanced" },
+    "sensitive": { "range": [8, 10], "color": "#22C55E", "label": "Sensitive" }
+  },
+  "feedbackBadge": {
+    "correct": {
+      "background": "rgba(34,197,94,0.15)",
+      "borderColor": "rgba(34,197,94,0.5)",
+      "borderWidth": 2,
+      "textColor": "#22C55E",
+      "borderRadius": 16
+    },
+    "wrong": {
+      "background": "rgba(239,68,68,0.15)",
+      "borderColor": "rgba(239,68,68,0.5)",
+      "borderWidth": 2,
+      "textColor": "#EF4444",
+      "borderRadius": 16
+    }
+  },
+  "filterChipStates": {
+    "key": {
+      "active": { "borderColor": "rgba(245,158,11,0.5)", "background": "rgba(245,158,11,0.1)", "textColor": "#FBBF24" },
+      "tag": { "borderColor": "rgba(245,158,11,0.25)", "background": "rgba(245,158,11,0.12)", "textColor": "#FBBF24" }
+    },
+    "category": {
+      "active": { "borderColor": "rgba(16,185,129,0.5)", "background": "rgba(16,185,129,0.1)", "textColor": "#34D399" },
+      "tag": { "borderColor": "rgba(16,185,129,0.25)", "background": "rgba(16,185,129,0.12)", "textColor": "#34D399" }
+    },
+    "type": {
+      "active": { "borderColor": "rgba(139,92,246,0.5)", "background": "rgba(139,92,246,0.1)", "textColor": "#A78BFA" },
+      "tag": { "borderColor": "rgba(139,92,246,0.25)", "background": "rgba(139,92,246,0.12)", "textColor": "#A78BFA" }
+    },
+    "rootString": {
+      "active": { "borderColor": "rgba(77,184,232,0.4)", "background": "rgba(77,184,232,0.2)", "textColor": "#4DB8E8" },
+      "tag": { "borderColor": "rgba(77,184,232,0.25)", "background": "rgba(77,184,232,0.12)", "textColor": "#4DB8E8" }
+    }
+  },
+  "confusionMatrix": {
+    "severity": {
+      "high": { "minCount": 10, "background": "rgba(239,68,68,0.1)", "borderColor": "rgba(239,68,68,0.25)", "textColor": "#EF4444" },
+      "medium": { "minCount": 5, "background": "rgba(232,197,92,0.08)", "borderColor": "rgba(232,197,92,0.2)", "textColor": "#E8C55C" },
+      "low": { "minCount": 0, "background": "rgba(44,39,35,0.5)", "borderColor": "#2E2A25", "textColor": "#BFB6AA" }
+    }
+  }
+}
