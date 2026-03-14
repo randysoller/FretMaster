@@ -6,9 +6,9 @@ interface ChordDiagramProps {
 }
 
 const SIZES = {
-  sm: { width: 100, height: 130, dotRadius: 7, fontSize: 11, topY: 18, fretLabelSize: 9 },
-  md: { width: 140, height: 175, dotRadius: 9.5, fontSize: 15, topY: 22, fretLabelSize: 11 },
-  lg: { width: 200, height: 250, dotRadius: 13, fontSize: 20, topY: 30, fretLabelSize: 14 },
+  sm: { width: 100, height: 130, dotRadius: 7, fontSize: 14, topY: 18, fretLabelSize: 9 },
+  md: { width: 140, height: 175, dotRadius: 9.5, fontSize: 18, topY: 22, fretLabelSize: 11 },
+  lg: { width: 200, height: 250, dotRadius: 13, fontSize: 24, topY: 30, fretLabelSize: 14 },
 };
 
 /** Extra left padding added when a fret label (e.g. "3fr") needs to be shown */
@@ -34,8 +34,8 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
   const stringSpacing = gridWidth / (numStrings - 1);
   const fretSpacing = gridHeight / numFrets;
 
-  const getStringX = (i: number) => Math.round((padLeft + i * stringSpacing) * 100) / 100;
-  const getFretY = (f: number) => Math.round((padTop + f * fretSpacing) * 100) / 100;
+  const getStringX = (i: number) => padLeft + i * stringSpacing;
+  const getFretY = (f: number) => padTop + f * fretSpacing;
 
   const rootIdx = chord.rootNoteString;
 
@@ -94,9 +94,8 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           y1={getFretY(i)}
           x2={getStringX(numStrings - 1)}
           y2={getFretY(i)}
-          stroke="hsl(var(--text-subtle))"
-          strokeOpacity={0.35}
-          strokeWidth={i === 0 && !showNut ? 2.5 : 1.5}
+          className="chord-fret"
+          strokeWidth={i === 0 && !showNut ? 2.5 : 2}
         />
       ))}
 
@@ -122,7 +121,7 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
         return <circle key={`inlay-${i}`} cx={centerX} cy={y} r={inlayR} fill="hsl(30 15% 50%)" opacity={0.5} />;
       })}
 
-      {/* String lines — thicker on left (low E) like real strings */}
+      {/* String lines — thicker on left (low E) like real strings, colored by status */}
       {Array.from({ length: numStrings }, (_, i) => (
         <line
           key={`string-${i}`}
@@ -131,7 +130,6 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           x2={getStringX(i)}
           y2={getFretY(numFrets)}
           stroke="hsl(var(--text-subtle))"
-          strokeOpacity={0.5}
           strokeWidth={STRING_WIDTHS[i]}
         />
       ))}
@@ -202,9 +200,8 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
                   {barreFingerNum > 0 && (
                     <text
                       x={getStringX(si)}
-                      y={y}
+                      y={y + config.fontSize * 0.35}
                       textAnchor="middle"
-                      dominantBaseline="central"
                       className={isRoot ? 'chord-root-text' : 'chord-dot-text'}
                       fontSize={config.fontSize}
                     >
@@ -218,16 +215,16 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
         );
       })}
 
-      {/* Open and muted string indicators */}
+      {/* Open and muted string indicators — colored by status */}
       {chord.frets.map((fret, i) => {
         const x = getStringX(i);
         const y = config.topY - 4;
-        const r = config.dotRadius * 0.6;
+        const r = config.dotRadius * 0.65;
 
         if (fret === 0) {
           const isRoot = i === rootIdx;
           if (isRoot) {
-            return <RootDiamond key={`open-root-${i}`} x={x} y={y} r={r * 1.15} />;
+            return <RootDiamond key={`open-root-${i}`} x={x} y={y} r={r * 1.2} />;
           }
           return (
             <circle
@@ -240,24 +237,21 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
           );
         }
         if (fret === -1) {
-          const xr = r * 0.7;
           return (
             <g key={`muted-${i}`}>
               <line
-                x1={x - xr}
-                y1={y - xr}
-                x2={x + xr}
-                y2={y + xr}
+                x1={x - r}
+                y1={y - r}
+                x2={x + r}
+                y2={y + r}
                 className="chord-muted"
-                strokeWidth={2}
               />
               <line
-                x1={x + xr}
-                y1={y - xr}
-                x2={x - xr}
-                y2={y + xr}
+                x1={x + r}
+                y1={y - r}
+                x2={x - r}
+                y2={y + r}
                 className="chord-muted"
-                strokeWidth={2}
               />
             </g>
           );
@@ -265,7 +259,7 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
         return null;
       })}
 
-      {/* Finger dots (non-barre) */}
+      {/* Finger dots (non-barre) — colored by status */}
       {chord.frets.map((fret, i) => {
         if (fret <= 0) return null;
 
@@ -276,7 +270,7 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
         if (barreRenderedStrings.has(`${i}-${fret}`)) return null;
 
         const x = getStringX(i);
-        const y = getFretY(relFret - 1) + fretSpacing / 2;
+        const y = getFretY(relFret) - fretSpacing / 2;
         const isRoot = i === rootIdx;
 
         return (
@@ -294,9 +288,8 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
             {chord.fingers[i] > 0 && (
               <text
                 x={x}
-                y={y}
+                y={y + config.fontSize * 0.35}
                 textAnchor="middle"
-                dominantBaseline="central"
                 className={isRoot ? 'chord-root-text' : 'chord-dot-text'}
                 fontSize={config.fontSize}
               >
@@ -310,9 +303,9 @@ export default function ChordDiagram({ chord, size = 'md' }: ChordDiagramProps) 
   );
 }
 
-/** Light blue diamond shape for root notes — perfectly centered on x,y */
+/** Light blue diamond shape for root notes */
 function RootDiamond({ x, y, r }: { x: number; y: number; r: number }) {
-  const d = r * 1.1;
+  const d = r * 1.15;
   const points = `${x},${y - d} ${x + d},${y} ${x},${y + d} ${x - d},${y}`;
   return <polygon points={points} className="chord-root" />;
 }
