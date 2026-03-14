@@ -6,9 +6,9 @@ interface CustomChordDiagramProps {
 }
 
 const SIZES = {
-  sm: { width: 100, height: 130, dotRadius: 7, fontSize: 14, topY: 18, fretLabelSize: 9 },
-  md: { width: 140, height: 175, dotRadius: 9.5, fontSize: 18, topY: 22, fretLabelSize: 11 },
-  lg: { width: 200, height: 250, dotRadius: 13, fontSize: 24, topY: 30, fretLabelSize: 14 },
+  sm: { width: 100, height: 130, dotRadius: 7, fontSize: 11, topY: 18, fretLabelSize: 9 },
+  md: { width: 140, height: 175, dotRadius: 9.5, fontSize: 15, topY: 22, fretLabelSize: 11 },
+  lg: { width: 200, height: 250, dotRadius: 13, fontSize: 20, topY: 30, fretLabelSize: 14 },
 };
 
 const STRING_WIDTHS = [2.6, 2.2, 1.8, 1.4, 1.0, 0.7];
@@ -36,8 +36,8 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
   const stringSpacing = gridWidth / (numStrings - 1);
   const fretSpacing = gridHeight / numFrets;
 
-  const getStringX = (i: number) => padLeft + i * stringSpacing;
-  const getFretY = (f: number) => padTop + f * fretSpacing;
+  const getStringX = (i: number) => Math.round((padLeft + i * stringSpacing) * 100) / 100;
+  const getFretY = (f: number) => Math.round((padTop + f * fretSpacing) * 100) / 100;
 
   return (
     <svg
@@ -52,7 +52,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           x={padLeft - 6}
           y={getFretY(0.5) + config.fretLabelSize / 3}
           textAnchor="end"
-          fill="hsl(33 14% 72%)"
+          className="fill-[hsl(var(--text-subtle))]"
           fontSize={config.fretLabelSize}
           fontFamily="DM Sans, sans-serif"
           fontWeight={600}
@@ -69,8 +69,9 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           y1={getFretY(i)}
           x2={getStringX(numStrings - 1)}
           y2={getFretY(i)}
-          stroke="#ffffff"
-          strokeWidth={i === 0 && !showNut ? 2.5 : 2}
+          stroke="hsl(var(--text-subtle))"
+          strokeOpacity={0.35}
+          strokeWidth={i === 0 && !showNut ? 2.5 : 1.5}
         />
       ))}
 
@@ -104,9 +105,9 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           y1={getFretY(0)}
           x2={getStringX(i)}
           y2={getFretY(numFrets)}
-          stroke="hsl(33 14% 72%)"
+          stroke="hsl(var(--text-subtle))"
+          strokeOpacity={chord.mutedStrings.has(i) ? 0.2 : 0.5}
           strokeWidth={STRING_WIDTHS[i]}
-          opacity={chord.mutedStrings.has(i) ? 0.3 : 1}
         />
       ))}
 
@@ -118,7 +119,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           width={getStringX(numStrings - 1) - getStringX(0) + 2}
           height={6}
           rx={1}
-          fill="hsl(36 33% 93%)"
+          fill="hsl(var(--text-default))"
         />
       )}
 
@@ -131,21 +132,22 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
         if (chord.openStrings.has(i)) {
           const isDiamond = chord.openDiamonds?.has(i);
           if (isDiamond) {
-            const d = r * 1.3;
+            const d = r * 1.1;
             const points = `${x},${y - d} ${x + d},${y} ${x},${y + d} ${x - d},${y}`;
             return (
-              <polygon key={`open-${i}`} points={points} stroke="hsl(200 80% 62%)" strokeWidth={1.5} fill="none" />
+              <polygon key={`open-${i}`} points={points} className="chord-root" />
             );
           }
           return (
-            <circle key={`open-${i}`} cx={x} cy={y} r={r} stroke="hsl(33 14% 72%)" strokeWidth={1.5} fill="none" />
+            <circle key={`open-${i}`} cx={x} cy={y} r={r} className="chord-open" />
           );
         }
         if (chord.mutedStrings.has(i)) {
+          const xr = r * 0.7;
           return (
             <g key={`muted-${i}`}>
-              <line x1={x - r} y1={y - r} x2={x + r} y2={y + r} stroke="hsl(30 7% 47%)" strokeWidth={1.5} />
-              <line x1={x + r} y1={y - r} x2={x - r} y2={y + r} stroke="hsl(30 7% 47%)" strokeWidth={1.5} />
+              <line x1={x - xr} y1={y - xr} x2={x + xr} y2={y + xr} className="chord-muted" strokeWidth={2} />
+              <line x1={x + xr} y1={y - xr} x2={x - xr} y2={y + xr} className="chord-muted" strokeWidth={2} />
             </g>
           );
         }
@@ -155,7 +157,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
       {/* Barres */}
       {chord.barres.map((barre, idx) => {
         const y = getFretY(barre.fret - 1) + fretSpacing / 2;
-        const barHeight = 4; // 8pt total height (3pt + 5pt larger)
+        const barHeight = config.dotRadius * 0.38;
         return (
           <rect
             key={`barre-${idx}-${barre.fret}-${barre.fromString}-${barre.toString}`}
@@ -180,7 +182,7 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
           <g key={`dot-${marker.fret}-${marker.string}`}>
             {marker.shape === 'diamond' ? (
               <polygon
-                points={`${x},${y - config.dotRadius * 1.15} ${x + config.dotRadius * 1.15},${y} ${x},${y + config.dotRadius * 1.15} ${x - config.dotRadius * 1.15},${y}`}
+                points={`${x},${y - config.dotRadius * 1.1} ${x + config.dotRadius * 1.1},${y} ${x},${y + config.dotRadius * 1.1} ${x - config.dotRadius * 1.1},${y}`}
                 fill={marker.color}
               />
             ) : (
@@ -189,11 +191,12 @@ export default function CustomChordDiagram({ chord, size = 'md' }: CustomChordDi
             {displayLabel && (
               <text
                 x={x}
-                y={y + config.fontSize * 0.35}
+                y={y}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fontSize={config.fontSize}
                 fontFamily="DM Sans, sans-serif"
-                fontWeight={700}
+                fontWeight={800}
                 fill={isLightColor(marker.color) ? '#1a1a1a' : '#fafafa'}
               >
                 {displayLabel}
