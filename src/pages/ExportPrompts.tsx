@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 // Import raw markdown content
 import tunerPromptRaw from '../../TUNER_RECONSTRUCTION_PROMPT.md?raw';
 import chordDetectionPromptRaw from '../../CHORD_DETECTION_RECONSTRUCTION_PROMPT.md?raw';
+import practicePagePromptRaw from '../../PRACTICE_PAGE_RECONSTRUCTION_PROMPT.md?raw';
 
 interface ExportCardProps {
   title: string;
@@ -154,6 +155,12 @@ export default function ExportPrompts() {
             description="Complete specification for the chord detection system: 6-layer voice rejection pipeline, barre chord adaptation, chroma extraction, confusion matrix tracking, session statistics, calibration integration, and Practice page wiring."
             content={chordDetectionPromptRaw}
             filename="CHORD_DETECTION_RECONSTRUCTION_PROMPT.md"
+          />
+          <ExportCard
+            title="Practice Page Reconstruction Prompt"
+            description="Complete specification for the Practice page UI: chord diagrams, metronome beat-sync with 5 sound types, strumming patterns (13 styles + custom editor), session summary, calibration wizard, fixed bottom toolbar, and all supporting hooks and stores."
+            content={practicePagePromptRaw}
+            filename="PRACTICE_PAGE_RECONSTRUCTION_PROMPT.md"
           />
         </div>
       </div>
