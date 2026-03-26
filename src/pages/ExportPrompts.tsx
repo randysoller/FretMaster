@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 // Import raw markdown content
 import tunerPromptRaw from '../../TUNER_RECONSTRUCTION_PROMPT.md?raw';
+import chordDetectionPromptRaw from '../../CHORD_DETECTION_RECONSTRUCTION_PROMPT.md?raw';
 
 interface ExportCardProps {
   title: string;
@@ -147,6 +148,12 @@ export default function ExportPrompts() {
             description="Complete specification for rebuilding the chromatic guitar tuner with NSDF pitch detection, reference tones, calibration wizard, and React Native migration guide."
             content={tunerPromptRaw}
             filename="TUNER_RECONSTRUCTION_PROMPT.md"
+          />
+          <ExportCard
+            title="Chord Detection Reconstruction Prompt"
+            description="Complete specification for the chord detection system: 6-layer voice rejection pipeline, barre chord adaptation, chroma extraction, confusion matrix tracking, session statistics, calibration integration, and Practice page wiring."
+            content={chordDetectionPromptRaw}
+            filename="CHORD_DETECTION_RECONSTRUCTION_PROMPT.md"
           />
         </div>
       </div>
