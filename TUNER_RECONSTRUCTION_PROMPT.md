@@ -777,3 +777,508 @@ After building, verify:
 3. The `getUserMedia` API is available (web browser or WebView environment).
 4. The Tailwind CSS custom property system (`hsl(var(--token))`) is replicated in the target project's CSS.
 5. If the target project does not have the CalibrationWizard, the tuner still works independently — calibration integration is optional but recommended.
+
+---
+
+## APPENDIX A: REACT NATIVE MIGRATION GUIDE
+
+This appendix provides exact guidance for rebuilding the tuner in React Native, replacing every Web Audio API call with mobile-native equivalents. The detection algorithms (NSDF, median filter, confidence-weighted smoothing, note detection) remain **100% identical** — only the audio I/O layer changes.
+
+---
+
+### A.1 LIBRARY SELECTION
+
+#### Option 1: `react-native-audio-api` (Recommended)
+- Mirrors the Web Audio API surface closely (`AudioContext`, `AnalyserNode`, `OscillatorNode`, `BiquadFilterNode`, `GainNode`, `DynamicsCompressorNode`)
+- Supports `getFloatTimeDomainData()` and `getFloatFrequencyData()` on `AnalyserNode`
+- Supports `MediaStreamSource` via `navigator.mediaDevices.getUserMedia` shim
+- Install: `npm install react-native-audio-api`
+- **This is the closest 1:1 replacement** — most Web Audio code ports with minimal changes
+
+#### Option 2: `expo-av` + `expo-audio` (Expo-managed projects)
+- `expo-av` provides `Audio.Recording` for mic capture but does **not** expose raw PCM buffers or frequency-domain data directly
+- You must use `expo-av` for recording + a custom native module or JS-based FFT library for analysis
+- **Not recommended** for real-time pitch detection unless combined with a native bridge
+
+#### Option 3: `react-native-live-audio-stream` + JS FFT
+- Streams raw PCM Int16 chunks from the mic at configurable sample rates
+- You run NSDF pitch detection directly on the PCM buffer in JS
+- No built-in filter nodes — you must implement high-pass, notch, EQ filters in JS or skip them
+- Install: `npm install react-native-live-audio-stream`
+- **Good fallback** if `react-native-audio-api` is unavailable
+
+#### Recommended Stack
+```
+react-native-audio-api    → Mic input + filter chain + AnalyserNode (pitch detection)
+react-native-audio-api    → OscillatorNode + GainNode + filters (reference tones + cowbell chime)
+```
+
+If `react-native-audio-api` is not available in your environment:
+```
+react-native-live-audio-stream  → Raw PCM mic input
+Custom JS DSP                    → High-pass, notch, EQ filters applied to PCM buffer
+NSDF algorithm                   → Runs on filtered PCM buffer directly
+expo-av Audio.Sound              → Reference tone playback (pre-rendered .wav files)
+```
+
+---
+
+### A.2 MICROPHONE INPUT — REPLACEMENT MAP
+
+#### Web Audio (Original)
+```typescript
+const stream = await navigator.mediaDevices.getUserMedia({
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: { ideal: 1 } },
+});
+const ctx = new AudioContext();
+const source = ctx.createMediaStreamSource(stream);
+// → chain of BiquadFilters → AnalyserNode
+```
+
+#### React Native (`react-native-audio-api`)
+```typescript
+import { AudioContext } from 'react-native-audio-api';
+
+const ctx = new AudioContext({ sampleRate: 48000 });
+// react-native-audio-api provides getUserMedia shim on supported platforms
+const stream = await navigator.mediaDevices.getUserMedia({
+  audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+});
+const source = ctx.createMediaStreamSource(stream);
+// Chain is IDENTICAL to web version:
+// source → highPass → notch1 → notch2 → midBoost → lowPass → analyser
+```
+
+#### React Native (`react-native-live-audio-stream` fallback)
+```typescript
+import LiveAudioStream from 'react-native-live-audio-stream';
+
+LiveAudioStream.init({
+  sampleRate: 48000,
+  channels: 1,
+  bitsPerSample: 16,
+  audioSource: 6, // VOICE_RECOGNITION (disables AGC/NS on Android)
+  bufferSize: 8192,
+});
+
+LiveAudioStream.start();
+
+LiveAudioStream.on('data', (base64: string) => {
+  // Decode base64 → Int16Array → Float32Array (divide by 32768)
+  const int16 = base64ToInt16Array(base64);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32768;
+  }
+
+  // Apply JS-based filters (see A.3) then run autoCorrelate()
+  const filtered = applyFilterChain(float32, 48000);
+  const pitch = autoCorrelate(filtered, 48000);
+  // ... rest of detection logic is identical
+});
+```
+
+**Helper: base64 → Int16Array**
+```typescript
+function base64ToInt16Array(base64: string): Int16Array {
+  const binary = atob(base64); // or use buffer/base-64 polyfill
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Int16Array(bytes.buffer);
+}
+```
+
+---
+
+### A.3 FILTER CHAIN — JS FALLBACK IMPLEMENTATIONS
+
+If using `react-native-audio-api`, the filter chain is identical to web (use `ctx.createBiquadFilter()`). If using raw PCM streams, implement these IIR filters in JS:
+
+```typescript
+// Generic biquad filter (Direct Form II Transposed)
+class BiquadFilter {
+  private b0 = 0; private b1 = 0; private b2 = 0;
+  private a1 = 0; private a2 = 0;
+  private z1 = 0; private z2 = 0;
+
+  constructor(type: 'highpass' | 'lowpass' | 'notch' | 'peaking',
+              freq: number, Q: number, sampleRate: number, gainDB = 0) {
+    const w0 = 2 * Math.PI * freq / sampleRate;
+    const alpha = Math.sin(w0) / (2 * Q);
+    const cosw0 = Math.cos(w0);
+
+    switch (type) {
+      case 'highpass': {
+        const norm = 1 + alpha;
+        this.b0 = ((1 + cosw0) / 2) / norm;
+        this.b1 = (-(1 + cosw0)) / norm;
+        this.b2 = this.b0;
+        this.a1 = (-2 * cosw0) / norm;
+        this.a2 = (1 - alpha) / norm;
+        break;
+      }
+      case 'lowpass': {
+        const norm = 1 + alpha;
+        this.b0 = ((1 - cosw0) / 2) / norm;
+        this.b1 = (1 - cosw0) / norm;
+        this.b2 = this.b0;
+        this.a1 = (-2 * cosw0) / norm;
+        this.a2 = (1 - alpha) / norm;
+        break;
+      }
+      case 'notch': {
+        const norm = 1 + alpha;
+        this.b0 = 1 / norm;
+        this.b1 = (-2 * cosw0) / norm;
+        this.b2 = 1 / norm;
+        this.a1 = this.b1;
+        this.a2 = (1 - alpha) / norm;
+        break;
+      }
+      case 'peaking': {
+        const A = Math.pow(10, gainDB / 40);
+        const norm = 1 + alpha / A;
+        this.b0 = (1 + alpha * A) / norm;
+        this.b1 = (-2 * cosw0) / norm;
+        this.b2 = (1 - alpha * A) / norm;
+        this.a1 = this.b1;
+        this.a2 = (1 - alpha / A) / norm;
+        break;
+      }
+    }
+  }
+
+  process(input: Float32Array): Float32Array {
+    const output = new Float32Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const x = input[i];
+      const y = this.b0 * x + this.z1;
+      this.z1 = this.b1 * x - this.a1 * y + this.z2;
+      this.z2 = this.b2 * x - this.a2 * y;
+      output[i] = y;
+    }
+    return output;
+  }
+
+  reset() { this.z1 = 0; this.z2 = 0; }
+}
+
+// Exact filter chain matching the web version
+function applyFilterChain(buffer: Float32Array, sampleRate: number): Float32Array {
+  const hp     = new BiquadFilter('highpass', 50, 0.71, sampleRate);
+  const notch1 = new BiquadFilter('notch', 50, 12, sampleRate);
+  const notch2 = new BiquadFilter('notch', 60, 12, sampleRate);
+  const mid    = new BiquadFilter('peaking', 200, 0.5, sampleRate, 3);
+  const lp     = new BiquadFilter('lowpass', 4000, 0.5, sampleRate);
+
+  let signal = hp.process(buffer);
+  signal = notch1.process(signal);
+  signal = notch2.process(signal);
+  signal = mid.process(signal);
+  signal = lp.process(signal);
+  return signal;
+}
+```
+
+**Important:** Instantiate filters once and reuse across frames (call `process()` per chunk). Only call the constructor once during setup. The example above shows per-call construction for clarity — in production, store filter instances as refs.
+
+---
+
+### A.4 ANALYSER NODE — REPLACEMENT MAP
+
+#### Web Audio (Original)
+```typescript
+const analyser = ctx.createAnalyser();
+analyser.fftSize = 8192;
+analyser.smoothingTimeConstant = 0;
+analyser.getFloatTimeDomainData(buffer);
+```
+
+#### `react-native-audio-api`
+Identical API:
+```typescript
+const analyser = ctx.createAnalyser();
+analyser.fftSize = 8192;
+analyser.smoothingTimeConstant = 0;
+analyser.getFloatTimeDomainData(buffer); // Same method signature
+```
+
+#### Raw PCM fallback
+No AnalyserNode needed — the raw PCM buffer IS the time-domain data. Feed it directly to `autoCorrelate()`.
+
+---
+
+### A.5 REFERENCE TONE SYNTHESIS — REPLACEMENT MAP
+
+#### Option A: `react-native-audio-api` (Recommended)
+The entire `playReferenceTone()` function ports **as-is** because the library provides:
+- `ctx.createOscillator()` with `.type`, `.frequency`, `.start()`, `.stop()`
+- `ctx.createGain()` with `.gain.setValueAtTime()`, `.linearRampToValueAtTime()`, `.setTargetAtTime()`, `.exponentialRampToValueAtTime()`
+- `ctx.createBiquadFilter()` (peaking, lowpass)
+- `ctx.createDynamicsCompressor()`
+- `ctx.createBuffer()` + `ctx.createBufferSource()` for noise transients
+
+The only change: import `AudioContext` from `react-native-audio-api` instead of using the global.
+
+#### Option B: Pre-rendered audio files
+If oscillator synthesis is unavailable:
+1. Pre-render each string's reference tone as a `.wav` file (use the web version to record, or generate offline)
+2. Name files: `ref_E2_82.41.wav`, `ref_A2_110.00.wav`, etc.
+3. Play via `expo-av`:
+```typescript
+import { Audio } from 'expo-av';
+
+async function playReferenceTone(gs: GuitarString) {
+  const { sound } = await Audio.Sound.createAsync(
+    require(`../assets/tones/ref_${gs.note}_${gs.freq.toFixed(2)}.wav`)
+  );
+  await sound.playAsync();
+  // Cleanup after playback
+  sound.setOnPlaybackStatusUpdate((status) => {
+    if (status.isLoaded && status.didJustFinish) sound.unloadAsync();
+  });
+}
+```
+
+**Required tone files (per tuning preset):** Standard tuning needs 6 files. All 7 presets combined have 18 unique frequencies — generate 18 `.wav` files.
+
+---
+
+### A.6 COWBELL CHIME — REPLACEMENT MAP
+
+#### `react-native-audio-api`
+The `playCowbellSound()` function ports as-is (same oscillator + gain + filter API).
+
+#### Pre-rendered fallback
+Pre-render one `cowbell_chime.wav` (1.4 seconds, matching the 4-partial synthesis described in Section 7.9) and play via `expo-av`.
+
+---
+
+### A.7 ANIMATION LOOP — `requestAnimationFrame` REPLACEMENT
+
+#### Web (Original)
+```typescript
+const detect = () => {
+  // ... pitch detection logic
+  rafRef.current = requestAnimationFrame(detect);
+};
+rafRef.current = requestAnimationFrame(detect);
+```
+
+#### React Native
+`requestAnimationFrame` exists in React Native but is tied to the UI thread's 60fps vsync, which is fine for ~16ms intervals. However, the tuner only needs ~14Hz analysis. Two options:
+
+**Option A: `requestAnimationFrame` (works as-is)**
+```typescript
+// Throttle to ~14Hz within the rAF loop
+let lastAnalysis = 0;
+const detect = (timestamp: number) => {
+  if (timestamp - lastAnalysis >= 70) { // ~14Hz
+    lastAnalysis = timestamp;
+    // ... pitch detection logic
+  }
+  rafRef.current = requestAnimationFrame(detect);
+};
+```
+
+**Option B: `setInterval` (simpler, lower overhead)**
+```typescript
+intervalRef.current = setInterval(() => {
+  // ... pitch detection logic
+}, 70); // ~14Hz
+```
+
+For the raw PCM stream approach (`react-native-live-audio-stream`), analysis runs in the `on('data')` callback, so no separate loop is needed.
+
+---
+
+### A.8 UI COMPONENT MAPPING
+
+| Web (React DOM) | React Native Equivalent |
+|---|---|
+| `<div>` | `<View>` |
+| `<p>`, `<span>`, `<h1>` | `<Text>` |
+| `<button onClick>` | `<Pressable onPress>` or `<TouchableOpacity onPress>` |
+| `<input type="range">` | `@react-native-community/slider` or custom `<Slider>` |
+| `<motion.div>` (Framer Motion) | `react-native-reanimated` `<Animated.View>` |
+| `AnimatePresence` | Reanimated `entering`/`exiting` layout animations |
+| Tailwind classes | React Native `StyleSheet.create()` using design tokens from Section 3 |
+| `className="fixed inset-x-0"` | `StyleSheet: { position: 'absolute', left: 0, right: 0 }` |
+| `overflow-y-auto` | `<ScrollView>` |
+| CSS `hsl(var(--token))` | JS helper: `hsl(38, 75%, 52%)` → convert to hex or use `react-native-hsl` |
+| lucide-react icons | `lucide-react-native` (same icon names, same props) |
+| `sonner` toasts | `react-native-toast-message` or `burnt` |
+
+### A.9 ANIMATION MAPPING (Framer Motion → Reanimated)
+
+#### Panel slide-up entrance
+```typescript
+// Web (Framer Motion)
+initial={{ opacity: 0, y: 80 }}
+animate={{ opacity: 1, y: 0 }}
+exit={{ opacity: 0, y: 80 }}
+transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+
+// React Native (Reanimated 3)
+import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+
+<Animated.View
+  entering={SlideInDown.springify().stiffness(400).damping(30)}
+  exiting={SlideOutDown.springify().stiffness(400).damping(30)}
+>
+```
+
+#### In-tune ring scale animation
+```typescript
+// Web
+<motion.div animate={inTune ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }} />
+
+// React Native
+import { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+
+const ringStyle = useAnimatedStyle(() => ({
+  opacity: withTiming(inTune ? 1 : 0, { duration: 350 }),
+  transform: [{ scale: withSpring(inTune ? 1 : 0.85, { stiffness: 200, damping: 20 }) }],
+}));
+```
+
+---
+
+### A.10 STATE MANAGEMENT
+
+Zustand works identically in React Native. No changes needed for:
+- `tunerStore.ts`
+- `detectionSettingsStore.ts`
+- `practiceHistoryStore.ts`
+
+The `persist` middleware uses `localStorage` on web. In React Native, replace with AsyncStorage:
+```typescript
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createJSONStorage } from 'zustand/middleware';
+
+persist(
+  (set) => ({ /* ... */ }),
+  {
+    name: 'fretmaster-detection-settings',
+    storage: createJSONStorage(() => AsyncStorage),
+  }
+)
+```
+
+Also replace the standalone `localStorage.getItem/setItem` call for `tuner-mic-sensitivity` with AsyncStorage (async):
+```typescript
+// Web
+localStorage.setItem('tuner-mic-sensitivity', String(sensitivity));
+
+// React Native
+AsyncStorage.setItem('tuner-mic-sensitivity', String(sensitivity));
+
+// Reading (async — use useEffect or initialize from store)
+const saved = await AsyncStorage.getItem('tuner-mic-sensitivity');
+```
+
+---
+
+### A.11 PERMISSIONS
+
+#### iOS
+Add to `Info.plist`:
+```xml
+<key>NSMicrophoneUsageDescription</key>
+<string>FretMaster needs microphone access to detect guitar tuning and chords.</string>
+```
+
+#### Android
+Add to `AndroidManifest.xml`:
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+```
+
+Request at runtime:
+```typescript
+import { PermissionsAndroid, Platform } from 'react-native';
+
+async function requestMicPermission(): Promise<boolean> {
+  if (Platform.OS === 'android') {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+      {
+        title: 'Microphone Permission',
+        message: 'FretMaster needs microphone access to tune your guitar.',
+        buttonPositive: 'Allow',
+      }
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  }
+  return true; // iOS prompts automatically via getUserMedia
+}
+```
+
+---
+
+### A.12 PLATFORM-SPECIFIC GOTCHAS
+
+1. **iOS Audio Session:** Set audio session category to `PlayAndRecord` with `AllowBluetooth` and `DefaultToSpeaker` options so the mic works while reference tones play through the speaker.
+   ```typescript
+   import { Audio } from 'expo-av';
+   await Audio.setAudioModeAsync({
+     allowsRecordingIOS: true,
+     playsInSilentModeIOS: true,
+     staysActiveInBackground: false,
+   });
+   ```
+
+2. **Android Audio Focus:** Request transient audio focus when starting the tuner to prevent other apps from interrupting. Release when the tuner closes.
+
+3. **Background Behavior:** Stop mic and audio processing when the app goes to background (`AppState` listener). Restart when foregrounded.
+   ```typescript
+   import { AppState } from 'react-native';
+   useEffect(() => {
+     const sub = AppState.addEventListener('change', (state) => {
+       if (state === 'background') stopListening();
+       if (state === 'active' && tunerOpen) startListening();
+     });
+     return () => sub.remove();
+   }, [tunerOpen]);
+   ```
+
+4. **Sample Rate:** Android devices may not support 48kHz. Fallback to 44100Hz if needed. Adjust NSDF lag ranges accordingly:
+   ```
+   minLag = Math.floor(sampleRate / 1500)  // ~29 at 44100, ~32 at 48000
+   maxLag = Math.ceil(sampleRate / 55)      // ~802 at 44100, ~873 at 48000
+   ```
+
+5. **JS Thread Performance:** NSDF on 4096 samples runs in ~2ms on modern phones. If jank occurs, offload to a JSI-based native module or use Hermes engine optimizations. Do NOT use `InteractionManager.runAfterInteractions` for real-time audio — it introduces unacceptable latency.
+
+6. **Cents Meter Rendering:** 41 individual `<View>` elements re-rendering at 14Hz can cause jank. Use `react-native-reanimated` shared values for bar heights/colors to avoid React re-renders:
+   ```typescript
+   const barOpacities = useSharedValue(new Array(41).fill(0));
+   // Update in worklet, not in React state
+   ```
+
+7. **Tab Bar Integration:** In React Navigation, the tuner overlay should be a modal screen or a portal above the tab navigator, not a tab itself. Use `presentation: 'transparentModal'` in stack navigator options.
+
+---
+
+### A.13 MIGRATION CHECKLIST
+
+- [ ] Install `react-native-audio-api` (or fallback libraries)
+- [ ] Configure iOS `Info.plist` + Android `AndroidManifest.xml` mic permissions
+- [ ] Set iOS audio session to `PlayAndRecord` mode
+- [ ] Replace `navigator.mediaDevices.getUserMedia` with library equivalent
+- [ ] Verify filter chain produces identical output (compare spectrograms)
+- [ ] Port `autoCorrelate()` — algorithm is pure math, zero changes needed
+- [ ] Port median filter + confidence smoothing — pure JS, zero changes
+- [ ] Port `frequencyToNoteInfo()` + `findClosestString()` — pure JS, zero changes
+- [ ] Replace `requestAnimationFrame` loop with throttled equivalent or stream callback
+- [ ] Port reference tone synthesis (or use pre-rendered `.wav` files)
+- [ ] Port cowbell chime synthesis (or use pre-rendered `.wav` file)
+- [ ] Replace Framer Motion animations with Reanimated 3
+- [ ] Replace `localStorage` with `AsyncStorage` in all Zustand stores
+- [ ] Replace Tailwind classes with `StyleSheet.create()` using design tokens
+- [ ] Replace lucide-react with lucide-react-native
+- [ ] Handle `AppState` background/foreground transitions
+- [ ] Test on both iOS and Android physical devices (simulators lack real mic input)
+- [ ] Verify cents meter renders at 14Hz without jank
+- [ ] Verify in-tune chime fires after 500ms sustained ±5 cents
+- [ ] Verify reference tones play correctly for all 7 tuning presets
