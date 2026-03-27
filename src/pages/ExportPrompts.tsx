@@ -10,6 +10,7 @@ import practicePagePromptRaw from '../../PRACTICE_PAGE_RECONSTRUCTION_PROMPT.md?
 import chordPlaybackPromptRaw from '../../CHORD_PLAYBACK_RECONSTRUCTION_PROMPT.md?raw';
 import chordLibraryPromptRaw from '../../CHORD_LIBRARY_RECONSTRUCTION_PROMPT.md?raw';
 import progressionPracticePromptRaw from '../../PROGRESSION_PRACTICE_RECONSTRUCTION_PROMPT.md?raw';
+import chordSetupPromptRaw from '../../CHORD_SETUP_RECONSTRUCTION_PROMPT.md?raw';
 
 interface ExportCardProps {
   title: string;
@@ -182,6 +183,12 @@ export default function ExportPrompts() {
             description="Complete specification for the Progression Practice page: key selection with circle-of-fifths dropdown, 6 scales, 13 common + 40+ style progressions across 13 genres, favorites system, custom builder, saved progressions, progression timeline, chord diagram row with auto-scroll, microphone detection, metronome beat-sync, strumming patterns, session stats, and confusion matrix."
             content={progressionPracticePromptRaw}
             filename="PROGRESSION_PRACTICE_RECONSTRUCTION_PROMPT.md"
+          />
+          <ExportCard
+            title="Chord Setup Page Reconstruction Prompt"
+            description="Complete specification for the Chord Setup page: hero section, sticky filter bar with 3 multi-axis filter chips (Key, Category, Type), desktop dropdowns and mobile bottom sheets, preset dropdown with drag-and-drop reordering, contextual root string filter, active filter pills, practice summary card, gradient start button, 2 Zustand stores with Set serialization, key-signature major-scale filtering, and Fisher–Yates shuffle."
+            content={chordSetupPromptRaw}
+            filename="CHORD_SETUP_RECONSTRUCTION_PROMPT.md"
           />
         </div>
       </div>
