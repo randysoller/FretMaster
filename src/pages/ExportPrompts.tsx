@@ -8,6 +8,7 @@ import tunerPromptRaw from '../../TUNER_RECONSTRUCTION_PROMPT.md?raw';
 import chordDetectionPromptRaw from '../../CHORD_DETECTION_RECONSTRUCTION_PROMPT.md?raw';
 import practicePagePromptRaw from '../../PRACTICE_PAGE_RECONSTRUCTION_PROMPT.md?raw';
 import chordPlaybackPromptRaw from '../../CHORD_PLAYBACK_RECONSTRUCTION_PROMPT.md?raw';
+import chordLibraryPromptRaw from '../../CHORD_LIBRARY_RECONSTRUCTION_PROMPT.md?raw';
 
 interface ExportCardProps {
   title: string;
@@ -168,6 +169,12 @@ export default function ExportPrompts() {
             description="Complete specification for the guitar chord playback system: Web Audio API oscillator synthesis, 3-oscillator pluck model with low-pass filter sweep, reference tone generator with per-string detuning, audio state store with localStorage persistence, volume control UI, and full chord data model."
             content={chordPlaybackPromptRaw}
             filename="CHORD_PLAYBACK_RECONSTRUCTION_PROMPT.md"
+          />
+          <ExportCard
+            title="Chord Library Reconstruction Prompt"
+            description="Complete specification for the Chord Library page: 100+ chord browsing grid, multi-axis filtering (category, type, root string, search), preset system with drag-and-drop reordering, chord selection with floating save bar, detail modal with swipe navigation, SVG chord diagrams, tablature display, custom chord integration, and all Zustand stores."
+            content={chordLibraryPromptRaw}
+            filename="CHORD_LIBRARY_RECONSTRUCTION_PROMPT.md"
           />
         </div>
       </div>
